@@ -30,6 +30,17 @@ export async function login(credentials: Credentials, signal: AbortSignal): Prom
   return parseSession(result);
 }
 
+export async function restoreSession(signal: AbortSignal): Promise<AuthSession | null> {
+  try { return parseSession(await requestJson(backend + "/auth/session", {signal})); }
+  catch (error) { if (error instanceof RequestError && error.status === 401) return null; throw error; }
+}
+
+export async function logoutSession(signal: AbortSignal): Promise<void> {
+  const result = await requestJson(backend + "/auth/logout", {method: "POST", signal});
+  if (!result || typeof result !== "object" || !("loggedOut" in result) || result.loggedOut !== true)
+    throw new RequestError("format", "Não foi possível confirmar a saída.");
+}
+
 export function validateRegistration(input: Registration): RegistrationErrors {
   const errors: RegistrationErrors = {};
   const name = input.name.trim();
@@ -97,4 +108,10 @@ export function loginLocation(returnTo: string, expired = false): string {
   const params = new URLSearchParams({ retorno: safeReturnPath(returnTo) });
   if (expired) params.set("motivo", "expirada");
   return "/login?" + params;
+}
+
+export function publicReturnPath(value: string | null) {
+  const url = new URL(safeReturnPath(value), "https://ecobytemetrics.invalid");
+  if (url.searchParams.get("aba") === "administracao") url.searchParams.delete("aba");
+  return url.pathname + url.search;
 }

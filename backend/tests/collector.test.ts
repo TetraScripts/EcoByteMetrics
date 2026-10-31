@@ -50,6 +50,8 @@ test("filtros de histórico exigem período permitido, data com fuso e IDs limit
     {period: "24h", until: "2026-10-30T23:00:00-03:00", serviceIds: ["billing-api"]});
   for (const query of [{period: "all"}, {until: "30/10/2026"}, {until: "2026-02-30T12:00:00Z"}, {until: "2026-10-30T23:00:00"}, {service: {}}, {service: Array(101).fill("app")}])
     assert.throws(() => parseHistoryQuery(query));
+  assert.equal(parseHistoryQuery({view: "latest"}).view, "latest");
+  assert.throws(() => parseHistoryQuery({view: "invalid"}));
   const now = Date.parse("2026-10-31T12:00:00Z");
   assert.throws(() => parseHistoryQuery({until: "2026-10-31T12:00:01Z"}, now), /momento atual/);
   assert.equal(parseHistoryQuery({until: "2026-10-31T09:00:00-03:00"}, now).until, "2026-10-31T09:00:00-03:00");

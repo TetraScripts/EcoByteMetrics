@@ -15,9 +15,10 @@ function place(data: Record<string, unknown>) {
     longitude: typeof data.longitude === "number" && Number.isFinite(data.longitude) && Math.abs(data.longitude) <= 180 ? data.longitude : undefined };
 }
 
-export async function getMonitoringSnapshot(signal = new AbortController().signal, options: { period?: "24h" | "7d"; until?: string } = {}): Promise<MonitoringSnapshot> {
+export async function getMonitoringSnapshot(signal = new AbortController().signal, options: { period?: "24h" | "7d"; until?: string; includeHistory?: boolean } = {}): Promise<MonitoringSnapshot> {
   const params = new URLSearchParams({ period: options.period ?? "7d" });
   if (options.until) params.set("until", options.until);
+  if (options.includeHistory === false) params.set("view", "latest");
   const raw = object(await requestJson(backend + "/api/monitoring?" + params, { signal }));
   if (raw.source !== "database" || !Array.isArray(raw.services) || !Array.isArray(raw.history) || !Array.isArray(raw.regions) ||
     !Array.isArray(raw.observations) || raw.history.length > 20000 || !["24h", "7d"].includes(text(raw.historyPeriod))) throw invalid();
@@ -82,7 +83,8 @@ export async function getMonitoringSnapshot(signal = new AbortController().signa
       !Array.isArray(data.serviceIds) || data.serviceIds.some(id => typeof id !== "string")) throw invalid();
     return { from: data.from, to: data.to, kind: data.kind as "service-unavailable" | "metrics-missing", serviceIds: data.serviceIds as string[] };
   }) : [];
-  return { source: "database", services, history, regions, observations, collectionEvents,
+  if (raw.historyIncluded !== undefined && typeof raw.historyIncluded !== "boolean") throw invalid();
+  return { source: "database", services, history, regions, observations, collectionEvents, historyIncluded: raw.historyIncluded !== false,
     historyPeriod: raw.historyPeriod as "24h" | "7d", selectedAt: typeof raw.selectedAt === "string" ? raw.selectedAt : null,
     historyUntil: raw.historyUntil,
     lastCollectionAt: raw.lastCollectionAt as string | null, discoveryUpdatedAt: raw.discoveryUpdatedAt as string | null,

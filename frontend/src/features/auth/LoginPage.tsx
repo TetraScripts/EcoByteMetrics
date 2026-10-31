@@ -5,11 +5,11 @@ import { Link, Navigate, useNavigate, useSearchParams } from "react-router-dom";
 import { Brand } from "@/shared/ui/Brand";
 import { TopographicSides } from "@/features/monitoring/components/TopographicSides";
 import { useAuth } from "./useAuth";
-import { safeReturnPath, validateRegistration } from "./api";
+import { publicReturnPath, safeReturnPath, validateRegistration } from "./api";
 import "./styles.css";
 
 export function LoginPage({ register = false }: { register?: boolean }) {
-  const { session, pending, error, invalidCredentials, notice, registeredEmail, fieldErrors, signIn, signUp, cancelLogin } = useAuth();
+  const { session, pending, restoring, error, invalidCredentials, notice, registeredEmail, fieldErrors, signIn, signUp, cancelLogin } = useAuth();
   const [params] = useSearchParams();
   const navigate = useNavigate();
   const form = useRef<HTMLFormElement>(null);
@@ -17,6 +17,7 @@ export function LoginPage({ register = false }: { register?: boolean }) {
   const [email, setEmail] = useState(!register ? registeredEmail ?? "" : "");
   const [password, setPassword] = useState("");
   const [showPassword, setShowPassword] = useState(false);
+  const publicReturn = publicReturnPath(params.get("retorno"));
   const returnTo = safeReturnPath(params.get("retorno"));
   const returnQuery = params.has("retorno") ? "?" + new URLSearchParams({ retorno: returnTo }) : "";
   useEffect(() => cancelLogin, [cancelLogin]);
@@ -40,13 +41,14 @@ export function LoginPage({ register = false }: { register?: boolean }) {
     }
   }
   if (session) return <Navigate to={returnTo} replace />;
+  if (restoring) return <main className="login-content" role="status">Verificando sua sessão…</main>;
   return (
     <div className="login-page">
       <a className="skip-link" href="#login-content">Pular para o formulário</a>
       <TopographicSides />
       <header className="login-header">
         <Brand />
-        <Link className="login-back" to="/dashboard" aria-label="Voltar ao monitoramento">
+        <Link className="login-back" to={publicReturn} aria-label="Voltar ao monitoramento">
           <ArrowLeft size={16} aria-hidden="true" />
           <span>Voltar ao monitoramento</span>
         </Link>
@@ -100,7 +102,7 @@ export function LoginPage({ register = false }: { register?: boolean }) {
           </section>
 
           <div className="login-public-access">
-            <Link to="/dashboard">Explorar monitoramento<ArrowUpRight size={16} aria-hidden="true" /></Link>
+            <Link to={publicReturn}>Explorar monitoramento<ArrowUpRight size={16} aria-hidden="true" /></Link>
             <p>Consulte os indicadores sem precisar entrar.</p>
           </div>
         </div>

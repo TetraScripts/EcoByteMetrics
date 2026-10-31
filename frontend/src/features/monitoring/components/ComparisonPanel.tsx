@@ -10,7 +10,8 @@ import { serviceStatusLabels } from "../types";
 
 export function ComparisonPanel({ onOpenService }: { onOpenService: (id: string) => void }) {
   const analysis = useAnalysis();
-  const { loading } = useMonitoring();
+  const { loading, snapshot, error } = useMonitoring();
+  const awaitingHistory = (loading || (!error && snapshot.historyIncluded === false)) && !analysis.history.length;
   const [params, setParams] = useSearchParams();
   const ids = [...new Set(params.getAll("app"))];
   const rows = useMemo(() => compareApplications(analysis.services, analysis.history, params.getAll("app"), analysis.windowStart, analysis.windowEnd), [analysis, params]);
@@ -31,7 +32,7 @@ export function ComparisonPanel({ onOpenService }: { onOpenService: (id: string)
       </fieldset>
       {!analysis.services.length && <p className="monitoring-empty">{loading ? "Consultando aplicações…" : "Nenhuma aplicação disponível nesta seleção. Ajuste os filtros no monitoramento."}</p>}
       {missing.length > 0 && <p className="monitoring-notice" role="status">{missing.length} seleção(ões) não está(ão) disponível(is) nos filtros atuais. <button onClick={() => { const next = new URLSearchParams(params); next.delete("app"); for (const id of ids.filter(id => !missing.includes(id))) next.append("app", id); setParams(next); }}>Remover seleções indisponíveis</button></p>}
-      {rows.length < 2 ? <p className="monitoring-empty">Selecione pelo menos duas aplicações para consultar a tabela.</p> : <>
+      {awaitingHistory ? <p className="monitoring-empty" role="status">Consultando as leituras para comparação…</p> : rows.length < 2 ? <p className="monitoring-empty">Selecione pelo menos duas aplicações para consultar a tabela.</p> : <>
         <p className="comparison-range">Mesmo intervalo de consulta: {formatDate(analysis.windowStart)} até {formatDate(analysis.windowEnd)}.</p>
         <p className="monitoring-explanation">{formatRecordedPeriod(range.first, range.last)}. Os totais somam as leituras disponíveis nesse intervalo.</p>
         <div className="monitoring-table-scroll" role="region" aria-label="Comparação das aplicações" tabIndex={0}>

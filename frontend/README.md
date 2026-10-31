@@ -22,7 +22,7 @@ O proxy remove `/backend` antes de encaminhar a consulta. Reinicie o Vite após 
 
 A home, a página 404 e as telas de acesso podem ser abertas sem o backend. Monitoramento e comparação precisam de respostas da API para mostrar aplicações reais; não existe modo de demonstração automático.
 
-A aba Administração exige sessão em desenvolvimento e produção. Uma visita sem sessão vai ao login, preservando o destino e os filtros; a tela de login também oferece o caminho para cadastro. A administração contém a configuração de coleta, sem uma seção separada de Acesso. O intervalo ilustrativo de 30 segundos e o salvamento continuam desativados, pois ainda não existe endpoint de configuração integrado. Referências do layout em [ADMINISTRATION-DESIGN.md](src/features/monitoring/ADMINISTRATION-DESIGN.md).
+A aba Administração exige sessão em desenvolvimento e produção. Uma visita sem sessão vai ao login, preservando o destino e os filtros; a tela de login também oferece o caminho para cadastro. A administração contém a configuração de coleta, sem uma seção separada de Acesso. O intervalo é consultado em `GET /backend/api/monitoring-settings`, protegido por Bearer, usando a mesma constante do coletor. A tela é somente leitura e trata carregamento, falha e nova tentativa. Referências do layout em [ADMINISTRATION-DESIGN.md](src/features/monitoring/ADMINISTRATION-DESIGN.md).
 
 ## Login e sessão
 
@@ -30,9 +30,9 @@ O formulário de entrada envia `{ email, password }` para `POST /backend/auth/lo
 
 - Campos e botão ficam desativados durante a consulta; envios duplicados são ignorados. E-mail é normalizado, a senha é enviada sem alterações e é apagada do formulário após a tentativa.
 - Credenciais incorretas, serviço indisponível, falha de conexão, tempo limite e resposta inválida têm mensagens próprias. Detalhes internos da API não são exibidos.
-- Sessão e token ficam somente em memória, sem `localStorage`, `sessionStorage` ou cookies. Recarregar a página ou fechar a aba exige nova entrada. Ainda não existe renovação de token integrada.
+- O token usado pelas operações fica em memória, sem `localStorage` ou `sessionStorage`. O backend também emite cookie HttpOnly, SameSite=Strict, limitado ao vencimento original. Ao abrir ou recarregar a página, `GET /backend/auth/session` verifica assinatura, validade e existência da conta antes de restaurar a sessão; não renova o prazo. `POST /backend/auth/logout` remove o cookie. Falha ao confirmar a saída mantém a conta visível e permite tentar novamente. Em produção, o cookie exige HTTPS.
 - A sessão termina no prazo informado no JWT, inclusive após suspensão da aba. Consultas feitas por `useAuth().request` enviam Bearer; HTTP 401 encerra a sessão, enquanto 403 mantém a conta conectada. Respostas de uma sessão encerrada não são aplicadas a uma sessão nova.
-- Ao entrar, a interface retorna ao dashboard solicitado; destinos externos são descartados. A administração mostra a conta e permite sair. O dashboard permanece público; somente a aba Administração exige sessão, inclusive em desenvolvimento.
+- Ao entrar, a interface retorna ao dashboard solicitado; voltar sem entrar também preserva filtros e instante, removendo a aba restrita; destinos externos são descartados. A administração mostra a conta e permite sair. O dashboard permanece público; somente a aba Administração exige sessão, inclusive em desenvolvimento.
 - Cadastro envia nome, e-mail e senha para `POST /backend/api/users`. Valida nome, e-mail e senha conforme os limites do backend, bloqueia envio duplicado e distingue e-mail já cadastrado de falhas do serviço. Nome e e-mail são normalizados; a senha é enviada sem alterações.
 - Após confirmar a criação, volta ao login com o e-mail preenchido, a senha vazia e o destino original preservado. Cadastro não inicia sessão automaticamente. A confirmação e o e-mail ficam apenas em memória. Se a conexão cair sem confirmar o resultado do POST, a mensagem orienta tentar entrar antes de cadastrar novamente.
 - Sem PostgreSQL disponível, as telas informam indisponibilidade e não criam sessão. Não há credenciais de demonstração nem autenticação simulada no aplicativo.
@@ -51,7 +51,7 @@ Para medir o tamanho do build, execute `npm run measure:build`. O relatório dis
 | `/dashboard` | Lista, filtros, estados, globo, resumo e evolução das amostras |
 | `/dashboard?servico=ID` | Resumo e recursos da última coleta; totais por período na Evolução; globo permanece à esquerda no desktop |
 | `/comparar` | Seleção de duas ou mais aplicações, tabela com o mesmo intervalo e cobertura por aplicação |
-| `/login` | Formulário conectado ao backend, sessão em memória, retorno seguro e tratamento de erros |
+| `/login` | Formulário conectado ao backend, sessão restaurada pelo servidor, retorno seguro e tratamento de erros |
 | `/cadastro` | Criação de conta pela API, validação e retorno ao login com confirmação e e-mail preenchido |
 | `/gerenciamento` | Funcionalidade pendente do backend |
 | `/pesquisa`, `/servicos` | Redirecionam ao dashboard preservando a consulta |
@@ -63,7 +63,7 @@ Busca, estado, país, região, cidade, período e data são mantidos na URL. A n
 
 ## Dados, cálculos e limites
 
-O adaptador `src/features/monitoring/api/monitoring.ts` consulta `GET /backend/api/monitoring?period=24h|7d`, com `until` ISO opcional para revisão de coletas. A resposta vem do PostgreSQL, incluindo catálogo, recursos da última coleta, fatores capturados, histórico, cobertura e diagnósticos do coletor. A interface não consulta diretamente as APIs externas nem monta o histórico a partir das visitas ao navegador.
+O adaptador `src/features/monitoring/api/monitoring.ts` consulta `GET /backend/api/monitoring?period=24h|7d`, com `until` ISO opcional para revisão de coletas. A resposta vem do PostgreSQL. A visão geral usa `view=latest`, com catálogo e últimas leituras; Evolução, Comparar e a linha do tempo carregam o histórico quando abertos. `historyIncluded` distingue uma consulta leve de um histórico realmente vazio. A interface não consulta diretamente as APIs externas nem monta o histórico a partir das visitas ao navegador.
 
 A visão geral e o resumo individual mostram a última leitura disponível de cada aplicação. Evolução e Comparar apresentam os totais do período; o seletor de período aparece somente nessas análises.
 

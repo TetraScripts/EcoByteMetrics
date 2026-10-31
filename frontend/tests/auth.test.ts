@@ -1,6 +1,6 @@
 import { test } from "node:test";
 import assert from "node:assert/strict";
-import { login, loginErrorMessage, loginLocation, parseSession, registerAccount, registrationErrorMessage, safeReturnPath, validateRegistration } from "../src/features/auth/api.ts";
+import { login, loginErrorMessage, loginLocation, parseSession, registerAccount, registrationErrorMessage, publicReturnPath, safeReturnPath, validateRegistration } from "../src/features/auth/api.ts";
 import { createAuthStore } from "../src/features/auth/session.ts";
 import { RequestError } from "../src/shared/lib/http.ts";
 
@@ -151,7 +151,8 @@ test("resposta de uma sessão anterior não encerra nem fornece dados à sessão
     let resolve!: (value: Response) => void;
     t.mock.method(globalThis, "fetch", () => new Promise<Response>(done => { resolve = done; }));
     const oldRequest = store.request("/api/users/1");
-    store.logout();
+    t.mock.method(globalThis, "fetch", async () => Response.json({ loggedOut: true }));
+    await store.logout();
     t.mock.method(globalThis, "fetch", async () => Response.json(response()));
     await store.signIn(credentials);
     const current = store.getSnapshot().session;
@@ -280,4 +281,77 @@ test("resposta incompleta do cadastro não confirma a conta nem dispara outro PO
     assert.equal(calls, 1);
     store.dispose();
   }
+});
+
+
+test("restauração após F5 mantém o vencimento e não renova o token", async t => {
+  const store = createAuthStore(true);
+  t.after(store.dispose);
+  const session = response();
+  t.mock.method(globalThis, "fetch", async (url: string, options: RequestInit) => {
+    assert.equal(url, "/backend/auth/session");
+    assert.equal(options.cache, "no-store");
+    assert.equal(new Headers(options.headers).get("Authorization"), null);
+    return Response.json(session);
+  });
+  assert.equal(store.getSnapshot().restoring, true);
+  await store.restore();
+  assert.equal(store.getSnapshot().restoring, false);
+  assert.deepEqual(store.getSnapshot().session, parseSession(session));
+});
+
+test("sessão ausente, expirada e servidor indisponível não liberam administração", async t => {
+  for (const status of [401, 503]) {
+    const store = createAuthStore(true);
+    t.after(store.dispose);
+    t.mock.method(globalThis, "fetch", async () => Response.json({}, {status}));
+    await store.restore();
+    assert.equal(store.getSnapshot().session, null);
+    assert.equal(store.getSnapshot().restoring, false);
+    assert.equal(Boolean(store.getSnapshot().error), status === 503);
+  }
+});
+
+test("sair só encerra a sessão local quando o servidor confirma a remoção do cookie", async t => {
+  const store = createAuthStore();
+  t.after(store.dispose);
+  t.mock.method(globalThis, "fetch", async () => Response.json(response()));
+  await store.signIn(credentials);
+  t.mock.method(globalThis, "fetch", async () => { throw new TypeError("offline"); });
+  assert.equal(await store.logout(), false);
+  assert.ok(store.getSnapshot().session);
+  assert.match(store.getSnapshot().error!, /encerrar/);
+  t.mock.method(globalThis, "fetch", async (url: string, options: RequestInit) => {
+    assert.equal(url, "/backend/auth/logout");
+    assert.equal(options.method, "POST");
+    return Response.json({loggedOut: true});
+  });
+  assert.equal(await store.logout(), true);
+  assert.equal(store.getSnapshot().session, null);
+  assert.equal(store.getSnapshot().notice, "signed-out");
+});
+
+test("voltar sem entrar mantém filtros e instante, removendo apenas a aba restrita", () => {
+  const path = "/dashboard?aba=administracao&pais=Brasil&instante=2026-10-30T20%3A00%3A00Z";
+  const url = new URL(publicReturnPath(path), "https://local.invalid");
+  assert.equal(url.searchParams.get("aba"), null);
+  assert.equal(url.searchParams.get("pais"), "Brasil");
+  assert.equal(url.searchParams.get("instante"), "2026-10-30T20:00:00Z");
+  assert.equal(publicReturnPath("/dashboard?aba=evolucao"), "/dashboard?aba=evolucao");
+});
+
+
+test("restauração cancelada não sobrescreve uma nova verificação de sessão", async t => {
+  const store = createAuthStore(true);
+  t.after(store.dispose);
+  let resolve!: (value: Response) => void;
+  t.mock.method(globalThis, "fetch", () => new Promise<Response>(done => {resolve = done;}));
+  const old = store.restore();
+  store.dispose();
+  t.mock.method(globalThis, "fetch", async () => Response.json({}, {status: 401}));
+  await store.restore();
+  resolve(Response.json(response()));
+  await old;
+  assert.equal(store.getSnapshot().session, null);
+  assert.equal(store.getSnapshot().restoring, false);
 });

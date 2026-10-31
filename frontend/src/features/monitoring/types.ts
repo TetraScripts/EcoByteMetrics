@@ -60,6 +60,7 @@ export interface CollectionPoint {
 }
 
 export interface MonitoringSnapshot {
+  historyIncluded?: boolean;
   source?: "database";
   historyPeriod?: "24h" | "7d";
   historyUntil?: string;

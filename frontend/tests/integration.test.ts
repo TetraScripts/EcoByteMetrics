@@ -67,6 +67,33 @@ test("integração do frontend: contratos HTTP, análise, telas e navegação", 
       assert.equal(calls, 1);
     });
 
+    await t.test("visão geral solicita últimas leituras; histórico só é solicitado quando necessário", async child => {
+      child.mock.method(globalThis, "fetch", async (url: string) => {
+        assert.equal(new URL(url, "https://local.invalid").searchParams.get("view"), "latest");
+        return Response.json(persisted({historyIncluded: false, history: [], observations: []}));
+      });
+      const latest = await getMonitoringSnapshot(undefined, {includeHistory: false});
+      assert.equal(latest.historyIncluded, false);
+      assert.deepEqual(latest.history, []);
+      assert.equal(latest.services[0].emissionsG, 0.085);
+      child.mock.method(globalThis, "fetch", async (url: string) => {
+        assert.equal(new URL(url, "https://local.invalid").searchParams.has("view"), false);
+        return Response.json(persisted({historyIncluded: true}));
+      });
+      assert.equal((await getMonitoringSnapshot(undefined, {includeHistory: true})).history.length, 1);
+    });
+
+    await t.test("administração valida a configuração recebida sem substituir falhas por 30 segundos", async () => {
+      const {getMonitoringSettings} = await vite.ssrLoadModule("/src/features/monitoring/api/settings.ts");
+      const signal = new AbortController().signal;
+      assert.deepEqual(await getMonitoringSettings(async (path: string) => {
+        assert.equal(path, "/api/monitoring-settings");
+        return {collectionIntervalSeconds: 45, discovery: "automatic", editable: false};
+      }, signal), {collectionIntervalSeconds: 45});
+      for (const data of [{}, {collectionIntervalSeconds: -1}, {collectionIntervalSeconds: 30, discovery: "automatic", editable: true}])
+        await assert.rejects(getMonitoringSettings(async () => data, signal));
+    });
+
     const service: MonitoredService = { id: "a", name: "Billing API", status: "available", country: "Brazil", region: "Sudeste", city: "São Paulo", cpuPercent: 10, memoryGb: 1, diskGb: 2, networkGb: 3, energyKwh: 0.001, emissionsG: 0.085, lastCollectionAt: at };
     const snapshot: MonitoringSnapshot = { services: [service, { ...service, id: "b", name: "Audit", status: "removed" }], regions: [], history: ["a", "b"].map(id => ({ serviceId: id, collectedAt: at, energyKwh: 0.001, emissionsG: 0.085 })), totalEnergyKwh: 0.002, totalEmissionsG: 0.17, lastCollectionAt: at, discoveryUpdatedAt: at, refreshedAt: at };
 
@@ -423,12 +450,21 @@ test("integração do frontend: contratos HTTP, análise, telas e navegação", 
 
     await t.test("resumo e contexto explicam unidades e estimativas sem abrir popups inicialmente", () => {
       const markup = render("/dashboard");
-      assert.equal((markup.match(/class="info-tooltip-trigger"/g) ?? []).length, 0);
+      assert.equal((markup.match(/class="info-tooltip-trigger"/g) ?? []).length, 2);
+      assert.match(markup, /Situação das aplicações na seleção/);
       assert.ok(render("/dashboard?aba=evolucao").includes('aria-label="Sobre estimativas ambientais"'));
       assert.ok(!markup.includes("Entender os números"));
       assert.ok(!markup.includes("monitoring-summary-facts"));
       assert.ok(!markup.includes('role="tooltip"'));
       for (const text of ["A situação indica se a aplicação respondeu", "Os números indicam aplicações no mesmo local", "Leituras usadas no CO₂", "Página consultada em"]) assert.ok(!markup.includes(text));
+    });
+
+    await t.test("carregamento tardio do histórico não afirma ausência de dados nem fica preso após falha", () => {
+      const partial = {...snapshot, source: "database", historyPeriod: "7d", historyIncluded: false, history: []};
+      const pending = render("/dashboard?aba=comparar&app=a&app=b", DashboardPage, {snapshot:partial});
+      assert.match(pending, /Consultando as leituras para comparação/);
+      const failed = render("/dashboard?aba=evolucao", DashboardPage, {snapshot:partial, error:"Sem conexão"});
+      assert.doesNotMatch(failed, /Consultando os registros da seleção/);
     });
 
     await t.test("evolution reveals only the selected section and keeps optional information out of the chart", () => {

@@ -250,3 +250,38 @@ test("falha de banco retorna JSON genérico sem expor consulta, senha ou detalhe
     assert(!/SELECT|password_user|controlled database|stack/.test(text));
   }
 });
+
+
+test("cookie HttpOnly restaura a mesma sessão, valida a conta e é apagado ao sair", async () => {
+  const login = await request("/auth/login", "POST", {email: "user1@example.invalid", password: fixturePassword});
+  const cookieHeader = login.headers.get("set-cookie")!;
+  assert.match(cookieHeader, /HttpOnly/i);
+  assert.match(cookieHeader, /SameSite=Strict/i);
+  assert.match(cookieHeader, /Max-Age=/i);
+  const cookie = cookieHeader.split(";")[0]!;
+  const original = await login.json();
+  const restore = await fetch(base + "/auth/session", {headers: {Cookie: cookie}});
+  assert.equal(restore.status, 200);
+  assert.equal(restore.headers.get("cache-control"), "no-store");
+  assert.equal((await restore.json()).token, original.token);
+  assert.equal((await fetch(base + "/api/users/1", {headers: {Cookie: cookie}})).status, 401);
+  databaseUnavailable = true;
+  assert.equal((await fetch(base + "/auth/session", {headers: {Cookie: cookie}})).status, 503);
+  databaseUnavailable = false;
+  users.delete(1);
+  assert.equal((await fetch(base + "/auth/session", {headers: {Cookie: cookie}})).status, 401);
+  const logout = await request("/auth/logout", "POST");
+  assert.equal(logout.status, 200);
+  assert.match(logout.headers.get("set-cookie")!, /ecobyte_session=;/);
+  assert.match(logout.headers.get("set-cookie")!, /Expires=Thu, 01 Jan 1970/);
+  assert.deepEqual(await logout.json(), {loggedOut: true});
+});
+
+test("restauração rejeita cookie ausente, adulterado ou expirado sem aceitar Bearer como substituto", async () => {
+  assert.equal((await request("/auth/session", "GET", undefined, tokenFor(1))).status, 401);
+  for (const token of ["invalid", tokenFor(1, -1), tokenFor(1) + "tampered"]) {
+    const response = await fetch(base + "/auth/session", {headers: {Cookie: "ecobyte_session=" + token}});
+    assert.equal(response.status, 401);
+    assert.equal(response.headers.get("cache-control"), "no-store");
+  }
+});

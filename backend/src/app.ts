@@ -9,6 +9,8 @@ import locationRouter from "./modules/Locations/location.router.js";
 import statisticRouter from "./modules/Statistics/statistics.router.js"
 import authRouter from "./modules/Auth/auth.router";
 import monitoringRouter from "./modules/Monitoring/monitoring.router";
+import { authMiddleware } from "./modules/Auth/auth.middleware";
+import { COLLECTION_INTERVAL_MS } from "./modules/Monitoring/collector";
 
 import {
   getDiscoveredServices,
@@ -39,6 +41,9 @@ app.get("/services", (_req: Request, res: Response) => {
 // Rotas do módulo de usuários.
 app.use("/api/users", userRouter);
 app.use("/api/monitoring", monitoringRouter);
+app.get("/api/monitoring-settings", authMiddleware, (_req, res) => {
+  res.set("Cache-Control", "no-store").json({collectionIntervalSeconds: COLLECTION_INTERVAL_MS / 1000, discovery: "automatic", editable: false});
+});
 // Rotas do módulo de métricas.
 app.use("/api/metrics", metricRouter);
 //Rota do Carbon

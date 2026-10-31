@@ -4,8 +4,9 @@ import { AuthContext } from "./AuthContext";
 import { createAuthStore } from "./session";
 
 export function AuthProvider({ children }: { children: ReactNode }) {
-  const [store] = useState(createAuthStore);
+  const [store] = useState(() => createAuthStore(typeof window !== "undefined"));
   useEffect(() => {
+    void store.restore();
     const check = () => { store.checkExpiration(); };
     window.addEventListener("focus", check);
     document.addEventListener("visibilitychange", check);

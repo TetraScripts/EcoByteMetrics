@@ -1,21 +1,22 @@
-import { authenticatedRequest, login, loginErrorMessage, registerAccount, registrationErrorMessage, validateRegistration } from "./api.ts";
+import { authenticatedRequest, login, loginErrorMessage, logoutSession, registerAccount, registrationErrorMessage, restoreSession, validateRegistration } from "./api.ts";
 import type { AuthSession, Credentials, Registration, RegistrationErrors } from "./api.ts";
 import { RequestError } from "../../shared/lib/http.ts";
 
 export interface AuthState {
   session: AuthSession | null;
   pending: boolean;
+  restoring: boolean;
   error: string | null;
   invalidCredentials: boolean;
-  notice: "expired" | "registered" | null;
+  notice: "expired" | "registered" | "signed-out" | null;
   registeredEmail: string | null;
   fieldErrors: RegistrationErrors;
 }
 
-export function createAuthStore() {
-  const initial: AuthState = { session: null, pending: false, error: null, invalidCredentials: false, notice: null,
+export function createAuthStore(restoreOnStart = false) {
+  const initial: AuthState = { session: null, pending: false, restoring: false, error: null, invalidCredentials: false, notice: null,
     registeredEmail: null, fieldErrors: {} };
-  let state = initial;
+  let state = {...initial, restoring: restoreOnStart};
   let pending: AbortController | null = null;
   let timer: ReturnType<typeof setTimeout> | undefined;
   const listeners = new Set<() => void>();
@@ -38,6 +39,21 @@ export function createAuthStore() {
     getSnapshot: () => state,
     subscribe(listener: () => void) { listeners.add(listener); return () => { listeners.delete(listener); }; },
     checkExpiration,
+    async restore() {
+      if (pending || state.session) return;
+      const controller = new AbortController();
+      pending = controller;
+      update({...state, restoring: true});
+      try {
+        const session = await restoreSession(controller.signal);
+        if (pending !== controller || controller.signal.aborted) return;
+        update({...initial, session});
+        scheduleExpiration();
+      } catch {
+        if (pending === controller && !controller.signal.aborted)
+          update({...initial, error: "Não foi possível verificar sua sessão. Tente recarregar ou entre novamente."});
+      } finally { if (pending === controller) pending = null; }
+    },
     async signIn(credentials: Credentials): Promise<boolean> {
       if (pending) return false;
       const controller = new AbortController();
@@ -85,10 +101,27 @@ export function createAuthStore() {
       }
     },
     cancelLogin() {
+      if (state.restoring) return;
       pending?.abort(); pending = null;
       if (state.pending || state.error) update({ ...state, pending: false, error: null, invalidCredentials: false, fieldErrors: {} });
     },
-    logout: () => clear(),
+    async logout(): Promise<boolean> {
+      if (!state.session) { clear(); return true; }
+      pending?.abort();
+      const controller = new AbortController();
+      pending = controller;
+      update({...state, pending: true, error: null});
+      try {
+        await logoutSession(controller.signal);
+        if (pending !== controller || controller.signal.aborted) return false;
+        clear("signed-out");
+        return true;
+      } catch {
+        if (pending === controller && !controller.signal.aborted)
+          update({...state, pending: false, error: "Não foi possível encerrar a sessão no servidor. Tente sair novamente."});
+        return false;
+      } finally { if (pending === controller) pending = null; }
+    },
     dispose: () => clear(),
     async request(path: string, options?: { signal?: AbortSignal }) {
       const session = checkExpiration();

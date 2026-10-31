@@ -8,6 +8,7 @@ A interface consulta `GET /api/monitoring`; não consulta mais as APIs externas 
 
 `GET /api/monitoring?period=7d&until=2026-10-30T23:00:00Z`
 
+- `view`: `latest` ou `history` (padrão). `latest` evita as consultas de histórico, rodadas e falhas do período; mantém as mesmas últimas leituras e regiões. Retorna `historyIncluded: false`, listas históricas vazias e totais do período nulos. A interface usa esse modo na visão geral e carrega o histórico ao abrir uma área que precisa dele.
 - `period`: `24h` ou `7d`; padrão `7d`.
 - `until`: opcional, ISO com fuso, usado como limite superior inclusivo. Horários inválidos ou futuros recebem 400.
 - `service`: identificador externo opcional, repetível até 100 aplicações. O identificador não é o número interno da tabela.

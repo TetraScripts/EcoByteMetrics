@@ -179,3 +179,9 @@ docker compose down
 ```bash
 docker compose down -v
 ```
+
+### Restauração de sessão e configuração de consulta
+
+O login mantém a resposta Bearer e emite cookie `ecobyte_session` HttpOnly, SameSite=Strict, com o mesmo vencimento do JWT. `GET /auth/session` aceita esse cookie somente para restaurar o token após F5, verificando também a conta no banco. Não há renovação automática. `POST /auth/logout` remove o cookie; o JWT já emitido mantém seu prazo original, sem lista de revogação. Em produção, use HTTPS: cookies são Secure quando `NODE_ENV=production`. A configuração de proxy/TLS deve ser definida pelo ambiente.
+
+`GET /api/monitoring-settings` exige Bearer e retorna `{collectionIntervalSeconds, discovery: "automatic", editable: false}`. O intervalo vem da mesma constante usada pelo coletor. Não existe operação de edição integrada. O Nginx do frontend comprime respostas JSON e arquivos estáticos aceitos pelo cliente.

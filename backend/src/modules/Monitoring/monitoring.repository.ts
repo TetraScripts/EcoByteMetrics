@@ -1,7 +1,7 @@
 import pool from "../../db/connection";
 import type { AggregatorService } from "../../integrations/metrics-api";
 
-export interface HistoryQuery { period: "24h" | "7d"; until?: string; serviceIds: string[] }
+export interface HistoryQuery { period: "24h" | "7d"; until?: string; serviceIds: string[]; view?: "latest" | "history" }
 const energy = "((m.cpu_metric / 100.0 * 100) + m.ram_metric * 0.375 + m.hd_metric * 0.01 + m.network_metric * 0.02) * m.colletion_interval_metric / 3600000.0";
 const iso = (date: Date | null) => date?.toISOString() ?? null;
 
@@ -10,18 +10,19 @@ export async function readMonitoring(query: HistoryQuery) {
   const end = new Date(query.until ?? Date.now());
   const start = new Date(end.getTime() - (query.period === "24h" ? 1 : 7) * 86400_000);
   const args = [start, end, query.serviceIds];
+  const includeHistory = query.view !== "latest";
   try {
     await client.query("BEGIN ISOLATION LEVEL REPEATABLE READ READ ONLY");
     const latest = await client.query("SELECT * FROM monitoring_collections WHERE collected_at <= $1 ORDER BY collected_at DESC LIMIT 1", [end]);
     const cycle = latest.rows[0];
     const catalog: AggregatorService[] = cycle?.catalog ?? [];
     const active = new Map(catalog.map(service => [service.id, service]));
-    const extent = await client.query(`SELECT min(m.date_houry) AS first, max(m.date_houry) AS last FROM metrics m JOIN services s USING(id_service)
+    const extent = includeHistory ? await client.query(`SELECT min(m.date_houry) AS first, max(m.date_houry) AS last FROM metrics m JOIN services s USING(id_service)
       WHERE m.date_houry > $1 AND m.date_houry <= $2 AND s.external_id IS NOT NULL
-      AND (cardinality($3::text[])=0 OR s.external_id=ANY($3::text[]))`, args);
+      AND (cardinality($3::text[])=0 OR s.external_id=ANY($3::text[]))`, args) : {rows: [{first:null,last:null}]};
     const span = extent.rows[0].last ? extent.rows[0].last.getTime() - extent.rows[0].first.getTime() : 0;
     const bucketSeconds = span <= 3600_000 ? 30 : span <= 86400_000 ? 300 : 3600;
-    const historyRows = await client.query(`WITH samples AS (
+    const historyRows = includeHistory ? await client.query(`WITH samples AS (
       SELECT s.external_id, m.date_houry, jsonb_build_object(
         'region_code',COALESCE(m.location_metadata,s.location_metadata)->'region_code',
         'country',COALESCE(m.location_metadata,s.location_metadata)->'country',
@@ -35,7 +36,7 @@ export async function readMonitoring(query: HistoryQuery) {
         sum(colletion_interval_metric)::float8 AS seconds, count(*)::int AS samples,
         count(carbon_intensity)::int AS covered
       FROM samples GROUP BY external_id,place,date_bin(($4::text || ' seconds')::interval,date_houry,'2000-01-01T00:00:00Z'::timestamptz)
-      ORDER BY max(date_houry),external_id LIMIT 20001`, [...args, bucketSeconds]);
+      ORDER BY max(date_houry),external_id LIMIT 20001`, [...args, bucketSeconds]) : {rows: []};
     if (historyRows.rows.length > 20000) throw new Error("HISTORY_TOO_LARGE");
     const history = historyRows.rows.map(row => ({
       serviceId: row.external_id, regionCode: row.place.region_code,
@@ -79,11 +80,11 @@ export async function readMonitoring(query: HistoryQuery) {
     const regions = regionRows.rows.map(row => ({code: row.name_location, country: row.country_location, region: row.region_location,
       city: row.city_location, latitude: row.latitude_location, longitude: row.longitude_location,
       carbonIntensity: Number(row.intensity), renewablePercent: Number(row.renewable)}));
-    const instants = await client.query(`SELECT max(collected_at) AS at, count(*)::int AS collection_count FROM monitoring_collections
+    const instants = includeHistory ? await client.query(`SELECT max(collected_at) AS at, count(*)::int AS collection_count FROM monitoring_collections
       WHERE collected_at > $1 AND collected_at <= $2
       GROUP BY date_bin(($3::text || ' seconds')::interval,collected_at,'2000-01-01T00:00:00Z'::timestamptz)
-      ORDER BY max(collected_at) LIMIT 20000`, [start, end, bucketSeconds]);
-    const failures = await client.query("SELECT collected_at,errors FROM monitoring_collections WHERE collected_at > $1 AND collected_at <= $2 AND errors <> '{}'::jsonb ORDER BY collected_at DESC LIMIT 3000", [start, end]);
+      ORDER BY max(collected_at) LIMIT 20000`, [start, end, bucketSeconds]) : {rows: []};
+    const failures = includeHistory ? await client.query("SELECT collected_at,errors FROM monitoring_collections WHERE collected_at > $1 AND collected_at <= $2 AND errors <> '{}'::jsonb ORDER BY collected_at DESC LIMIT 3000", [start, end]) : {rows: []};
     await client.query("COMMIT");
     const covered = history.reduce((count, point) => count + point.emissionCount, 0);
     const count = history.reduce((total, point) => total + point.sampleCount, 0);
@@ -93,7 +94,7 @@ export async function readMonitoring(query: HistoryQuery) {
       ...(cycle && Object.keys(cycle.errors).length ? ["Não foi possível obter métricas de algumas aplicações na última coleta deste recorte. As últimas amostras gravadas foram preservadas."] : []),
       ...(cycle && end.getTime() - cycle.collected_at.getTime() > 90_000 ? ["O coletor está desatualizado neste recorte; exibindo os últimos dados gravados."] : []),
     ];
-    return { source: "database", services, regions, history, historyPeriod: query.period, historyUntil: end.toISOString(), selectedAt: query.until ?? null, bucketSeconds,
+    return { source: "database", services, regions, history, historyIncluded: includeHistory, historyPeriod: query.period, historyUntil: end.toISOString(), selectedAt: query.until ?? null, bucketSeconds,
       observations: instants.rows.map(row => ({ observedAt: iso(row.at), collectionCount: row.collection_count, services: [], samples: [] })),
       collectionEvents: failures.rows.flatMap(row => ["metrics-missing", "service-unavailable"].flatMap(kind => {
         const serviceIds = Object.entries(row.errors).filter(([, code]) =>

@@ -9,6 +9,7 @@ export interface MonitoringContextValue {
   refresh: () => Promise<MonitoringSnapshot | null>;
   loading: boolean;
   error: string | null;
+  setHistoryOpen: (open: boolean) => void;
 }
 
 export const MonitoringContext = createContext<MonitoringContextValue | null>(

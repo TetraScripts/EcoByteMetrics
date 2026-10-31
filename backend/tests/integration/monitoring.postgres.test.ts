@@ -79,6 +79,13 @@ test("histórico SQL preserva zero, ausência de fator, identidade, corte tempor
     await persistCollection(client, failed);
     const selection = {period: "24h" as const, until: "2026-10-30T23:01:00Z", serviceIds: []};
     const snapshot = await readMonitoring(selection);
+    const latest = await readMonitoring({...selection, view: "latest"});
+    assert.equal(latest.historyIncluded, false);
+    assert.deepEqual(latest.history, []);
+    assert.deepEqual(latest.services, snapshot.services);
+    assert.deepEqual(latest.regions, snapshot.regions);
+    assert.deepEqual(latest.observations, []);
+    assert.equal(snapshot.historyIncluded, true);
     assert.equal(snapshot.history.length, 2);
     assert.equal(snapshot.history[0].emissionsG, 0);
     assert.equal(snapshot.history[1].emissionsG, null);

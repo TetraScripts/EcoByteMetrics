@@ -4,6 +4,7 @@ import { readMonitoring, type HistoryQuery } from "./monitoring.repository";
 export function parseHistoryQuery(input: Record<string, unknown>, now = Date.now()): HistoryQuery {
   const period = input.period ?? "7d";
   if (period !== "24h" && period !== "7d") throw new Error("Período inválido. Use 24h ou 7d.");
+  if (input.view !== undefined && input.view !== "latest" && input.view !== "history") throw new Error("Visualização inválida.");
   const until = input.until;
   if (until !== undefined) {
     const parts = typeof until === "string" ? /^(\d{4})-(\d{2})-(\d{2})T(\d{2}):(\d{2}):(\d{2})(?:\.\d{1,3})?(?:Z|[+-]\d{2}:\d{2})$/.exec(until) : null;
@@ -15,7 +16,7 @@ export function parseHistoryQuery(input: Record<string, unknown>, now = Date.now
   }
   const serviceIds = input.service === undefined ? [] : Array.isArray(input.service) ? input.service : [input.service];
   if (serviceIds.length > 100 || serviceIds.some(id => typeof id !== "string" || !id || id.length > 255)) throw new Error("Seleção de aplicações inválida.");
-  return { period, until: until as string | undefined, serviceIds: [...new Set(serviceIds)] as string[] };
+  return { period, until: until as string | undefined, serviceIds: [...new Set(serviceIds)] as string[], ...(input.view ? {view: input.view as "latest" | "history"} : {}) };
 }
 
 const router = Router();

@@ -25,13 +25,15 @@ export function MonitoringProvider({ children }: { children: ReactNode }) {
   });
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [historyOpen, setHistoryOpen] = useState(false);
   const pending = useRef<AbortController | null>(null);
   const trackPause = useRef(createCollectionPauseTracker());
   const { pathname, search } = useLocation();
   const queryPeriod = new URLSearchParams(search).get("periodo");
   const period = isPeriod(queryPeriod) ? queryPeriod : selectedPeriod;
-  const monitoringActive = isMonitoringPath(pathname);
   const filterParams = new URLSearchParams(search);
+  const monitoringActive = isMonitoringPath(pathname) && filterParams.get("aba") !== "administracao";
+  const includeHistory = historyOpen || (filterParams.has("servico") ? filterParams.get("detalhe") === "evolucao" : ["evolucao", "comparar"].includes(filterParams.get("aba") ?? ""));
   const dateFilter = filterParams.get("ate");
   const untilTimestamp = dateFilter ? parseLocalDate(dateFilter) : Date.parse(filterParams.get("instante") ?? "");
   const invalidCutoff = Boolean((dateFilter || filterParams.get("instante")) && !Number.isFinite(untilTimestamp));
@@ -48,7 +50,7 @@ export function MonitoringProvider({ children }: { children: ReactNode }) {
     try {
       const { getMonitoringSnapshot } = await import("@/features/monitoring/api/monitoring");
       controller.signal.throwIfAborted();
-      const next = await getMonitoringSnapshot(controller.signal, { period, until });
+      const next = await getMonitoringSnapshot(controller.signal, { period, until, includeHistory });
       if (controller.signal.aborted) return null;
       const observedAt = new Date().toISOString();
       setLiveSnapshot(previous => mergeMonitoringSnapshot(previous, next, observedAt, requestedAt));
@@ -76,7 +78,7 @@ export function MonitoringProvider({ children }: { children: ReactNode }) {
         setLoading(false);
       }
     }
-  }, [period, until, invalidCutoff]);
+  }, [period, until, invalidCutoff, includeHistory]);
 
   useEffect(() => {
     const updateIfVisible = () => {
@@ -111,7 +113,7 @@ export function MonitoringProvider({ children }: { children: ReactNode }) {
   }, [liveSnapshot, totals]);
 
   const monitoring = useMemo(
-    () => ({ snapshot, period, setPeriod, refresh, loading, error }),
+    () => ({ snapshot, period, setPeriod, refresh, loading, error, setHistoryOpen }),
     [snapshot, period, refresh, loading, error],
   );
 
