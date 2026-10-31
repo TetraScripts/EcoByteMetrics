@@ -9,7 +9,7 @@ export const userAccessMiddleware: RequestHandler = (
   const auth = res.locals.auth as JwtPayload | undefined;
 
   const authenticatedUserId = Number(auth?.sub);
-  const requestedUserId = Number(req.params.id);
+  const requestedUserId = Number(req.params.id_user);
 
   if (
     !Number.isSafeInteger(authenticatedUserId) ||

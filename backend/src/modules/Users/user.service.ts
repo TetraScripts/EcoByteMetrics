@@ -1,12 +1,15 @@
-import{
+import {
     createUserRepository,
     getUserByIdRepository,
+    getUserPasswordHashRepository,
     upadateUserRepository,
     deleteUserRepository,
-    type User,
+    type SafeUser,
     type CreateUserInput,
+    type UpdateUserInput,
     type UpdateUser
 } from "./user.repository";
+
 import bcrypt from "bcryptjs";
 
 export class UserError extends Error {
@@ -23,26 +26,50 @@ function validateUserId(id: number): void {
 }
 
 function validateUserInput(user: CreateUserInput): CreateUserInput {
-    if (!user.name_user || !user.name_user.trim() || Array.from(user.name_user.trim()).length>50) {
-        throw new UserError("Todos os campos são obrigatórios", 400);
+    if (
+        !user.name_user ||
+        !user.name_user.trim() ||
+        Array.from(user.name_user.trim()).length > 50
+    ) {
+        throw new UserError("Nome inválido", 400);
     }
-    if (!user.email_user || !user.email_user.trim() || Array.from(user.email_user.trim()).length>50) {
+
+    if (
+        !user.email_user ||
+        !user.email_user.trim() ||
+        Array.from(user.email_user.trim()).length > 254
+    ) {
         throw new UserError("Email inválido", 400);
     }
-    if (!user.password_user || !user.password_user.trim() || Array.from(user.password_user.trim()).length>25){
+
+    if (
+        !user.password_user ||
+        !user.password_user.trim() ||
+        Array.from(user.password_user).length > 25
+    ) {
         throw new UserError("Senha inválida", 400);
-    } 
-    return user;  
+    }
+
+    return user;
 }
 
 function handleRepositoryError(error: unknown): never {
-    if (typeof error === "object" && error !== null && "code" in error && error.code === "23505") {
-        throw new UserError("Já existe um usuário com esse nome.", 409);
+    if (
+        typeof error === "object" &&
+        error !== null &&
+        "code" in error &&
+        error.code === "23505"
+    ) {
+        throw new UserError("Já existe um usuário com esse e-mail.", 409);
     }
+
     throw error;
 }
 
-export async function createUserService(user: CreateUserInput): Promise<User> {
+// Cadastrar usuário.
+export async function createUserService(
+    user: CreateUserInput
+): Promise<SafeUser> {
     const data = validateUserInput(user);
 
     try {
@@ -57,39 +84,100 @@ export async function createUserService(user: CreateUserInput): Promise<User> {
     }
 }
 
-export async function getUserByIdService(id: number): Promise<User | null> {
+// Buscar usuário por ID.
+export async function getUserByIdService(
+    id: number
+): Promise<SafeUser | null> {
     validateUserId(id);
+
     const user = await getUserByIdRepository(id);
+
     if (!user) {
         throw new UserError("Usuário não encontrado", 404);
     }
+
     return user;
 }
 
-export async function updateUserService(user: UpdateUser): Promise<User> {
+// Atualizar usuário.
+export async function updateUserService(
+    user: UpdateUserInput
+): Promise<SafeUser> {
     validateUserId(user.id_user);
+
     const { id_user, ...input } = user;
-    const data = validateUserInput(input);
-    try{
-        const updatedUser = await upadateUserRepository({id_user, ...data});
+
+    if (
+        !input.name_user ||
+        !input.name_user.trim() ||
+        Array.from(input.name_user.trim()).length > 50
+    ) {
+        throw new UserError("Nome inválido", 400);
+    }
+
+    if (
+        !input.email_user ||
+        !input.email_user.trim() ||
+        Array.from(input.email_user.trim()).length > 254
+    ) {
+        throw new UserError("Email inválido", 400);
+    }
+
+    if (
+        input.password_user !== undefined &&
+        (
+            !input.password_user.trim() ||
+            Array.from(input.password_user).length > 25
+        )
+    ) {
+        throw new UserError("Senha inválida", 400);
+    }
+
+    try {
+        // Busca somente o hash da senha atual.
+        const currentUser = await getUserPasswordHashRepository(id_user);
+
+        if (!currentUser) {
+            throw new UserError("Usuário não encontrado", 404);
+        }
+
+        // Se uma nova senha foi informada, gera outro hash.
+        // Caso contrário, preserva o hash atual.
+        const passwordToSave = input.password_user
+            ? await bcrypt.hash(input.password_user, 10)
+            : currentUser.password_user;
+
+        const updateData: UpdateUser = {
+            id_user,
+            name_user: input.name_user.trim(),
+            email_user: input.email_user.trim(),
+            password_user: passwordToSave
+        };
+
+        const updatedUser = await upadateUserRepository(updateData);
+
         if (!updatedUser) {
             throw new UserError("Usuário não encontrado", 404);
         }
-        return updatedUser;   
-    }catch (error) {
+
+        return updatedUser;
+
+    } catch (error) {
         handleRepositoryError(error);
     }
 }
 
-export async function deleteUserService(id: number): Promise<User | null> {
+// Excluir usuário.
+export async function deleteUserService(
+    id: number
+): Promise<SafeUser | null> {
     validateUserId(id);
+
     const user = await deleteUserRepository(id);
-    try {
-        if (!user) {
-            throw new UserError("Usuário não encontrado", 404);
-        }
-        return user;
-    } catch (error) {
-        handleRepositoryError(error);
+
+    if (!user) {
+        throw new UserError("Usuário não encontrado", 404);
     }
+
+    return user;
 }
