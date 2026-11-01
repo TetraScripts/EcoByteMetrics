@@ -16,7 +16,7 @@ export function filterApplications(services: MonitoredService[], search: string,
   );
 }
 
-export function applicationImpacts(services: MonitoredService[], history: CollectionPoint[], metric: DashboardMetric) {
+export function applicationImpacts(services: MonitoredService[], history: CollectionPoint[], metric: DashboardMetric, removedLast = false) {
   const samples = new Map<string, CollectionPoint[]>();
   for (const point of mergeCollectionHistory([], history)) {
     const group = samples.get(point.serviceId);
@@ -27,7 +27,7 @@ export function applicationImpacts(services: MonitoredService[], history: Collec
     const summary = summarizeCollections(samples.get(service.id) ?? []);
     return { service, summary, value: metric === "energy" ? summary.energyKwh : summary.emissionsG };
   }).sort((a, b) =>
-    Number(a.service.status === "removed") - Number(b.service.status === "removed") ||
+    (removedLast ? Number(a.service.status === "removed") - Number(b.service.status === "removed") : 0) ||
     (a.value === null ? b.value === null ? a.service.name.localeCompare(b.service.name, "pt-BR") : 1
       : b.value === null ? -1 : b.value - a.value || a.service.name.localeCompare(b.service.name, "pt-BR")),
   );

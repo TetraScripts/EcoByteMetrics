@@ -19,8 +19,8 @@ export function HistoryChart({ points, chartData, metric, mode, intervalMs, load
   const seriesLabel = metric === "energy" ? "Energia estimada" : "Emissões estimadas";
   const readingLabel = mode === "cumulative"
     ? metric === "energy" ? "Energia acumulada no período" : "CO₂e acumulado no período"
-    : metric === "energy" ? "Energia no último intervalo" : "CO₂e no último intervalo";
-  const color = metric === "energy" ? "#137f89" : "#168362";
+    : metric === "energy" ? "Energia no último intervalo registrado" : "CO₂e no último intervalo registrado";
+  const color = metric === "energy" ? "#168998" : "#128361";
   if (!points.some(point => point.value !== null)) return <div className="evolution-chart-empty" role="status">
     <ChartNoAxesCombined size={34} strokeWidth={1.3} aria-hidden="true" />
     <h3>{loading && !points.length ? "Aguardando as primeiras coletas" : points.length ? "Ainda faltam dados de emissões" : "Nenhum registro neste período"}</h3>
@@ -28,11 +28,12 @@ export function HistoryChart({ points, chartData, metric, mode, intervalMs, load
     {points.length > 0 && metric === "emissions" && <button className="monitoring-text-button" onClick={onEnergy}>Visualizar energia</button>}
   </div>;
   const latest = points.at(-1)!;
+  const hasGaps = data.some(point => point.missing);
   const fullTime = (timestamp: number) => new Date(timestamp).toLocaleString("pt-BR");
   return <figure className="evolution-chart" aria-labelledby={id + "-caption"}>
     <figcaption id={id + "-caption"} className="evolution-chart-reading">
       <div><span>{readingLabel}</span><strong style={{ color }}>{metric === "energy" ? formatNumber(latest.value) : formatEmissions(latest.value, scale.divisor)} <small>{unit}</small></strong></div>
-      <time dateTime={new Date(latest.to ?? latest.timestamp).toISOString()}>Até {fullTime(latest.to ?? latest.timestamp)}</time>
+      <div className="evolution-chart-updated"><span>Última leitura registrada</span><time dateTime={new Date(latest.to ?? latest.timestamp).toISOString()}>{fullTime(latest.to ?? latest.timestamp)}</time></div>
     </figcaption>
     <div className="evolution-recharts" data-engine="recharts" data-chart-mode={mode} role="group" aria-label={seriesLabel + " ao longo do tempo"} aria-describedby={id + "-help"}>
       <Suspense fallback={<div className="evolution-chart-loading" role="status">Carregando gráfico…</div>}>
@@ -40,6 +41,6 @@ export function HistoryChart({ points, chartData, metric, mode, intervalMs, load
       </Suspense>
     </div>
     <p id={id + "-help"} className="sr-only">Use Tab para entrar no gráfico e as setas para consultar os valores. A seção Valores apresenta os mesmos dados em tabela.</p>
-    <div className="evolution-chart-footnote"><span><i className={mode === "cumulative" ? "evolution-dot-key" : undefined} style={{ background: color }} />{mode === "cumulative" ? "Cada ponto soma os valores disponíveis desde o início do período" : "Cada barra soma os valores disponíveis somente naquele intervalo"}</span><span>Mouse, toque ou setas do teclado</span></div>
+    <div className="evolution-chart-footnote"><span><i className={mode === "cumulative" ? "evolution-dot-key" : undefined} style={{ background: color }} />{mode === "cumulative" ? "Acumulado das leituras disponíveis" : "Total de cada intervalo"}</span>{hasGaps && <span><i className="evolution-gap-key" />Sem registros</span>}<span className="evolution-chart-interaction">Explore com mouse, toque ou teclado</span></div>
   </figure>;
 }

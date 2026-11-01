@@ -102,3 +102,9 @@ Este Compose inicia apenas o frontend na porta 5173 e encaminha `/backend/` para
 `app/` compõe rotas, layouts e providers. `features/home`, `features/auth` e `features/monitoring` contêm as funcionalidades. `shared/` reúne componentes, HTTP, preferências, estilos e geografia independentes das funcionalidades. O alias `@/` aponta para `src/`.
 
 Não coloque credenciais no frontend nem implemente histórico fictício para contornar a ausência de endpoints. Validação de permissões e operações administrativas pertence ao servidor.
+
+## Ranking histórico e comparação de recursos
+
+A visão geral mantém aplicações removidas ao final. Em Evolução → Aplicações, o ranking ordena somente pelo impacto no período, incluindo serviços removidos quando pertencem à seleção.
+
+A API fornece recursos históricos médios ponderados pela duração de cada leitura. Os blocos adicionais de recursos e qualidade das leituras foram retirados da interface por decisão visual; a tabela principal do comparador apresenta energia e emissões no mesmo intervalo.

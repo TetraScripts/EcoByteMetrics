@@ -32,20 +32,15 @@ export function ComparisonPanel({ onOpenService }: { onOpenService: (id: string)
       </fieldset>
       {!analysis.services.length && <p className="monitoring-empty">{loading ? "Consultando aplicações…" : "Nenhuma aplicação disponível nesta seleção. Ajuste os filtros no monitoramento."}</p>}
       {missing.length > 0 && <p className="monitoring-notice" role="status">{missing.length} seleção(ões) não está(ão) disponível(is) nos filtros atuais. <button onClick={() => { const next = new URLSearchParams(params); next.delete("app"); for (const id of ids.filter(id => !missing.includes(id))) next.append("app", id); setParams(next); }}>Remover seleções indisponíveis</button></p>}
-      {awaitingHistory ? <p className="monitoring-empty" role="status">Consultando as leituras para comparação…</p> : rows.length < 2 ? <p className="monitoring-empty">Selecione pelo menos duas aplicações para consultar a tabela.</p> : <>
+      {awaitingHistory ? <p className="monitoring-empty" role="status">Consultando as leituras para comparação…</p> : rows.length < 2 ? null : <>
         <p className="comparison-range">Mesmo intervalo de consulta: {formatDate(analysis.windowStart)} até {formatDate(analysis.windowEnd)}.</p>
         <p className="monitoring-explanation">{formatRecordedPeriod(range.first, range.last)}. Os totais somam as leituras disponíveis nesse intervalo.</p>
         <div className="monitoring-table-scroll" role="region" aria-label="Comparação das aplicações" tabIndex={0}>
           <table className="comparison-table"><caption>Estimativas das leituras disponíveis · {analysis.periodLabel}</caption>
-            <thead><tr><th scope="col">Aplicação</th><th scope="col">Situação</th><th scope="col">Energia (kWh)</th><th scope="col">Emissões (g CO₂e)</th></tr></thead>
-            <tbody>{rows.map(row => <tr key={row.service.id}><th scope="row"><button type="button" onClick={() => onOpenService(row.service.id)}>{row.service.name}</button></th><td>{serviceStatusLabels[row.service.status]}</td><td>{formatNumber(row.energyKwh)}</td><td>{formatNumber(row.emissionsG)}</td></tr>)}</tbody>
+            <thead><tr><th scope="col">Aplicação</th><th scope="col">Situação</th><th scope="col">Energia (kWh)</th><th scope="col">Emissões (kg CO₂e)</th></tr></thead>
+            <tbody>{rows.map(row => <tr key={row.service.id}><th scope="row"><button type="button" onClick={() => onOpenService(row.service.id)}>{row.service.name}</button></th><td>{serviceStatusLabels[row.service.status]}</td><td>{formatNumber(row.energyKwh)}</td><td>{formatNumber(row.emissionsG === null ? null : row.emissionsG / 1000)}</td></tr>)}</tbody>
           </table>
         </div>
-        <details className="comparison-reading-details"><summary>Ver leituras e qualidade dos dados</summary>
-          <div className="monitoring-table-scroll" tabIndex={0} role="region" aria-label="Detalhes das leituras comparadas"><table className="comparison-details-table"><thead><tr><th scope="col">Aplicação</th><th scope="col">Leituras usadas no CO₂</th><th scope="col">Tempo somado das leituras (s)</th><th scope="col">Primeira / última leitura</th></tr></thead><tbody>{rows.map(row => <tr key={row.service.id}><th scope="row">{row.service.name}</th><td>{row.emissionCount} de {row.count}</td><td>{formatNumber(row.seconds)}</td><td>{formatDate(row.first)}<br />{formatDate(row.last)}</td></tr>)}</tbody></table></div>
-          <p className="monitoring-explanation">O tempo somado corresponde às leituras registradas, e não necessariamente a todo o período escolhido. Leituras sem informação suficiente ficam fora do cálculo de CO₂.</p>
-        </details>
-        <p className="monitoring-explanation">As aplicações podem ter quantidades e durações de leituras diferentes. Um total menor não indica maior eficiência. As emissões somam somente as leituras com fator de carbono registrado; confira os detalhes das leituras acima. “—” indica que não há estimativa disponível.</p>
       </>}
     </section>;
 }

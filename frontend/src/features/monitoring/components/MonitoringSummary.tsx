@@ -24,8 +24,8 @@ export function MonitoringSummary({ services, history, loading, onRefresh, compa
     updateMotion();
     preference.addEventListener("change", updateMotion);
     return () => { preference.removeEventListener("change", updateMotion); controller.dispose(); animation.current = null; };
-  }, []);
-  useEffect(() => { animation.current?.setLoading(loading); }, [loading]);
+  }, [comparison]);
+  useEffect(() => { animation.current?.setLoading(loading); }, [loading, comparison]);
   const totals = summarizeCollections(history);
   const { last } = collectionRange(history);
   const formatDate = (value: string | number) => new Date(value).toLocaleString("pt-BR");
@@ -41,6 +41,6 @@ export function MonitoringSummary({ services, history, loading, onRefresh, compa
       })}</ul>
     </div>
     {context}
-    <div className="monitoring-update"><span role="status">{last !== null ? "Dados coletados até " + formatDate(last) : loading ? "Consultando registros…" : "Ainda sem leituras nesta seleção"}</span><button type="button" className="monitoring-refresh" aria-label={loading ? "Consultando dados salvos" : "Consultar dados salvos"} title={refreshHelp} aria-description={refreshHelp} aria-busy={loading} disabled={loading} onClick={onRefresh}><RotateCw ref={refreshIcon} size={21} aria-hidden="true" className="monitoring-refresh-icon" /></button></div>
+    {!comparison && <div className="monitoring-update"><span role="status">{last !== null ? "Dados coletados até " + formatDate(last) : loading ? "Consultando registros…" : "Ainda sem leituras nesta seleção"}</span><button type="button" className="monitoring-refresh" aria-label={loading ? "Consultando dados salvos" : "Consultar dados salvos"} title={refreshHelp} aria-description={refreshHelp} aria-busy={loading} disabled={loading} onClick={onRefresh}><RotateCw ref={refreshIcon} size={21} aria-hidden="true" className="monitoring-refresh-icon" /></button></div>}
   </section>;
 }

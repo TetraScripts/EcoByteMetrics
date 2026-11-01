@@ -27,14 +27,22 @@ export async function readMonitoring(query: HistoryQuery) {
         'region_code',COALESCE(m.location_metadata,s.location_metadata)->'region_code',
         'country',COALESCE(m.location_metadata,s.location_metadata)->'country',
         'city',COALESCE(m.location_metadata,s.location_metadata)->'city') AS place,
-        m.colletion_interval_metric, m.carbon_intensity, ${energy} AS energy
+        m.colletion_interval_metric, m.carbon_intensity, ${energy} AS energy,
+        m.cpu_metric, m.ram_metric, m.hd_metric, m.network_metric,
+        CASE WHEN m.cpu_metric IS NOT NULL AND m.ram_metric IS NOT NULL AND m.hd_metric IS NOT NULL AND m.network_metric IS NOT NULL
+          THEN m.colletion_interval_metric ELSE 0 END AS resource_seconds
       FROM metrics m JOIN services s USING(id_service)
       WHERE m.date_houry > $1 AND m.date_houry <= $2 AND s.external_id IS NOT NULL
       AND (cardinality($3::text[])=0 OR s.external_id=ANY($3::text[])))
       SELECT external_id, place, min(date_houry) AS first_collected_at, max(date_houry) AS collected_at, sum(energy)::float8 AS energy,
         sum(energy * carbon_intensity)::float8 AS emissions,
         sum(colletion_interval_metric)::float8 AS seconds, count(*)::int AS samples,
-        count(carbon_intensity)::int AS covered
+        count(carbon_intensity)::int AS covered,
+        sum(resource_seconds)::float8 AS resource_seconds,
+        (sum(cpu_metric * resource_seconds) / nullif(sum(resource_seconds),0))::float8 AS average_cpu,
+        (sum(ram_metric * resource_seconds) / nullif(sum(resource_seconds),0))::float8 AS average_memory,
+        (sum(hd_metric * resource_seconds) / nullif(sum(resource_seconds),0))::float8 AS average_disk,
+        (sum(network_metric * resource_seconds) / nullif(sum(resource_seconds),0))::float8 AS average_network
       FROM samples GROUP BY external_id,place,date_bin(($4::text || ' seconds')::interval,date_houry,'2000-01-01T00:00:00Z'::timestamptz)
       ORDER BY max(date_houry),external_id LIMIT 20001`, [...args, bucketSeconds]) : {rows: []};
     if (historyRows.rows.length > 20000) throw new Error("HISTORY_TOO_LARGE");
@@ -45,6 +53,8 @@ export async function readMonitoring(query: HistoryQuery) {
       firstCollectedAt: iso(row.first_collected_at),
       energyKwh: row.energy, emissionsG: row.emissions, intervalSeconds: row.seconds,
       sampleCount: row.samples, emissionCount: row.covered, bucketSeconds,
+      resources: row.resource_seconds > 0 ? {cpuPercent: row.average_cpu, memoryGb: row.average_memory,
+        diskGb: row.average_disk, networkGb: row.average_network, durationSeconds: row.resource_seconds} : null,
     }));
     const serviceRows = await client.query(`SELECT s.*, row_to_json(m) AS sample,
       m.date_houry AS collected_at, (${energy})::float8 AS energy

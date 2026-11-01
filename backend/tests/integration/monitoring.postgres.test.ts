@@ -195,3 +195,35 @@ test("recuperação legada usa a região e o último fator anterior sem preenche
     assert.equal(zero.services[0].carbonIntensity,0);
   });
 });
+
+
+test("recursos históricos preservam médias ponderadas, zero, agrupamentos e cortes de consulta", async t => {
+  await isolated(t, async client => {
+    await client.query(readFileSync(new URL("../../../database/DDL.sql", import.meta.url),"utf8"));
+    const location = {region_code:"br-sp",country:"Brasil",region:"SP",city:"São Paulo",latitude:0,longitude:0};
+    const catalog = ["a","b"].map(id=>({id,name:id,metrics_path:"/metrics/"+id,location}));
+    const collect = (at:string,id:string,cpu:number,seconds:number): Collection => ({at,catalog,errors:{},regions:[],
+      metrics:new Map([[id,{collection_interval_seconds:seconds,metrics:{cpu_percent:cpu,memory_gb:cpu/10,disk_gb:cpu,network_gb:cpu/20}}]])});
+    await persistCollection(client,collect("2026-10-30T12:00:00Z","a",0,30));
+    await persistCollection(client,collect("2026-10-30T12:00:30Z","a",80,90));
+    await persistCollection(client,collect("2026-10-30T12:05:00Z","a",20,60));
+    await persistCollection(client,collect("2026-10-30T13:01:00Z","b",100,30));
+    const query = {period:"24h" as const,until:"2026-10-30T13:01:00Z",serviceIds:[]};
+    const result = await readMonitoring(query);
+    assert.equal(result.bucketSeconds,300);
+    const a = result.history.filter(row=>row.serviceId === "a");
+    assert.equal(a.length,2);
+    assert.deepEqual(a[0].resources,{cpuPercent:60,memoryGb:6,diskGb:60,networkGb:3,durationSeconds:120});
+    assert.equal(a[0].emissionsG,null,"Fator de carbono ausente não impede comparar recursos");
+    const seconds = a.reduce((sum,row)=>sum+row.resources!.durationSeconds,0);
+    assert.equal(seconds,180);
+    assert.equal(a.reduce((sum,row)=>sum+row.resources!.cpuPercent*row.resources!.durationSeconds,0)/seconds,140/3);
+    const cut = await readMonitoring({...query,until:"2026-10-30T12:00:00Z",serviceIds:["a"]});
+    assert.equal(cut.history.length,1);
+    assert.deepEqual(cut.history[0].resources,{cpuPercent:0,memoryGb:0,diskGb:0,networkGb:0,durationSeconds:30});
+    const b = await readMonitoring({...query,serviceIds:["b"]});
+    assert.equal(b.history.length,1);
+    assert.equal(b.history[0].resources!.cpuPercent,100);
+    assert.deepEqual((await readMonitoring({...query,view:"latest"})).history,[]);
+  });
+});

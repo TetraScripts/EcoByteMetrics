@@ -42,7 +42,16 @@ export interface MonitoredService {
   statusMessage?: string;
 }
 
+export interface HistoricalResources {
+  cpuPercent: number;
+  memoryGb: number;
+  diskGb: number;
+  networkGb: number;
+  durationSeconds: number;
+}
+
 export interface CollectionPoint {
+  resources?: HistoricalResources | null;
   serviceId: string;
   regionCode?: string;
   country?: string | null;

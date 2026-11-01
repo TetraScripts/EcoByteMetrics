@@ -1,5 +1,5 @@
 import { useId, useMemo, useState } from "react";
-import { ArrowUpRight, ChevronLeft, ChevronRight, Clock3, Leaf, Zap } from "lucide-react";
+import { ArrowUpRight, ChevronLeft, ChevronRight, Clock3, CircleAlert, Leaf, Zap } from "lucide-react";
 import { useSearchParams } from "react-router-dom";
 import type { CollectionEvent, CollectionPoint, MonitoredService } from "../types";
 import type { DashboardMetric, applicationImpacts } from "../domain/dashboard";
@@ -66,9 +66,9 @@ export function EvolutionPanel({ history, services, collectionEvents, metric, on
 
     <div className="evolution-section" id={panelId} role="tabpanel" aria-label={sections.find(entry => entry.value === section)!.label}>
       {section === "grafico" && <section className="evolution-chart-panel" aria-label="Série de estimativas">
-        <div className="evolution-chart-heading"><span>Agrupado em intervalos de {interval} · {chartUnit}</span><div className="evolution-segmented evolution-mode" role="group" aria-label="Modo do gráfico"><button type="button" aria-pressed={mode === "intervals"} onClick={() => onMode("intervals")}>Ver por intervalo</button><button type="button" aria-pressed={mode === "cumulative"} onClick={() => onMode("cumulative")}>Total acumulado</button></div></div>
+        <div className="evolution-chart-heading"><div><h3>{metric === "energy" ? "Consumo de energia" : "Emissões de carbono"}</h3><span>Intervalos de {interval} · {chartUnit}</span></div><div className="evolution-segmented evolution-mode" role="group" aria-label="Modo do gráfico"><button type="button" aria-pressed={mode === "intervals"} onClick={() => onMode("intervals")}>Por intervalo</button><button type="button" aria-pressed={mode === "cumulative"} onClick={() => onMode("cumulative")}>Acumulado</button></div></div>
         <HistoryChart points={data.points} chartData={chartData} metric={metric} mode={mode} intervalMs={data.intervalMs} loading={loading} onEnergy={() => onMetric("energy")} />
-        {gapCount > 0 && <p className="evolution-chart-warning">Há falhas de coleta, leituras ausentes ou sem cálculo de carbono. A soma usa os valores disponíveis. Veja Dados incompletos para entender.</p>}
+        {gapCount > 0 && <button type="button" className="evolution-chart-warning" onClick={() => {const next = new URLSearchParams(params); next.set("painel", "lacunas"); setParams(next);}}><CircleAlert size={14} aria-hidden="true" />Alguns dados estão incompletos<ArrowUpRight size={13} aria-hidden="true" /></button>}
       </section>}
 
       {section === "aplicacoes" && <section className="evolution-contributors">

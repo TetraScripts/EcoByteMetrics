@@ -94,6 +94,20 @@ test("integração do frontend: contratos HTTP, análise, telas e navegação", 
         await assert.rejects(getMonitoringSettings(async () => data, signal));
     });
 
+    await t.test("recursos históricos aceitam zero e ausência, mas rejeitam valores inválidos", async child => {
+      const resources = {cpuPercent:0,memoryGb:0,diskGb:0,networkGb:0,durationSeconds:30};
+      child.mock.method(globalThis,"fetch",async()=>Response.json(persisted({history:[dbPoint({resources})]})));
+      assert.deepEqual((await getMonitoringSnapshot()).history[0].resources,resources);
+      for (const value of [null,undefined]) {
+        child.mock.method(globalThis,"fetch",async()=>Response.json(persisted({history:[dbPoint({resources:value})]})));
+        assert.equal((await getMonitoringSnapshot()).history[0].resources,null);
+      }
+      for (const changes of [{cpuPercent:101},{memoryGb:-1},{networkGb:"4"},{durationSeconds:0},{durationSeconds:31}]) {
+        child.mock.method(globalThis,"fetch",async()=>Response.json(persisted({history:[dbPoint({resources:{...resources,...changes}})]})));
+        await assert.rejects(getMonitoringSnapshot(),/histórico inválido/);
+      }
+    });
+
     const service: MonitoredService = { id: "a", name: "Billing API", status: "available", country: "Brazil", region: "Sudeste", city: "São Paulo", cpuPercent: 10, memoryGb: 1, diskGb: 2, networkGb: 3, energyKwh: 0.001, emissionsG: 0.085, lastCollectionAt: at };
     const snapshot: MonitoringSnapshot = { services: [service, { ...service, id: "b", name: "Audit", status: "removed" }], regions: [], history: ["a", "b"].map(id => ({ serviceId: id, collectedAt: at, energyKwh: 0.001, emissionsG: 0.085 })), totalEnergyKwh: 0.002, totalEmissionsG: 0.17, lastCollectionAt: at, discoveryUpdatedAt: at, refreshedAt: at };
 
@@ -165,14 +179,14 @@ test("integração do frontend: contratos HTTP, análise, telas e navegação", 
     });
 
     await t.test("total acumulado é o padrão e comparação mantém dados técnicos nos detalhes", () => {
-      assert.match(render("/dashboard?aba=evolucao"),/aria-pressed="true">Total acumulado<\/button>/);
-      assert.match(render("/dashboard?aba=evolucao&serie=intervalos"),/aria-pressed="true">Ver por intervalo<\/button>/);
+      assert.match(render("/dashboard?aba=evolucao"),/aria-pressed="true">Acumulado<\/button>/);
+      assert.match(render("/dashboard?aba=evolucao&serie=intervalos"),/aria-pressed="true">Por intervalo<\/button>/);
       const markup=render("/dashboard?aba=comparar&app=a&app=b");
       const table=markup.split('class="comparison-table"')[1]!.split('</table>')[0]!;
       assert.equal((table.match(/scope="col"/g)??[]).length,4);
       assert.ok(!table.includes("Tempo somado"));
-      assert.match(markup,/<details class="comparison-reading-details"><summary>Ver leituras e qualidade dos dados/);
-      assert.match(markup,/Tempo somado das leituras/);
+      assert.doesNotMatch(markup,/comparison-reading-details/);
+      assert.doesNotMatch(markup,/Tempo somado das leituras/);
       assert.match(markup.replace(/<!--.*?-->/g,""),/Totais das 2 aplicações marcadas para comparação/);
       const extraService={...service,id:"unselected",name:"Fora da comparação"};
       const extraSnapshot={...snapshot,services:[...snapshot.services,extraService],history:[...snapshot.history,{...snapshot.history[0]!,serviceId:extraService.id,emissionsG:99}]};
@@ -192,7 +206,7 @@ test("integração do frontend: contratos HTTP, análise, telas e navegação", 
       assert.equal(getAnalysis(mixed,"24h","?busca=Audit").warning,undefined);
       for (const path of ["/dashboard","/dashboard?aba=comparar&app=a&app=b","/dashboard?aba=evolucao&painel=aplicacoes"]) {
         const markup = render(path,DashboardPage,{snapshot:mixed}).replace(/<!--.*?-->/g,"");
-        assert.match(markup,path === "/dashboard" ? /0,085/ : /1,25/);
+        assert.match(markup,path === "/dashboard" ? /0,085/ : path.includes("comparar") ? /0,00125/ : /1,25/);
         assert.ok(!markup.includes("CO₂ calculado em 3 de 5 leituras"));
         assert.ok(!markup.includes("Algumas emissões não puderam ser calculadas"));
         assert.ok(!markup.includes('class="monitoring-partial"'));
@@ -267,8 +281,8 @@ test("integração do frontend: contratos HTTP, análise, telas e navegação", 
     await t.test("filtros respeitam o escopo da tela, bloqueiam futuro e explicam aplicação excluída", () => {
       const overview=render("/dashboard?painel=historico");
       assert.ok(!overview.includes("<label>Período<select"));
-      assert.match(render("/dashboard?aba=evolucao&painel=historico"),/<label>Período<select/);
-      assert.match(render("/dashboard?aba=comparar&painel=historico"),/<label>Período<select/);
+      assert.doesNotMatch(render("/dashboard?aba=evolucao&painel=historico"),/class="monitoring-(tools|filter-button|filter-dialog)"/);
+      assert.doesNotMatch(render("/dashboard?aba=comparar&painel=historico"),/class="monitoring-(tools|filter-button|filter-dialog)"/);
       assert.match(overview,/type="datetime-local" max="\d{4}-\d{2}-\d{2}T\d{2}:\d{2}"/);
       const future=new Date(Date.now()+86400_000).toISOString();
       const invalid=getAnalysis(snapshot,"24h","?instante="+encodeURIComponent(future));
@@ -459,6 +473,22 @@ test("integração do frontend: contratos HTTP, análise, telas e navegação", 
       for (const text of ["A situação indica se a aplicação respondeu", "Os números indicam aplicações no mesmo local", "Leituras usadas no CO₂", "Página consultada em"]) assert.ok(!markup.includes(text));
     });
 
+    await t.test("ranking do período mantém impacto maior primeiro e comparador exibe somente a tabela principal", () => {
+      const resources = {cpuPercent:0,memoryGb:2,diskGb:3,networkGb:4,durationSeconds:30};
+      const history = snapshot.history.map(point => ({...point,resources,emissionsG:point.serviceId === "b" ? 10 : 1}));
+      const data = {...snapshot,history};
+      const ranked = render("/dashboard?aba=evolucao&painel=aplicacoes",DashboardPage,{snapshot:data});
+      const list = ranked.split('class="evolution-contributors"')[1]!.split('</ol>')[0]!;
+      assert.ok(list.indexOf("Audit") < list.indexOf("Billing API"));
+      const markup = render("/dashboard?aba=comparar&app=a&app=b",DashboardPage,{snapshot:data}).replace(/<!--.*?-->/g, "");
+      assert.match(markup, /class="comparison-table"/);
+      const table = markup.split('class="comparison-table"')[1]!.split('</table>')[0]!;
+      assert.match(table, /Emissões \(kg CO₂e\)/);
+      assert.match(table, /<td>0,01<\/td>/);
+      assert.match(table, /<td>0,001<\/td>/);
+      assert.doesNotMatch(markup, /comparison-resource-table|comparison-reading-details|Ver recursos médios|Ver leituras e qualidade|Um total menor não indica/);
+    });
+
     await t.test("carregamento tardio do histórico não afirma ausência de dados nem fica preso após falha", () => {
       const partial = {...snapshot, source: "database", historyPeriod: "7d", historyIncluded: false, history: []};
       const pending = render("/dashboard?aba=comparar&app=a&app=b", DashboardPage, {snapshot:partial});
@@ -477,11 +507,11 @@ test("integração do frontend: contratos HTTP, análise, telas e navegação", 
       assert.match(details, /evolution-details-grid/);
       assert.ok(!details.includes('class="evolution-chart-panel"'));
       const legacyHistory = render("/dashboard?aba=evolucao&painel=historico");
-      assert.match(legacyHistory, /monitoring-filter-history/);
+      assert.doesNotMatch(legacyHistory, /monitoring-filter-history/);
       assert.match(legacyHistory, /evolution-chart-panel/);
       assert.doesNotMatch(markup, />Histórico<\/button>/);
       assert.match(render("/dashboard?aba=evolucao&painel=aplicacoes"), /evolution-contributors/);
-      assert.match(render("/dashboard?aba=evolucao&serie=acumulado"), /aria-pressed="true">Total acumulado<\/button>/);
+      assert.match(render("/dashboard?aba=evolucao&serie=acumulado"), /aria-pressed="true">Acumulado<\/button>/);
       assert.match(render("/dashboard?aba=evolucao&ordem=energy"), /kWh/);
       const empty = render("/dashboard?aba=evolucao", DashboardPage, { snapshot: { ...snapshot, history: [] } });
       assert.match(empty, /Nenhum registro neste per\u00edodo/);
@@ -500,6 +530,10 @@ test("integração do frontend: contratos HTTP, análise, telas e navegação", 
         assert.match(past,/Voltar para agora/);
         assert.ok(!past.includes('class="observation-timeline"'));
         const open=render(path+"&painel=historico",DashboardPage,{snapshot:observed});
+        if(path.includes("evolucao")) {
+          assert.doesNotMatch(open,/class="monitoring-(tools|filter-button|filter-dialog)"/);
+          continue;
+        }
         assert.match(open,/<dialog[^>]*aria-labelledby="filter-dialog-title"/);
         assert.match(open,/Fechar filtros/);
         assert.equal((open.match(/class="observation-timeline"/g)??[]).length,1);
@@ -554,7 +588,7 @@ test("integração do frontend: contratos HTTP, análise, telas e navegação", 
       assert.ok(!markup.includes('class="evolution-chart-panel"'));
       const graph = render("/dashboard?aba=evolucao", DashboardPage, changes);
       assert.ok(!graph.includes('class="evolution-gap-detail"'));
-      assert.match(graph, /Há falhas de coleta/);
+      assert.match(graph, /Alguns dados estão incompletos/);
       const noGaps = render("/dashboard?aba=evolucao&painel=lacunas");
       assert.match(noGaps, /Nenhum dado incompleto detectado/);
     });
@@ -626,9 +660,9 @@ test("integração do frontend: contratos HTTP, análise, telas e navegação", 
     });
 
     await t.test("comparador exige duas seleções e mostra unidades, período, cobertura e limitação da sessão", () => {
-      assert.match(render("/dashboard?aba=comparar"), /Selecione pelo menos duas/);
+      assert.doesNotMatch(render("/dashboard?aba=comparar"), /Selecione pelo menos duas|class="monitoring-update"/);
       const markup = render("/dashboard?aba=comparar&app=a&app=b");
-      for (const text of ["comparison-table", "Mesmo intervalo de consulta", "Energia (kWh)", "Emissões (g CO₂e)", "Tempo somado das leituras (s)", "Um total menor não indica maior eficiência"])
+      for (const text of ["comparison-table", "Mesmo intervalo de consulta", "Energia (kWh)", "Emissões (kg CO₂e)"])
         assert.ok(markup.includes(text));
       assert.match(render("/dashboard?aba=comparar&app=a&app=missing"), /seleção\(ões\) não está/);
       const layout = render("/dashboard?aba=comparar&pais=Brazil", AppLayout);

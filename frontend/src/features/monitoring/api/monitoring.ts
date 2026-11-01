@@ -52,13 +52,22 @@ export async function getMonitoringSnapshot(signal = new AbortController().signa
       (data.emissionsG !== null && emissions === null) || !sampleCount || !Number.isSafeInteger(sampleCount) ||
       emissionCount === null || !Number.isSafeInteger(emissionCount) || emissionCount > sampleCount ||
       (emissionCount === 0 ? emissions !== null : emissions === null) || !seconds || !bucketSeconds) throw invalid();
+    let resources: CollectionPoint["resources"] = null;
+    if (data.resources !== undefined && data.resources !== null) {
+      const rawResources = object(data.resources);
+      const cpuPercent = number(rawResources.cpuPercent, 100), memoryGb = number(rawResources.memoryGb);
+      const diskGb = number(rawResources.diskGb), networkGb = number(rawResources.networkGb);
+      const durationSeconds = number(rawResources.durationSeconds, seconds);
+      if (cpuPercent === null || memoryGb === null || diskGb === null || networkGb === null || !durationSeconds) throw invalid();
+      resources = {cpuPercent, memoryGb, diskGb, networkGb, durationSeconds};
+    }
     const key = JSON.stringify([data.serviceId, data.collectedAt]);
     if (sampleKeys.has(key)) throw invalid();
     sampleKeys.add(key);
     return { serviceId: text(data.serviceId), ...place(data), regionCode: text(data.regionCode),
       collectedAt: data.collectedAt, cycleAt: data.collectedAt, cycleId: data.collectedAt,
       firstCollectedAt: timestamp(data.firstCollectedAt) ? data.firstCollectedAt : data.collectedAt,
-      energyKwh: energy, emissionsG: emissions, intervalSeconds: seconds, sampleCount, emissionCount, bucketSeconds };
+      energyKwh: energy, emissionsG: emissions, intervalSeconds: seconds, sampleCount, emissionCount, bucketSeconds, resources };
   });
   const regions: CarbonRegion[] = raw.regions.map(value => {
     const data = object(value), located = place(data);

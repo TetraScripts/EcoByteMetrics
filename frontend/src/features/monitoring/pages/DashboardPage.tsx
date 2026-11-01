@@ -83,7 +83,7 @@ export function DashboardPage() {
   const history = analysis.history;
   const impacts = useMemo(() => applicationImpacts(services, history, metric), [services, history, metric]);
   const latestHistory = useMemo(() => latestCollections(services), [services]);
-  const latestImpacts = useMemo(() => applicationImpacts(services, latestHistory, metric), [services, latestHistory, metric]);
+  const latestImpacts = useMemo(() => applicationImpacts(services, latestHistory, metric, true), [services, latestHistory, metric]);
   const latestOverview = !selectedId && (tab === "geral" || tab === "mapa");
   const lastPage = Math.max(0, Math.ceil(latestImpacts.length / 5) - 1);
   const page = Math.min(applicationPage, lastPage);
@@ -125,17 +125,17 @@ export function DashboardPage() {
   return <>
     <TopographicSides key="topography" />
     {selectedId ? <div className="monitoring-heading detail-heading">
-      <div className="monitoring-detail-toolbar"><button className="monitoring-back" onClick={back}><ArrowLeft size={18} />Voltar à lista</button>{filterButton}</div>
+      <div className="monitoring-detail-toolbar"><button className="monitoring-back" onClick={back}><ArrowLeft size={18} />Voltar à lista</button>{!historicalView && filterButton}</div>
       <h1 ref={heading} tabIndex={-1}>{selectedCandidate?.name ?? "Aplicação não encontrada"}</h1>
       {selected && <p><CountryFlag country={selected.country} />{[selected.city, selected.region, selected.country].filter(Boolean).join(" · ") || "Localização não informada"} <span className="heading-separator">·</span> <ServiceStatus service={selected} /></p>}
     </div> : <div className="monitoring-heading">
       <div><h1>Monitoramento</h1></div>
-      {!administration && <div className="monitoring-tools">
+      {!administration && !historicalView && <div className="monitoring-tools">
         <label className="monitoring-search"><Search size={21} aria-hidden="true" /><input type="search" aria-label="Buscar aplicação" placeholder="Buscar aplicação..." value={search} onChange={event => update({ busca: event.target.value }, true)} /></label>
         {filterButton}
       </div>}
     </div>}
-    {!administration && filtersOpen && <FiltersDialog onClose={() => setFiltersOpen(false)}><div className="monitoring-filters">
+    {!administration && !historicalView && filtersOpen && <FiltersDialog onClose={() => setFiltersOpen(false)}><div className="monitoring-filters">
       <label>País<select value={params.get("pais") ?? ""} onChange={event => update({ pais: event.target.value, cidade: "", regiao: "" })}><option value="">Todos os países</option>{countries.map(country => <option key={country}>{country}</option>)}</select></label>
       <label>Região<select value={params.get("regiao") ?? ""} onChange={event => update({ regiao: event.target.value, cidade: "" })}><option value="">Todas as regiões</option>{regionOptions.map(service => <option key={service.regionCode} value={service.regionCode}>{[service.city, service.region].filter(Boolean).join(" · ") || service.regionCode}</option>)}</select></label>
       <label>Situação da aplicação<select value={status} onChange={event => update({ estado: event.target.value })}><option value="">Todas as situações</option>{Object.entries(serviceStatusLabels).map(([value, label]) => <option key={value} value={value}>{label}</option>)}</select></label>

@@ -25,7 +25,7 @@ test("visão geral usa a última leitura individual, preservando zero, ausência
   ];
   const latest = latestCollections(services);
   assert.equal(latest.length, 4);
-  const ranked = applicationImpacts(services, latest, "emissions");
+  const ranked = applicationImpacts(services, latest, "emissions", true);
   assert.deepEqual(ranked.map(row => [row.service.id, row.value]), [["current",0.3],["zero",0],["uncollected",null],["unknown",null],["removed",99]]);
   assert.equal(applicationImpacts(services, latest, "energy").find(row => row.service.id === "unknown")!.value, 0.002);
   assert.equal(latest.find(row => row.serviceId === "removed")!.collectedAt, "2026-10-29T12:00:00Z");
@@ -35,7 +35,7 @@ test("removed applications stay last for both metrics and return to ranking when
   const services = [service("removed", { status: "removed" }), service("active"), service("missing"), service("removed-low", { status: "removed" })];
   const history = [sample("removed", 0, 100, 100), sample("active", 0, 1, 1), sample("removed-low", 0, 2, 2)];
   for (const metric of ["emissions", "energy"] as const) {
-    assert.deepEqual(applicationImpacts(services, history, metric).map(entry => entry.service.id), ["active", "missing", "removed", "removed-low"]);
+    assert.deepEqual(applicationImpacts(services, history, metric, true).map(entry => entry.service.id), ["active", "missing", "removed", "removed-low"]);
     const restored = services.map(entry => entry.id === "removed" ? { ...entry, status: "available" as const } : entry);
     assert.equal(applicationImpacts(restored, history, metric)[0]!.service.id, "removed");
   }
@@ -171,4 +171,14 @@ test("gráficos longos limitam elementos preservando extremos, datas e lacunas",
   assert.ok(reduced.some(point => point.value === 999_999));
   points[50_000]!.gap = true;
   assert.ok(chartSeries(points).some(point => point.gap && Math.abs(point.timestamp - 50_000) < 1200));
+});
+
+
+test("ranking histórico ordena pelo impacto, preservando removidas ao final apenas na visão geral", () => {
+  const services = [service("active"), service("removed", {status: "removed"})];
+  const history = [sample("active", 0, 1, 1), sample("removed", 0, 10, 10)];
+  for (const metric of ["energy", "emissions"] as const) {
+    assert.deepEqual(applicationImpacts(services, history, metric).map(row => row.service.id), ["removed", "active"]);
+    assert.deepEqual(applicationImpacts(services, history, metric, true).map(row => row.service.id), ["active", "removed"]);
+  }
 });

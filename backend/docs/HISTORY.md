@@ -51,3 +51,9 @@ Os rótulos distinguem última coleta, total no período e total do intervalo do
 - `npm run test:auth:postgres`: verifica cadastro e login com o banco real.
 
 Os testes criam e removem somente seus próprios esquemas ou contas temporários. Não reinicializam o banco do projeto nem removem volumes.
+
+## Recursos técnicos no histórico
+
+Cada ponto pode incluir `resources: {cpuPercent, memoryGb, diskGb, networkGb, durationSeconds}`. Os quatro recursos são médias ponderadas pela duração das leituras do agrupamento; `durationSeconds` informa a soma dos pesos utilizados. A comparação combina os grupos usando esses pesos, preservando o resultado ao alternar o tamanho dos agrupamentos. Zero é válido; sem recursos completos, `resources` é `null`. Respostas anteriores sem esse campo continuam aceitas pelo frontend como recursos desconhecidos, sem aproveitar a última leitura atual.
+
+Os recursos usam exatamente os mesmos filtros de serviço, período, horário e localização dos indicadores ambientais. Falta de fator de carbono não remove recursos técnicos válidos. A duração somada pode conter intervalos sobrepostos e não deve ser interpretada como tempo cronológico coberto. A consulta `view=latest` continua sem carregar esses agrupamentos. Não foi necessária migração: os recursos já estão gravados nas métricas.
