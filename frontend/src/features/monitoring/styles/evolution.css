@@ -61,8 +61,6 @@
 .evolution-gap-detail ul { margin: 0; padding-left: 18px; }
 .evolution-gap-detail small { display: block; color: #60766a; font-size: 10px; }
 .evolution-gap-note { color: #60766a; }
-.evolution-chart-warning { display: inline-flex; align-items: center; gap: 7px; color: #836b3d; font-size: 11px; margin-top: 10px; padding: 4px 0; min-height: 32px; }
-.evolution-chart-warning:hover { color: #62481a; text-decoration: underline; text-underline-offset: 3px; }
 .evolution-chart-empty { display: flex; flex-direction: column; align-items: center; justify-content: center; min-height: clamp(150px, 28dvh, 260px); gap: 10px; padding: 20px; text-align: center; color: #739786; }
 .evolution-panel h3 { font-size: 16px; letter-spacing: -.025em; font-weight: 650; }
 .evolution-chart-empty h3 { color: #315648; }
@@ -75,7 +73,7 @@
 .evolution-contributors li > button:hover { color: #087e59; }
 .evolution-contributors li > div { display: flex; align-items: center; gap: 20px; font-size: 13px; font-variant-numeric: tabular-nums; }
 .evolution-contributors strong { font-weight: 550; }
-.evolution-contributors small, .evolution-contributors li > div > span { color: #60766a; font-size: 11px; }
+.evolution-contributors small { color: #60766a; font-size: 11px; }
 .evolution-pagination { display: flex; justify-content: space-between; align-items: center; gap: 10px; padding-top: 8px; color: #60766a; font-size: 12px; }
 .evolution-pagination > div { display: flex; gap: 4px; }
 .evolution-pagination button { display: grid; place-items: center; min-width: 40px; min-height: 40px; border-radius: 6px; }
@@ -88,8 +86,8 @@
 .evolution-details-grid { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 18px 24px; margin: 4px 0 20px; }
 .evolution-details-grid dt { color: #60766a; font-size: 12px; }
 .evolution-details-grid dd { margin: 5px 0 0; font-size: 15px; font-weight: 550; font-variant-numeric: tabular-nums; }
-.evolution-details-grid small { display: block; color: #60766a; font-size: 11px; margin-top: 3px; font-weight: 400; }
-.evolution-details > p { font-size: 12px; line-height: 1.7; color: #60766a; margin-top: 10px; max-width: 105ch; }
+.evolution-details-grid small { line-height: 1.6; max-width: 38ch; display: block; color: #60766a; font-size: 11px; margin-top: 3px; font-weight: 400; }
+.evolution-data-explanation p { font-size: 12px; line-height: 1.7; color: #60766a; margin-top: 10px; max-width: 105ch; }
 .evolution-section-empty { padding: 30px 0; color: #60766a; font-size: 14px; }
 .evolution-panel--compact .evolution-heading { flex-wrap: wrap; }
 .evolution-panel--compact .evolution-toolbar { width: 100%; justify-content: space-between; }
@@ -125,3 +123,6 @@
   .monitoring-shell .evolution-samples th, .monitoring-shell .evolution-samples td { font-size: 12px; padding-inline: 4px; }
 }
 @media (pointer: coarse) { .evolution-segmented button, .evolution-sections button { min-height: 44px; } }
+
+.evolution-data-explanation { border-top: 1px solid #e6ede8; padding-top: 12px; }
+.evolution-data-explanation summary { cursor: pointer; color: #087e59; font-size: 12px; padding: 4px 0; }

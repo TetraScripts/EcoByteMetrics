@@ -54,3 +54,20 @@ test("agrupar leituras em blocos não muda a média ponderada dos recursos", () 
   assert.deepEqual(compare(original),compare(grouped));
   assert.equal(compare(original)!.cpuPercent, 140 / 3);
 });
+
+test("última coleta usa a leitura individual, não o último bloco somado do histórico", () => {
+  const a = {...service("a"), energyKwh: .004, emissionsG: 2, lastCollectionAt: new Date(at(30)).toISOString()};
+  const b = {...service("b"), energyKwh: 0, emissionsG: 0, lastCollectionAt: new Date(at(-120)).toISOString(), status: "removed" as const};
+  const history = [{...sample("a", 30, 90), energyKwh: .5, sampleCount: 10}];
+  const latest = compareApplications([a,b,service("c")],history,["a","a","b","c"],at(0),at(60),true);
+  assert.equal(latest[0]!.energyKwh, .004);
+  assert.equal(latest[0]!.emissionsG, 2);
+  assert.equal(latest[0]!.count, 1);
+  assert.equal(latest[1]!.energyKwh, 0);
+  assert.equal(latest[1]!.emissionsG, 0);
+  assert.equal(latest[1]!.last, at(-120), "A última leitura pode ser antiga e tem seu horário preservado");
+  assert.equal(latest[2]!.energyKwh, null);
+  assert.equal(compareApplications([a],history,["a"],at(0),at(60))[0]!.emissionsG, 90);
+  const missing = compareApplications([{...a,emissionsG:null}],history,["a"],at(0),at(60),true);
+  assert.equal(missing[0]!.emissionsG,null);
+});

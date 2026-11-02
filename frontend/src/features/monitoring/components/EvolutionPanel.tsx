@@ -1,12 +1,11 @@
 import { useId, useMemo, useState } from "react";
-import { ArrowUpRight, ChevronLeft, ChevronRight, Clock3, CircleAlert, Leaf, Zap } from "lucide-react";
+import { ArrowUpRight, ChevronLeft, ChevronRight, Clock3, Leaf, Zap } from "lucide-react";
 import { useSearchParams } from "react-router-dom";
 import type { CollectionEvent, CollectionPoint, MonitoredService } from "../types";
 import type { DashboardMetric, applicationImpacts } from "../domain/dashboard";
 import { evolutionData } from "../domain/evolution";
 import type { EvolutionMode } from "../domain/evolution";
 import { HistoryChart } from "./HistoryChart";
-import { EvolutionGaps } from "./EvolutionGaps";
 import { evolutionChartData } from "../domain/chartData";
 import { EvolutionSamples } from "./EvolutionSamples";
 import { MonitoringTabs } from "./MonitoringTabs";
@@ -25,13 +24,10 @@ export function EvolutionPanel({ history, services, collectionEvents, metric, on
     const ids = new Set(services.map(service => service.id));
     return evolutionChartData(data.points, data.intervalMs, collectionEvents?.filter(event => !event.serviceIds || event.serviceIds.some(id => ids.has(id))));
   }, [data, services, collectionEvents]);
-  const gapCount = chartData.filter(point => point.missing || point.value === null || point.reason || point.events?.length).length;
   const { summary } = data;
   const complete = summary.count > 0 && summary.emissionCount === summary.count;
-  const coverage = summary.count ? Math.floor(summary.emissionCount / summary.count * 10_000) / 100 : null;
   const interval = data.intervalMs === 30_000 ? "30 segundos" : data.intervalMs === 300_000 ? "5 minutos" : "1 hora";
   const stamp = (timestamp: number | null) => timestamp === null ? "Aguardando coleta" : new Date(timestamp).toLocaleString("pt-BR");
-  const total = metric === "energy" ? summary.energyKwh : complete ? summary.emissionsG : null;
   const contributors = impacts.filter(entry => entry.summary.count > 0);
   const scale = emissionScale(summary.emissionsG);
   const unit = metric === "energy" ? "kWh" : scale.unit;
@@ -42,7 +38,6 @@ export function EvolutionPanel({ history, services, collectionEvents, metric, on
     { value: "grafico", label: "Gráfico" },
     ...(!compact ? [{ value: "aplicacoes", label: "Aplicações" }] : []),
     { value: "coletas", label: "Valores" },
-    { value: "lacunas", label: "Dados incompletos" },
     { value: "detalhes", label: "Sobre os dados" },
   ];
   const section = sections.find(entry => entry.value === params.get("painel"))?.value ?? "grafico";
@@ -68,34 +63,33 @@ export function EvolutionPanel({ history, services, collectionEvents, metric, on
       {section === "grafico" && <section className="evolution-chart-panel" aria-label="Série de estimativas">
         <div className="evolution-chart-heading"><div><h3>{metric === "energy" ? "Consumo de energia" : "Emissões de carbono"}</h3><span>Intervalos de {interval} · {chartUnit}</span></div><div className="evolution-segmented evolution-mode" role="group" aria-label="Modo do gráfico"><button type="button" aria-pressed={mode === "intervals"} onClick={() => onMode("intervals")}>Por intervalo</button><button type="button" aria-pressed={mode === "cumulative"} onClick={() => onMode("cumulative")}>Acumulado</button></div></div>
         <HistoryChart points={data.points} chartData={chartData} metric={metric} mode={mode} intervalMs={data.intervalMs} loading={loading} onEnergy={() => onMetric("energy")} />
-        {gapCount > 0 && <button type="button" className="evolution-chart-warning" onClick={() => {const next = new URLSearchParams(params); next.set("painel", "lacunas"); setParams(next);}}><CircleAlert size={14} aria-hidden="true" />Alguns dados estão incompletos<ArrowUpRight size={13} aria-hidden="true" /></button>}
       </section>}
 
       {section === "aplicacoes" && <section className="evolution-contributors">
         <div className="evolution-subheading"><h3>Impacto por aplicação</h3><span>{metric === "energy" ? "Energia" : "Emissões"} no período</span></div>
-        {contributors.length ? <><ol>{contributors.slice(page * 5, (page + 1) * 5).map(({ service, value, summary: serviceSummary }) => {
-          const share = total !== null && total > 0 && value !== null ? value / total * 100 : null;
-          return <li key={service.id}><button onClick={() => onOpenService(service.id)}><span>{service.name}</span><ArrowUpRight size={15} aria-hidden="true" /></button><div><strong>{metric === "energy" ? formatNumber(value) : formatEmissions(value, scale.divisor)} <small>{unit}</small></strong><span>{share === null ? serviceSummary.emissionCount < serviceSummary.count && metric === "emissions" ? "Incompleto" : "—" : formatNumber(share) + "%"}</span></div></li>;
+        {contributors.length ? <><ol>{contributors.slice(page * 5, (page + 1) * 5).map(({ service, value }) => {
+          return <li key={service.id}><button onClick={() => onOpenService(service.id)}><span>{service.name}</span><ArrowUpRight size={15} aria-hidden="true" /></button><div><strong>{metric === "energy" ? formatNumber(value) : formatEmissions(value, scale.divisor)} <small>{unit}</small></strong></div></li>;
         })}</ol><div className="evolution-pagination"><span aria-live="polite">{page * 5 + 1}–{Math.min((page + 1) * 5, contributors.length)} de {contributors.length} aplicações</span><div><button aria-label="Página anterior de aplicações" disabled={page === 0} onClick={() => setApplicationPage(page - 1)}><ChevronLeft size={18} /></button><button aria-label="Próxima página de aplicações" disabled={page === lastPage} onClick={() => setApplicationPage(page + 1)}><ChevronRight size={18} /></button></div></div></> : <p className="evolution-section-empty">A participação aparecerá quando houver coletas.</p>}
       </section>}
 
       {section === "coletas" && <EvolutionSamples points={data.points} metric={metric} mode={mode} />}
-      {section === "lacunas" && <EvolutionGaps data={chartData} services={services} />}
 
       {section === "detalhes" && <section className="evolution-details">
-        <h3>Dados do período</h3>
+        <h3>Entenda os dados desta seleção</h3>
         <dl className="evolution-details-grid">
-          <div><dt>Energia estimada</dt><dd>{formatNumber(summary.energyKwh)} kWh</dd></div>
-          <div><dt>Emissões {complete || !summary.count ? "estimadas" : "parciais"}</dt><dd>{formatEmissions(summary.emissionsG)} {scale.unit}</dd></div>
-          <div><dt>Leituras registradas</dt><dd>{summary.count.toLocaleString("pt-BR")}</dd></div>
-          <div><dt>Aplicações com coletas</dt><dd>{data.serviceCount} / {services.length}</dd></div>
-          <div><dt>Leituras com cálculo de CO₂</dt><dd>{coverage === null ? "—" : formatNumber(coverage) + "%"}<small>{summary.emissionCount} de {summary.count} leituras</small></dd></div>
-          <div><dt>Primeira leitura</dt><dd>{stamp(data.first)}</dd></div>
-          <div><dt>Última leitura</dt><dd>{stamp(data.last)}</dd></div>
+          <div><dt>Energia total no período</dt><dd>{formatNumber(summary.energyKwh)} kWh<small>Soma da energia estimada nas leituras disponíveis, em quilowatts-hora (kWh). Não é o consumo de uma única coleta.</small></dd></div>
+          <div><dt>CO₂e calculado no período</dt><dd>{formatEmissions(summary.emissionsG)} {scale.unit}<small>{complete || !summary.count ? "Soma das emissões estimadas nas leituras disponíveis." : "Soma das emissões que foi possível calcular. Algumas leituras ficaram fora por falta de dados; não contam como emissão zero."}</small></dd></div>
+          <div><dt>Leituras salvas</dt><dd>{summary.count.toLocaleString("pt-BR")}<small>Cada leitura registra uma aplicação em um momento. Uma rodada pode gerar leituras de várias aplicações.</small></dd></div>
+          <div><dt>Aplicações com registros</dt><dd>{data.serviceCount} de {services.length}<small>Aplicações com pelo menos uma leitura no período, entre as incluídas nos filtros. Não indica quantas estão disponíveis agora.</small></dd></div>
+          <div><dt>Início dos registros disponíveis</dt><dd>{stamp(data.first)}<small>Horário da primeira leitura encontrada nesta seleção, no fuso deste dispositivo.</small></dd></div>
+          <div><dt>Fim dos registros disponíveis</dt><dd>{stamp(data.last)}<small>Horário da última leitura encontrada nesta seleção, no fuso deste dispositivo.</small></dd></div>
         </dl>
-        <p>O banco pode conter menos dados que o período escolhido. Recarregar a página consulta novamente os registros persistidos.</p>
-        <p>As estimativas usam os recursos e a duração das leituras. Intervalos sem coletas não são preenchidos. Valores menores, isoladamente, não comprovam maior eficiência.</p>
-        <p>Na resolução de 30 segundos, aplicações com horários próximos são agrupadas e atrasos de até 15 segundos são tolerados antes de marcar uma lacuna. A seção Dados incompletos distingue ausência de registros de estimativas incompletas e mostra os diagnósticos registrados pelo coletor.</p>
+        <details className="evolution-data-explanation">
+          <summary>Como interpretar o período e as estimativas</summary>
+          <p>O período escolhido é um limite de busca. Selecionar até 7 dias não garante sete dias completos de registros: as datas acima mostram o que realmente foi encontrado.</p>
+          <p>A energia é estimada com base nos recursos usados e na duração de cada leitura. O CO₂e representa as emissões equivalentes de gases de efeito estufa, estimadas a partir dessa energia e do fator de carbono da eletricidade na região.</p>
+          <p>Trechos sem leituras ficam sem valores: não são preenchidos como consumo zero. Um total menor pode resultar de menos registros ou menos tempo de atividade e, sozinho, não indica maior eficiência.</p>
+        </details>
       </section>}
     </div>
   </section>;

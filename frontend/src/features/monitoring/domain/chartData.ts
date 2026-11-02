@@ -17,7 +17,7 @@ export function evolutionChartData(points: EvolutionPoint[], intervalMs: number,
       result.push({
         timestamp: previous.timestamp + (point.timestamp - previous.timestamp) / 2, value: null, missing: true,
         from: previous.timestamp, to: point.timestamp,
-        reason: "Não há amostras gravadas neste trecho do histórico consultado. O backend não informou o motivo da ausência.",
+        reason: "Não há amostras registradas neste período. Isso pode acontecer se o programa responsável pelas coletas não estava rodando, se o computador que o executa estava desligado ou se houve uma falha de conexão. Fechar apenas a página não interrompe as coletas.",
         events: context,
       });
     }

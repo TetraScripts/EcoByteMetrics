@@ -62,8 +62,6 @@ export function EvolutionTooltip({ active, payload, seriesLabel, unit, mode = "i
     {!point.missing && <small>{point.from !== undefined && point.to !== undefined ? stamp(point.from) + " → " + stamp(point.to) : stamp(point.timestamp)}</small>}
     {point.missing && <small>{stamp(point.from!)} → {stamp(point.to!)}</small>}
     {point.value === null ? <p>{point.reason ?? "Estimativa indisponível para esta amostra."}</p> : <p className="evolution-tooltip-value"><span>{seriesLabel}</span><b>{formatEmissions(point.value, divisor)} {unit}</b></p>}
-    {point.value !== null && point.reason && <p className="evolution-tooltip-note">{point.reason}</p>}
     {contexts.length > 0 && <><small>Informação registrada durante a coleta</small>{contexts.map(text => <p key={text}>{text}</p>)}</>}
-    {point.missing && <small>Mais informações em Dados incompletos.</small>}
   </div>;
 }

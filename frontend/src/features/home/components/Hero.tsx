@@ -59,7 +59,7 @@ export function Hero({ copy }: HeroProps) {
               </svg>
               <span>{copy.primary}</span>
             </DashboardLink>
-            <a className="hero-discover" href="#dados">Entenda o impacto<ArrowDown size={17} aria-hidden="true" /></a>
+            <a className="hero-discover" href="#solucoes">Como funciona<ArrowDown size={17} aria-hidden="true" /></a>
           </div>
         </div>
       </div>

@@ -6,7 +6,7 @@ export const content = {
       line2: "ambiental das suas",
       line3: "aplicações.",
       description:
-        "Descubra a energia por trás das suas aplicações. Acompanhe serviços e entenda suas estimativas de emissão de carbono em um só lugar.",
+        "Acompanhe suas aplicações e consulte estimativas de consumo de energia e emissões de carbono em um só lugar.",
       primary: "Explorar monitoramento",
     },
     solutions: {

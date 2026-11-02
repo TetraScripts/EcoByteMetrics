@@ -178,6 +178,29 @@ test("integração do frontend: contratos HTTP, análise, telas e navegação", 
       assert.ok(!markup.includes('aria-label="Filtros ativos"'));
     });
 
+    await t.test("comparação alterna última coleta e total com resumo coerente e horários por aplicação", () => {
+      const services = [{...service, energyKwh: .004, emissionsG: 2, lastCollectionAt: at}, {...service,id:"b",name:"Audit",energyKwh:.006,emissionsG:3,lastCollectionAt:at}];
+      const data = {...snapshot,services,history:[{serviceId:"a",collectedAt:at,energyKwh:1,emissionsG:100},{serviceId:"b",collectedAt:at,energyKwh:2,emissionsG:200}]};
+      const latest = render("/dashboard?aba=comparar&comparacao=ultima&app=a&app=b", DashboardPage, {snapshot:data}).replace(/<!--.*?-->/g, "");
+      assert.match(latest,/CO₂e das últimas coletas/);
+      assert.match(latest,/0,01 <small>kWh/);
+      assert.match(latest,/5 <small>g CO₂e/);
+      assert.match(latest,/Última leitura disponível por aplicação/);
+      assert.match(latest,/Coletada em/);
+      assert.match(latest,/0,002/);
+      assert.doesNotMatch(latest,/Mesmo intervalo de consulta|Período da comparação/);
+      const total = render("/dashboard?aba=comparar&app=a&app=b",DashboardPage,{snapshot:data}).replace(/<!--.*?-->/g, "");
+      assert.match(total,/3 <small>kWh/);
+      assert.match(total,/0,3 <small>kg CO₂e/);
+      assert.match(total,/Período da comparação/);
+      assert.match(total,/Mesmo intervalo de consulta/);
+      assert.doesNotMatch(total,/Coletada em/);
+      const pending = render("/dashboard?aba=comparar&comparacao=ultima&app=a&app=b",DashboardPage,{snapshot:{...data,history:[],historyIncluded:false}});
+      assert.doesNotMatch(pending,/Consultando as leituras para comparação/);
+      assert.match(pending,/Última leitura disponível por aplicação/);
+      assert.equal(new URL("http://local"+analysisLink("/comparar","?comparacao=ultima&app=a&app=b")).searchParams.get("comparacao"),"ultima");
+    });
+
     await t.test("total acumulado é o padrão e comparação mantém dados técnicos nos detalhes", () => {
       assert.match(render("/dashboard?aba=evolucao"),/aria-pressed="true">Acumulado<\/button>/);
       assert.match(render("/dashboard?aba=evolucao&serie=intervalos"),/aria-pressed="true">Por intervalo<\/button>/);
@@ -298,19 +321,6 @@ test("integração do frontend: contratos HTTP, análise, telas e navegação", 
       assert.ok(!excluded.includes("Impacto estimado na última coleta"));
     });
 
-    await t.test("falha parcial aparece nos diagnósticos com a aplicação e o motivo, mesmo sem lacuna global", () => {
-      const stamp=(seconds:number)=>new Date(Date.parse(at)+seconds*1000).toISOString();
-      const history=[["a",-60],["b",-60],["a",-30],["a",0],["b",0]].map(([id,seconds])=>({serviceId:String(id),collectedAt:stamp(Number(seconds)),energyKwh:.001,emissionsG:.1}));
-      const data={...snapshot,history,collectionEvents:[{from:stamp(-30),to:at,kind:"metrics-missing",serviceIds:["b"]}]};
-      const markup=render("/dashboard?aba=evolucao&painel=lacunas",DashboardPage,{snapshot:data}).replace(/<!--.*?-->/g,"");
-      assert.match(markup,/Falha de coleta em parte do ambiente/);
-      assert.match(markup,/não forneceu métricas válidas/);
-      assert.match(markup,/Aplicações: Audit/);
-      assert.ok(!markup.includes("Nenhum dado incompleto detectado"));
-      const onlyA=render("/dashboard?aba=evolucao&painel=lacunas&busca=Billing",DashboardPage,{snapshot:data});
-      assert.match(onlyA,/Nenhum dado incompleto detectado/);
-    });
-
     await t.test("contrato preserva diagnóstico de métricas ausentes enviado pelo backend", async child => {
       child.mock.method(globalThis,"fetch",async()=>Response.json(persisted({collectionEvents:[{from:at,to:at,kind:"metrics-missing",serviceIds:["a"]}]})));
       assert.equal((await getMonitoringSnapshot()).collectionEvents[0].kind,"metrics-missing");
@@ -413,7 +423,7 @@ test("integração do frontend: contratos HTTP, análise, telas e navegação", 
       assert.ok(!markup.includes('aria-invalid="true"'));
     });
 
-    await t.test("administração sempre exige sessão; uma sessão confirmada libera coleta e saída sem a seção Acesso", async child => {
+    await t.test("administração sempre exige sessão; uma sessão confirmada libera a tela vazia e a saída", async child => {
       const store = createAuthStore();
       child.after(store.dispose);
       const panel = () => renderToString(h(MemoryRouter, { initialEntries: ["/dashboard?aba=administracao"] }, h(AuthContext.Provider, { value: store }, h(AdministrationAccess, null, h("p", null, "Protected panel")))));
@@ -425,8 +435,8 @@ test("integração do frontend: contratos HTTP, análise, telas e navegação", 
       const { AdministrationPanel } = await vite.ssrLoadModule("/src/features/monitoring/components/AdministrationPanel.tsx");
       const markup = renderToString(h(MemoryRouter, { initialEntries: ["/dashboard?aba=administracao&configuracao=acesso"] }, h(AuthContext.Provider, { value: store }, h(AdministrationPanel))));
       assert.match(markup, /review@example.invalid/);
-      assert.match(markup, /<output id="administration-interval"/);
-      assert.match(markup, /somente para consulta/);
+      assert.doesNotMatch(markup, /administration-workspace|administration-interval|Configuração atual da coleta|Configurações do ambiente de monitoramento/);
+      assert.match(markup, /id="administration-title">Administração/);
       assert.ok(!markup.includes("Salvar alterações"));
       assert.match(markup, /Sair/);
       assert.ok(!markup.includes("Acesso livre"));
@@ -571,26 +581,14 @@ test("integração do frontend: contratos HTTP, análise, telas e navegação", 
       assert.match(apps, /de <!-- -->8<!-- --> aplica/);
     });
 
-    await t.test("lacunas explicam o trecho, respeitam a aplicação e não aumentam a página com uma lista inteira", () => {
-      const stamp = (seconds: number) => new Date(Date.parse(at) + seconds * 1000).toISOString();
-      const history = [-240, -120, 0].map(second => ({ serviceId: "a", collectedAt: stamp(second), energyKwh: .001, emissionsG: .085 }));
-      const collectionEvents = [
-        { from: stamp(-230), to: stamp(-150), kind: "tab-hidden" as const },
-        { from: stamp(-230), to: stamp(-150), kind: "service-unavailable" as const, serviceIds: ["b"] },
-      ];
-      const changes = { snapshot: { ...snapshot, history, collectionEvents } };
-      const markup = render("/dashboard?servico=a&detalhe=evolucao&painel=lacunas", DashboardPage, changes).replace(/<!--.*?-->/g, "");
-      assert.match(markup, /aba estava oculta/);
-      assert.ok(!markup.includes("O backend informou aplicação indisponível"));
-      assert.match(markup, /não informou o motivo da ausência/);
-      assert.match(markup, /Trecho 1 de 2/);
-      assert.equal((markup.match(/class="evolution-gap-detail"/g) ?? []).length, 1);
-      assert.ok(!markup.includes('class="evolution-chart-panel"'));
-      const graph = render("/dashboard?aba=evolucao", DashboardPage, changes);
-      assert.ok(!graph.includes('class="evolution-gap-detail"'));
-      assert.match(graph, /Alguns dados estão incompletos/);
-      const noGaps = render("/dashboard?aba=evolucao&painel=lacunas");
-      assert.match(noGaps, /Nenhum dado incompleto detectado/);
+    await t.test("aba removida de dados incompletos retorna ao gráfico no ambiente e na aplicação", () => {
+      for (const url of ["/dashboard?aba=evolucao&painel=lacunas", "/dashboard?servico=a&detalhe=evolucao&painel=lacunas"]) {
+        const markup = render(url);
+        assert.match(markup, /class="evolution-chart-panel"/);
+        assert.ok(!markup.includes("Dados incompletos"));
+        assert.ok(!markup.includes("evolution-gap-detail"));
+        assert.ok(!markup.includes("Alguns dados estão incompletos"));
+      }
     });
 
     await t.test("revisar um instante não usa diagnósticos recebidos no futuro", () => {
@@ -635,7 +633,7 @@ test("integração do frontend: contratos HTTP, análise, telas e navegação", 
       const partial = tooltip({ timestamp: Date.parse(at), from:Date.parse(at)-30_000,to:Date.parse(at),value:1,reason:"O intervalo considera 1 de 2 amostras" });
       assert.match(partial,/Total do intervalo/);
       assert.match(partial,/1 kWh/);
-      assert.match(partial,/1 de 2 amostras/);
+      assert.doesNotMatch(partial,/1 de 2 amostras/);
     });
 
     await t.test("administração anônima não exibe configurações, inclusive por URL antiga e sem conexão com métricas", () => {

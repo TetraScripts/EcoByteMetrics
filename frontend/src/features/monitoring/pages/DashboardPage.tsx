@@ -92,9 +92,10 @@ export function DashboardPage() {
   const highlightedIds = focusServiceId ? [focusServiceId] : mapHighlightedIds;
   const selectedHistory = useMemo(() => analysis.history.filter(point => point.serviceId === selectedId), [analysis.history, selectedId]);
   const selectedRange = useMemo(() => collectionRange(selectedHistory), [selectedHistory]);
+  const comparisonLatest = tab === "comparar" && params.get("comparacao") === "ultima";
   const comparedIds = params.getAll("app");
   const summaryServices = tab === "comparar" ? services.filter(service => comparedIds.includes(service.id)) : services;
-  const summaryHistory = tab === "comparar" ? history.filter(point => comparedIds.includes(point.serviceId)) : latestOverview ? latestHistory : history;
+  const summaryHistory = tab === "comparar" ? (comparisonLatest ? latestHistory : history).filter(point => comparedIds.includes(point.serviceId)) : latestOverview ? latestHistory : history;
   const shownRange = selected ? selectedRange : tab === "comparar" || latestOverview ? collectionRange(summaryHistory) : { first: analysis.availableSince, last: analysis.availableUntil };
   const countries = [...new Set(analysis.environmentServices.map(service => service.country).filter((value): value is string => Boolean(value)))].sort((a, b) => a.localeCompare(b, "pt-BR"));
   const regionOptions = [...new Map(analysis.environmentServices.filter(service => service.regionCode && (!analysis.country || service.country === analysis.country)).map(service => [service.regionCode!, service])).values()];
@@ -119,8 +120,8 @@ export function DashboardPage() {
   const discovering = snapshot.source !== "database" && !snapshot.observations?.length && !snapshot.discoveryUpdatedAt && !error;
   const filterButton = <button className="monitoring-filter-button" aria-expanded={filtersOpen} aria-controls="monitoring-filters" aria-haspopup="dialog" onClick={() => setFiltersOpen(!filtersOpen)}><ListFilter size={22} />Filtrar{(filtered || analysis.observedAt) && <span className="filter-indicator" aria-label="Filtros ativos" />}</button>;
   const dataContext = (<section className="monitoring-data-context" aria-label="Período dos dados">
-      <div><strong title={formatRecordedPeriod(shownRange.first, shownRange.last)}>{((loading || (!error && snapshot.historyIncluded === false)) && !summaryHistory.length) || discovering ? "Consultando os registros da seleção…" : tab === "comparar" && !summaryServices.length ? "Selecione aplicações para comparar" : formatDataPeriod(shownRange.first, shownRange.last)}</strong><p>Estimativas de energia e carbono dos registros disponíveis.<InfoTooltip label="estimativas ambientais">Os valores são estimativas calculadas a partir do uso das aplicações, e não medições diretas de eletricidade ou CO₂ na atmosfera. CO₂e significa dióxido de carbono equivalente.</InfoTooltip></p></div>
-      <span>Filtro: {period === "7d" ? "até 7 dias" : "até 24 horas"}{analysis.observedAt && " anteriores ao horário escolhido"}</span>
+      <div><strong title={formatRecordedPeriod(shownRange.first, shownRange.last)}>{((loading || (!error && snapshot.historyIncluded === false && !comparisonLatest)) && !summaryHistory.length) || discovering ? "Consultando os registros da seleção…" : tab === "comparar" && !summaryServices.length ? "Selecione aplicações para comparar" : formatDataPeriod(shownRange.first, shownRange.last)}</strong><p>Estimativas de energia e carbono dos registros disponíveis.<InfoTooltip label="estimativas ambientais">Os valores são estimativas calculadas a partir do uso das aplicações, e não medições diretas de eletricidade ou CO₂ na atmosfera. CO₂e significa dióxido de carbono equivalente.</InfoTooltip></p></div>
+      <span>{comparisonLatest ? "Uma leitura por aplicação" : <>Filtro: {period === "7d" ? "até 7 dias" : "até 24 horas"}{analysis.observedAt && " anteriores ao horário escolhido"}</>}</span>
     </section>);
   return <>
     <TopographicSides key="topography" />
@@ -155,7 +156,7 @@ export function DashboardPage() {
     </details>}
     </>}
     {selectedId ? selected && <MonitoringTabs label="Informações da aplicação" value={detailTab} tabs={[{ value: "resumo", label: "Resumo" }, { value: "recursos", label: "Recursos" }, { value: "evolucao", label: "Evolução" }]} onChange={value => update({ detalhe: value })} /> : <MonitoringTabs label="Visualização do monitoramento" value={tab} tabs={[{ value: "geral", label: "Visão geral", mobileLabel: "Serviços" }, { value: "mapa", label: "Mapa", className: "mobile-map-tab" }, { value: "evolucao", label: "Evolução" }, { value: "comparar", label: "Comparar" }, { value: "administracao", label: "Administração", restricted: true }]} onChange={value => update({ aba: value === "geral" ? "" : value })} />}
-    {!selectedId && !administration && <MonitoringSummary context={latestOverview ? undefined : dataContext} latest={latestOverview} services={summaryServices} history={summaryHistory} comparison={tab === "comparar"} loading={loading} onRefresh={() => void refresh()} />}
+    {!selectedId && !administration && <MonitoringSummary context={latestOverview ? undefined : dataContext} latest={latestOverview || comparisonLatest} services={summaryServices} history={summaryHistory} comparison={tab === "comparar"} loading={loading} onRefresh={() => void refresh()} />}
     <section key="monitoring-content" className="monitoring-view" id="monitoring-content" role="tabpanel" aria-label={selectedId ? "Detalhes da aplicação" : administration ? "Administração do ambiente" : tab === "comparar" ? "Comparação de aplicações" : tab === "evolucao" ? "Evolução do ambiente" : "Visão geral do ambiente"}>
       <div className={"monitoring-overview" + (selected ? " service-overview" : "")} data-view={tab} hidden={selectedId ? !selected : tab === "evolucao" || tab === "comparar" || administration}>
         <section className="monitoring-location" aria-label="Localização dos serviços">

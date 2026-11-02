@@ -31,6 +31,7 @@ export function analysisLink(path: string, search: string) {
   if (input.get("ordem")) params.set("ordem", input.get("ordem")!);
   if (["acumulado", "intervalos"].includes(input.get("serie") ?? "")) params.set("serie", input.get("serie")!);
   for (const id of new Set(input.getAll("app"))) if (id) params.append("app", id);
+  if (input.get("comparacao") === "ultima") params.set("comparacao", "ultima");
   const query = params.toString();
   return path + (query ? "?" + query : "");
 }
