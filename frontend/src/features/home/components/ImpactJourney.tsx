@@ -14,7 +14,7 @@ export function ImpactJourney() {
   return <section className="impact-journey" id="solucoes" aria-labelledby="journey-heading">
     <div className="journey-intro" data-reveal>
       <div><p className="chapter-label">Por trás de cada execução</p><h2 id="journey-heading">O digital também<br />faz parte do mundo real.</h2></div>
-      <p>Uma aplicação pode parecer invisível, mas a infraestrutura que a sustenta consome recursos reais. A EcoByteMetrics conecta o uso de hardware ao consumo elétrico e à pegada de carbono, tornando visível o impacto ambiental do seu software.</p>
+      <p>Uma aplicação pode parecer invisível, mas a infraestrutura que a sustenta consome recursos reais. A EcoByteMetrics usa métricas de processamento, memória, disco e rede para estimar o consumo de energia e as emissões associadas à eletricidade.</p>
     </div>
     <div className="resource-explorer" data-reveal>
       <div className="resource-tabs" role="tablist" aria-label="Recursos da aplicação">
@@ -24,7 +24,7 @@ export function ImpactJourney() {
         }}><Icon size={20} strokeWidth={1.4} aria-hidden="true" /><span>{name}</span></button>)}
       </div>
       <div className="resource-panel" id="resource-panel" role="tabpanel" aria-labelledby={`resource-tab-${active}`} tabIndex={0}>
-        <div className="resource-copy" key={resource.name}><h3>{resource.title}</h3><p>{resource.description}</p><span className="resource-caption">Explore os recursos para entender o caminho.</span></div>
+        <div className="resource-copy" key={resource.name}><h3>{resource.title}</h3><p>{resource.description}</p><span className="resource-caption">Selecione um recurso para entender sua relação com o consumo de energia.</span></div>
         <div className="resource-visual" aria-label={`Ilustração da atividade de ${resource.name}; não representa uma coleta real`} role="img">
           <div className="activity-bars" aria-hidden="true">{resource.bars.map((height, i) => <i key={i} style={{ height: `${height}%` }} />)}</div>
           <div className="activity-caption"><span>{resource.name} em atividade</span><span>Ilustração</span></div>

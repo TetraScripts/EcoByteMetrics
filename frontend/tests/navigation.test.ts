@@ -21,3 +21,15 @@ test("rotas de energia e emissões abrem a evolução correta e mantêm os filtr
     assert.equal(params.has("detalhe"), false);
   }
 });
+
+test("o endereço antigo de comparação abre a aba no dashboard e preserva filtros e aplicações", () => {
+  const location = new URL(dashboardLocation("?app=a&app=b&pais=Brazil&periodo=7d&instante=2026-10-25T12%3A00%3A00Z&servico=a&detalhe=recursos", { comparison: true }), "http://localhost");
+  assert.equal(location.pathname, "/dashboard");
+  assert.equal(location.searchParams.get("aba"), "comparar");
+  assert.deepEqual(location.searchParams.getAll("app"), ["a", "b"]);
+  assert.equal(location.searchParams.get("periodo"), "7d");
+  assert.equal(location.searchParams.get("pais"), "Brazil");
+  assert.equal(location.searchParams.get("instante"), "2026-10-25T12:00:00Z");
+  assert.equal(location.searchParams.has("servico"), false);
+  assert.equal(location.searchParams.has("detalhe"), false);
+});

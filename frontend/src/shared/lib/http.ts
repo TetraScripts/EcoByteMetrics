@@ -12,15 +12,15 @@ export class RequestError extends Error {
   }
 }
 
-export async function requestJson(url: string, { signal, timeoutMs = 10_000 }: {
-  signal?: AbortSignal; timeoutMs?: number;
+export async function requestJson(url: string, { signal, timeoutMs = 10_000, method, body, headers }: {
+  signal?: AbortSignal; timeoutMs?: number; method?: string; body?: string; headers?: Record<string, string>;
 } = {}): Promise<unknown> {
   signal?.throwIfAborted();
   const timeout = AbortSignal.timeout(timeoutMs);
   const requestSignal = signal ? AbortSignal.any([signal, timeout]) : timeout;
   try {
     const response = await fetch(url, {
-      signal: requestSignal, cache: "no-store", headers: { Accept: "application/json" },
+      signal: requestSignal, cache: "no-store", method, body, headers: { ...headers, Accept: "application/json" },
     });
     const html = response.headers.get("content-type")?.includes("text/html");
     let data: unknown;

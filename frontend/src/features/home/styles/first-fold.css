@@ -8,7 +8,7 @@ html:has(.ecobyte-home)::-webkit-scrollbar { display: none; }
   animation: homeFade 800ms ease 100ms backwards;
 }
 .ecobyte-home .brand { gap: 12px; }
-.ecobyte-home .brand > .brand__mark { width: 34px; height: 44px; }
+.ecobyte-home .brand > .brand__mark { width: 44px; height: 44px; }
 .ecobyte-home .brand > .brand__wordmark,
 .ecobyte-home .brand > .brand__wordmark > span { color: #f6faed; font-size: 23px; font-weight: 550; letter-spacing: -.9px; }
 .ecobyte-home .home-navigation { display: flex; gap: 30px; color: #e9f1e6; font-size: 14px; }
@@ -38,10 +38,6 @@ html:has(.ecobyte-home)::-webkit-scrollbar { display: none; }
   grid-template-columns: minmax(0, 1fr) 32%; gap: clamp(24px, 5vw, 90px); align-items: center;
 }
 .ecobyte-home .hero-copy { max-width: 100%; }
-.ecobyte-home .hero-context {
-  margin: 0 0 29px; font-size: 14px; font-weight: 400; color: #e2eddb;
-  letter-spacing: .01em; animation: homeFade 800ms ease 180ms backwards;
-}
 .ecobyte-home .hero-copy h1 {
   margin: 0; font-family: var(--eb-font-heading); font-size: clamp(56px, 5.9vw, 108px);
   font-weight: 450; line-height: 1.045; letter-spacing: -.065em; color: #f6f9ee;
@@ -74,19 +70,6 @@ html:has(.ecobyte-home)::-webkit-scrollbar { display: none; }
 .ecobyte-home .hero-discover { display: inline-flex; align-items: center; gap: 13px; padding: 13px 0; font-size: 14px; color: #edf4e4; }
 .ecobyte-home .hero-discover svg { transition: transform 250ms; }
 .ecobyte-home .hero-discover:hover svg { transform: translateY(4px); }
-.ecobyte-home .hero-emblem { position: relative; width: 100%; max-width: 460px; justify-self: center; animation: homeEmblem 1400ms cubic-bezier(.16, 1, .3, 1) 260ms backwards; }
-.ecobyte-home .hero-emblem__leaf { position: relative; width: 100%; height: auto; opacity: .9; }
-.ecobyte-home .hero-emblem__orbit { position: absolute; inset: 19% -22%; border: 1px solid #f4f9e340; border-radius: 50%; transform: rotate(-28deg); }
-.ecobyte-home .hero-emblem__caption { display: block; text-align: center; margin-top: 10px; color: #e3edda; font-size: 13px; line-height: 1.7; }
-.ecobyte-home .hero-bottom {
-  position: relative; z-index: 3; width: min(1560px, calc(100% - clamp(48px, 9vw, 160px))); margin: 0 auto;
-  display: flex; align-items: center; justify-content: space-between; gap: 24px; padding: 24px 0 30px;
-  border-top: 1px solid #f0f7e438; animation: homeFade 900ms ease 800ms backwards;
-}
-.ecobyte-home .hero-scroll { display: inline-flex; align-items: center; gap: 15px; font-size: 12px; line-height: 1.6; color: #e0ead9; }
-.ecobyte-home .hero-scroll strong { font-weight: 500; color: #f7faef; }
-.ecobyte-home .hero-scroll__icon { border: 1px solid #e9f2df60; border-radius: 50%; width: 40px; height: 40px; display: grid; place-items: center; transition: transform 250ms; }
-.ecobyte-home .hero-scroll:hover .hero-scroll__icon { transform: translateY(3px); }
 .ecobyte-home .hero-bottom__note { font-size: 12px; line-height: 1.7; color: #e1ebdb; }
 .ecobyte-home .hero-bottom__note span { color: #bfd0c1; }
 .ecobyte-home .hero-scenes { display: flex; align-items: center; gap: 14px; }
@@ -101,7 +84,6 @@ html:has(.ecobyte-home)::-webkit-scrollbar { display: none; }
 .ecobyte-home .hero button:focus-visible { outline: 2px solid #ecf4d5; outline-offset: 5px; }
 @keyframes homeTitle { from { transform: translateY(115%); } to { transform: translateY(0); } }
 @keyframes homeFade { from { opacity: 0; } to { opacity: 1; } }
-@keyframes homeEmblem { from { opacity: 0; transform: translateY(24px) rotate(-5deg); } to { opacity: 1; transform: translateY(0) rotate(0); } }
 @media (max-width: 1150px) {
   .ecobyte-home .site-header { gap: 24px; }
   .ecobyte-home .home-navigation { gap: 20px; font-size: 13px; }
@@ -111,36 +93,30 @@ html:has(.ecobyte-home)::-webkit-scrollbar { display: none; }
   .ecobyte-home .hero-copy__actions { gap: 20px; }
 }
 @media (max-width: 900px) {
+  .ecobyte-home .hero { height: auto; min-height: 100svh; }
   .ecobyte-home .site-header { height: 96px; grid-template-columns: 1fr auto; }
   .ecobyte-home .home-navigation { display: none; }
-  .ecobyte-home .hero__content { grid-template-columns: 1fr; padding-top: 145px; padding-bottom: 48px; }
+  .ecobyte-home .hero__content { grid-template-columns: minmax(0, 1fr); min-height: 100svh; padding-top: 145px; padding-bottom: 48px; }
   .ecobyte-home .hero-copy { position: relative; z-index: 2; max-width: 650px; }
   .ecobyte-home .hero-copy h1 { font-size: clamp(58px, 8.5vw, 78px); }
-  .ecobyte-home .hero-emblem { position: absolute; right: -70px; top: 130px; width: 330px; opacity: .18; }
-  .ecobyte-home .hero-emblem__caption { display: none; }
   .ecobyte-home .hero-bottom__note { display: none; }
 }
 @media (max-width: 600px) {
   .ecobyte-home .site-header { height: 90px; gap: 12px; }
   .ecobyte-home .brand { gap: 7px; }
-  .ecobyte-home .brand > .brand__mark { width: 26px; height: 34px; }
+  .ecobyte-home .brand > .brand__mark { width: 34px; height: 34px; }
   .ecobyte-home .brand > .brand__wordmark,
   .ecobyte-home .brand > .brand__wordmark > span { font-size: 17px; letter-spacing: -.7px; }
   .ecobyte-home .platform-link { min-height: 42px; padding: 0 13px; font-size: 12px; gap: 10px; }
   .ecobyte-home .platform-link svg { width: 15px; }
-  .ecobyte-home .hero { min-height: 730px; }
+  .ecobyte-home .hero { min-height: 100svh; }
   .ecobyte-home .hero__content { padding: 125px 24px 36px; }
-  .ecobyte-home .hero-context { font-size: 11px; margin-bottom: 24px; }
   .ecobyte-home .hero-copy h1 { font-size: clamp(42px, 10.3vw, 60px); letter-spacing: -.06em; }
   .ecobyte-home .hero-copy > .hero-description { font-size: 14px; margin-top: 25px; max-width: 350px; line-height: 1.75; }
   .ecobyte-home .hero-copy__actions { align-items: flex-start; flex-direction: column; gap: 10px; margin-top: 25px; }
   .ecobyte-home .home-explore { min-height: 55px; font-size: 13px; padding-left: 20px; }
   .ecobyte-home .home-explore__arrow { width: 38px; height: 38px; }
   .ecobyte-home .hero-discover { font-size: 13px; }
-  .ecobyte-home .hero-emblem { width: 290px; right: -120px; top: 160px; opacity: .14; }
-  .ecobyte-home .hero-bottom { padding: 18px 0 23px; gap: 12px; }
-  .ecobyte-home .hero-scroll { font-size: 10px; gap: 9px; }
-  .ecobyte-home .hero-scroll__icon { width: 32px; height: 32px; }
   .ecobyte-home .hero-scenes { gap: 6px; }
   .ecobyte-home .hero-scene { gap: 4px; min-width: 23px; }
   .ecobyte-home .hero-scene[aria-pressed="true"] i { width: 15px; }
@@ -150,11 +126,8 @@ html:has(.ecobyte-home)::-webkit-scrollbar { display: none; }
   .ecobyte-home .hero { min-height: 650px; }
   .ecobyte-home .hero__content { padding-top: 115px; padding-bottom: 25px; }
   .ecobyte-home .hero-copy h1 { font-size: clamp(56px, 5.3vw, 82px); }
-  .ecobyte-home .hero-context { margin-bottom: 20px; }
   .ecobyte-home .hero-copy > .hero-description { margin-top: 20px; }
   .ecobyte-home .hero-copy__actions { margin-top: 22px; }
-  .ecobyte-home .hero-emblem { max-width: 320px; }
-  .ecobyte-home .hero-bottom { padding-top: 18px; padding-bottom: 20px; }
 }
 @media (max-width: 380px) {
   .ecobyte-home .brand > .brand__wordmark,
@@ -162,9 +135,7 @@ html:has(.ecobyte-home)::-webkit-scrollbar { display: none; }
   .ecobyte-home .platform-link { font-size: 10px; padding: 0 8px; gap: 8px; }
 }
 @media (prefers-reduced-motion: reduce) {
-  .ecobyte-home .site-header, .ecobyte-home .hero-context, .ecobyte-home .hero-line > span,
-  .ecobyte-home .hero-copy > .hero-description, .ecobyte-home .hero-copy__actions,
-  .ecobyte-home .hero-emblem, .ecobyte-home .hero-bottom { animation: none; }
+  .ecobyte-home .site-header, .ecobyte-home .hero-line > span, .ecobyte-home .hero-copy > .hero-description, .ecobyte-home .hero-copy__actions { animation: none; }
   .ecobyte-home .hero *, .ecobyte-home .hero *::before,
   .ecobyte-home .site-header *::after { transition: none; }
 }

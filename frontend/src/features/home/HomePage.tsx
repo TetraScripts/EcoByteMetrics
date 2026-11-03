@@ -7,7 +7,6 @@ import { HomeSound } from "./components/HomeSound";
 import { useHomeReveal } from "./hooks/useHomeReveal";
 import { content } from "@/features/home/data/content";
 import "@/features/home/styles/hero.css";
-import "@/features/home/styles/overview.css";
 import "@/features/home/styles/first-fold.css";
 import "./styles/impact-story.css";
 import "./styles/closing.css";

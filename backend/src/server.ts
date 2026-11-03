@@ -1,43 +1,18 @@
-import app from "./app.js";
-import { CarbonApiError } from "./integrations/carbon-api.js";
-import { ServiceApiError } from "./integrations/services-api.js";
-import { refreshAllData } from "./modules/Worker/worker.job.js";
-const PORT = process.env.PORT || 3000;
+import "dotenv/config";
+import app from "./app";
+import { migrateMonitoring } from "./db/migrate";
+import { start, refreshAllData } from "./modules/Worker/worker.job";
 
-app.listen(PORT, () => {
-    const REFRESH_INTERVAL = 30_000;
-    console.log(
-        `Servidor BackEnd está rodando http://localhost:${PORT}`
-    );
-      // Primeira coleta ao iniciar o servidor.
-  void refreshAllData()
-    .then(() => {
-      console.log("Serviços e métricas carregados com sucesso.");
-    })
-    .catch((error: unknown) => {
-      if(error instanceof ServiceApiError || error instanceof CarbonApiError){
-              console.error(
-                `${error.name}: ${error.message}\n` +
-                `statusCode: ${error.statusCode}\n` );
-      }else{
-         console.error("Erro desconhecido ",error);
-       }
-    });
-
-  // Atualiza a lista e as métricas a cada 30 segundos.
-  setInterval(() => {
-    void refreshAllData()
-      .then(() => {
-        console.log("Lista de serviços e métricas atualizada.");
-      })
-      .catch((error: unknown) => {
-        if(error instanceof ServiceApiError || error instanceof CarbonApiError){
-              console.error(
-                `${error.name}: ${error.message}\n` +
-                `statusCode: ${error.statusCode}\n` );
-        }else{
-            console.error("Erro desconhecido ",error);
-        }
-      });
-  }, REFRESH_INTERVAL);
+async function main() {
+  await migrateMonitoring();
+  const port = process.env.PORT || 3000;
+  app.listen(port, () => {
+    console.log(`Servidor BackEnd est? rodando http://localhost:${port}`);
+    void refreshAllData().catch(() => console.error("Não foi possível coletar; o histórico gravado continua disponível."));
+    start();
+  });
+}
+void main().catch(() => {
+  console.error("Não foi possível preparar o banco de monitoramento. Verifique a conexão e as migrações.");
+  process.exitCode = 1;
 });

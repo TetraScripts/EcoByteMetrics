@@ -127,21 +127,28 @@ let lastUpdatedAt: string | null = null;
 const collectedMetrics = new Map<string, CollectedServiceMetrics>();
 
 /** Syncs aggregator discovery data into the dashboard cache. */
-export function recordDiscoveredServices(services: DiscoveredService[]): void {
+export function recordDiscoveredServices(services: DiscoveredService[], at = new Date().toISOString()): void {
     discoveredServices = services;
-    lastUpdatedAt = new Date().toISOString();
+    lastUpdatedAt = at;
 }
 
 /** Publishes only samples that have already been persisted successfully. */
-export function recordCollectedServiceMetrics(serviceId: string, sample: ApiMetric): void {
+export function recordCollectedServiceMetrics(serviceId: string, sample: ApiMetric, at = new Date().toISOString()): void {
     collectedMetrics.set(serviceId, {
         serviceId,
         metrics: {
             collection_interval_seconds: sample.collection_interval_seconds,
             metrics: { ...sample.metrics },
         },
-        updatedAt: new Date().toISOString(),
+        updatedAt: at,
     });
+}
+
+export function publishCollection(catalog: AggregatorService[], metrics: Map<string, ServiceMetrics>, at: string) {
+    recordDiscoveredServices(catalog, at);
+    for (const [serviceId, sample] of metrics) recordCollectedServiceMetrics(serviceId, sample, at);
+    const ids = new Set(catalog.map(service => service.id));
+    for (const id of collectedMetrics.keys()) if (!ids.has(id)) collectedMetrics.delete(id);
 }
 
 export async function refreshDiscoveredServices(): Promise<void> {

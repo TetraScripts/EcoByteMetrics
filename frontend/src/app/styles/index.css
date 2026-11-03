@@ -1,13 +1,7 @@
 @import "../../shared/styles/tokens.css";
 @import "../../shared/styles/base.css";
 @import "../../shared/styles/components.css";
-@import "../../shared/effects/effects.css";
-@import "./layout.css";
-@import "../../features/auth/styles.css";
-@import "../../features/monitoring/styles/monitoring.css";
-@import "../../features/monitoring/styles/map.css";
 @import "./feedback.css";
 @import "./overrides.css";
 
-@import "../../features/monitoring/styles/dashboard.css";
 @import "./page-transition.css";

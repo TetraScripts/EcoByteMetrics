@@ -24,10 +24,11 @@ test("zero válido, intervalos vazios e fatores ausentes permanecem distinguíve
   assert.equal(result.summary.count, 3);
 });
 
-test("um intervalo parcial não parece completo e o acumulado para ao faltar emissão", () => {
+test("intervalos e acumulado somam emissões conhecidas e explicam a cobertura incompleta", () => {
   const history = [sample("a", 1, 2), sample("b", 2, null), sample("a", 31, 3)];
-  assert.deepEqual(evolutionData(history, "emissions", "intervals").points.map(point => point.value), [null, 3]);
-  assert.deepEqual(evolutionData(history, "emissions", "cumulative").points.map(point => point.value), [null, null]);
+  assert.deepEqual(evolutionData(history, "emissions", "intervals").points.map(point => point.value), [2, 3]);
+  assert.deepEqual(evolutionData(history, "emissions", "cumulative").points.map(point => point.value), [2, 5]);
+  assert.match(evolutionData(history, "emissions", "cumulative").points[1]!.reason!, /2 de 3 amostras/);
   assert.deepEqual(evolutionData(history, "energy", "cumulative").points.map(point => point.value), [.002, .003]);
 });
 
@@ -72,9 +73,18 @@ test("ausência de uma rodada completa cria lacuna sem interpolar valores", () =
   assert.equal(data.points.length, 2);
 });
 
-test("emissões ausentes explicam a coleta incompleta e a propagação ao acumulado", () => {
+test("uma emissão antiga ausente não impede que o acumulado mostre as coletas seguintes", () => {
   const data = evolutionData([sample("a", 0, null), sample("a", 30, 1)], "emissions", "cumulative");
   assert.match(data.points[0]!.reason!, /Há amostras/);
-  assert.match(data.points[1]!.reason!, /anterior/);
+  assert.equal(data.points[0]!.value, null);
+  assert.equal(data.points[1]!.value, 1);
+  assert.match(data.points[1]!.reason!, /1 de 2 amostras/);
   assert.equal(data.points[1]!.gap, false);
+});
+
+test("acumulado sem nenhuma emissão calculável permanece desconhecido; zero recebido é válido", () => {
+  assert.deepEqual(evolutionData([sample("a",0,null),sample("a",30,null)],"emissions","cumulative").points.map(point=>point.value),[null,null]);
+  const data=evolutionData([sample("a",0,0),sample("a",30,null)],"emissions","cumulative");
+  assert.deepEqual(data.points.map(point=>point.value),[0,0]);
+  assert.match(data.points[1]!.reason!,/1 de 2 amostras/);
 });

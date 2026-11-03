@@ -1,3 +1,6 @@
 .info-tooltip-trigger { display: inline-flex; align-items: center; justify-content: center; width: 24px; height: 24px; flex: 0 0 24px; border: 0; border-radius: 50%; padding: 0; background: transparent; color: #668078; cursor: help; vertical-align: middle; }
 .info-tooltip-trigger:hover, .info-tooltip-trigger:focus-visible { color: #087e59; background: #eaf5ee; }
 .info-tooltip-popup { position: fixed; z-index: 1000; width: max-content; max-width: min(290px, calc(100vw - 24px)); padding: 12px 14px; border: 1px solid #dbe7df; border-radius: 9px; background: #fff; color: #284c43; font-family: var(--eb-font-body); font-size: 12px; font-weight: 400; line-height: 1.7; text-align: left; box-shadow: 0 5px 22px #103a401f; pointer-events: auto; overflow-wrap: anywhere; }
+@media (pointer: coarse) {
+  .info-tooltip-trigger { width: 44px; height: 44px; flex-basis: 44px; }
+}

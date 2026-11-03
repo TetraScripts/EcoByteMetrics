@@ -17,7 +17,6 @@ import { useCarousel } from "@/features/home/hooks/useCarousel";
 
 interface HeroProps {
   copy: {
-    eyebrow: string;
     line1: string;
     line2: string;
     line3: string;
@@ -59,7 +58,7 @@ export function Hero({ copy }: HeroProps) {
               </svg>
               <span>{copy.primary}</span>
             </DashboardLink>
-            <a className="hero-discover" href="#dados">Entenda o impacto<ArrowDown size={17} aria-hidden="true" /></a>
+            <a className="hero-discover" href="#solucoes">Como funciona<ArrowDown size={17} aria-hidden="true" /></a>
           </div>
         </div>
       </div>

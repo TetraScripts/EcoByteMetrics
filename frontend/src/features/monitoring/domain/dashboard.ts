@@ -16,7 +16,7 @@ export function filterApplications(services: MonitoredService[], search: string,
   );
 }
 
-export function applicationImpacts(services: MonitoredService[], history: CollectionPoint[], metric: DashboardMetric) {
+export function applicationImpacts(services: MonitoredService[], history: CollectionPoint[], metric: DashboardMetric, removedLast = false) {
   const samples = new Map<string, CollectionPoint[]>();
   for (const point of mergeCollectionHistory([], history)) {
     const group = samples.get(point.serviceId);
@@ -25,10 +25,9 @@ export function applicationImpacts(services: MonitoredService[], history: Collec
   }
   return services.map(service => {
     const summary = summarizeCollections(samples.get(service.id) ?? []);
-    const emissions = summary.emissionCount === summary.count ? summary.emissionsG : null;
-    return { service, summary, value: metric === "energy" ? summary.energyKwh : emissions };
+    return { service, summary, value: metric === "energy" ? summary.energyKwh : summary.emissionsG };
   }).sort((a, b) =>
-    Number(a.service.status === "removed") - Number(b.service.status === "removed") ||
+    (removedLast ? Number(a.service.status === "removed") - Number(b.service.status === "removed") : 0) ||
     (a.value === null ? b.value === null ? a.service.name.localeCompare(b.service.name, "pt-BR") : 1
       : b.value === null ? -1 : b.value - a.value || a.service.name.localeCompare(b.service.name, "pt-BR")),
   );
@@ -57,50 +56,4 @@ export function groupServiceLocations(services: MonitoredService[]) {
 
 export function serviceLocationPeers(services: MonitoredService[], selected: MonitoredService) {
   return groupServiceLocations(services).find(group => group.services.some(service => service.id === selected.id))?.services ?? [selected];
-}
-
-export function collectionSeries(history: CollectionPoint[], metric: DashboardMetric, cumulative = false) {
-  const ordered = mergeCollectionHistory([], history).map(sample => ({ sample, timestamp: Date.parse(sample.collectedAt) }))
-    .filter(entry => Number.isFinite(entry.timestamp)).sort((a, b) => a.timestamp - b.timestamp);
-  const points: { timestamp: number; value: number | null; gap: boolean }[] = [];
-  let total = 0;
-  let complete = true;
-  let previousTime: number | null = null;
-  for (const { sample, timestamp } of ordered) {
-    const value = metric === "energy" ? sample.energyKwh : sample.emissionsG;
-    if (value === null || !Number.isFinite(value)) {
-      complete = false;
-      const last = points.at(-1);
-      if (cumulative && last?.timestamp === timestamp) last.value = null;
-      else points.push({ timestamp, value: null, gap: true });
-      previousTime = null;
-      continue;
-    }
-    total += value;
-    const gap = !cumulative && (previousTime === null || timestamp - previousTime > Math.max(90_000, (sample.intervalSeconds ?? 30) * 3000));
-    const last = points.at(-1);
-    if (cumulative && last?.timestamp === timestamp) last.value = complete ? total : null;
-    else points.push({ timestamp, value: cumulative ? complete ? total : null : value, gap });
-    previousTime = timestamp;
-  }
-  return points;
-}
-
-// Preserve extremos e interrupções, limitando apenas os elementos do SVG.
-export function chartSeries(points: ReturnType<typeof collectionSeries>, limit = 360) {
-  if (points.length <= limit) return points;
-  const result: typeof points = [];
-  const bucketSize = Math.ceil(points.length / Math.max(1, Math.floor(limit / 4)));
-  for (let start = 0; start < points.length; start += bucketSize) {
-    const bucket = points.slice(start, start + bucketSize);
-    let min = 0, max = 0;
-    for (let index = 1; index < bucket.length; index++) {
-      if (bucket[index]!.value !== null && (bucket[min]!.value === null || bucket[index]!.value! < bucket[min]!.value!)) min = index;
-      if (bucket[index]!.value !== null && (bucket[max]!.value === null || bucket[index]!.value! > bucket[max]!.value!)) max = index;
-    }
-    const discontinuous = bucket.some(point => point.value === null || point.gap);
-    const indices = [...new Set([0, min, max, bucket.length - 1])].sort((a, b) => a - b);
-    for (const index of indices) result.push({ ...bucket[index]!, gap: discontinuous || bucket[index]!.gap });
-  }
-  return result;
 }

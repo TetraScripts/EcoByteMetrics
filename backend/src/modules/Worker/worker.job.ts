@@ -1,5 +1,5 @@
 import { runWorker } from "./worker";
-import cron from "node-cron";
+import { COLLECTION_INTERVAL_MS } from "../Monitoring/collector";
 
 let refreshInProgress = false;
 
@@ -9,7 +9,6 @@ export async function refreshAllData(): Promise<void> {
         console.warn("Ciclo anterior ainda em andamento; ignorando este disparo.");
         return;
     }
-
     refreshInProgress = true;
     try {
         await runWorker();
@@ -18,9 +17,8 @@ export async function refreshAllData(): Promise<void> {
     }
 }
 
-// Optional one-minute scheduler for callers that do not use the server interval.
 export function start() {
-    return cron.schedule("*/1 * * * *", () => {
-        void refreshAllData();
-    });
+    return setInterval(() => {
+        void refreshAllData().catch(() => console.error("Falha na coleta; os últimos dados gravados foram preservados."));
+    }, COLLECTION_INTERVAL_MS);
 }

@@ -7,7 +7,11 @@
     "dev": "tsx watch src/server.ts",
     "build": "tsc",
     "start": "node dist/server.js",
-    "test": "tsx --test tests/services.service.test.ts"
+    "test": "tsx --test tests/*.test.ts",
+    "test:auth": "tsx --test tests/auth.test.ts",
+    "test:auth:postgres": "tsx --test tests/integration/auth.postgres.test.ts",
+    "test:worker:postgres": "tsx --test tests/integration/carbon.postgres.test.ts",
+    "test:history:postgres": "tsx --test tests/integration/monitoring.postgres.test.ts"
   },
   "dependencies": {
     "bcryptjs": "^3.0.3",

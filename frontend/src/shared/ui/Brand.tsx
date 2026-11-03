@@ -4,7 +4,7 @@ export function Brand({ linked = true }: { linked?: boolean }) {
   const className = "brand";
   const content = (
     <>
-      <img src="/assets/logo.png" width="44" height="40" alt="" />
+      <img src="/assets/ecobytemetrics-symbol.png" width="44" height="44" alt="" />
       <span>
         EcoByte<span>Metrics</span>
       </span>

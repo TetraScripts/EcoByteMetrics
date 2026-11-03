@@ -5,7 +5,8 @@ export const collectionEventLabels: Record<CollectionEvent["kind"], string> = {
   "monitoring-inactive": "As consultas automáticas ficaram pausadas enquanto você estava fora do monitoramento.",
   "request-failed": "Uma consulta ao backend falhou; a interface preservou os últimos dados recebidos.",
   "no-new-samples": "O backend respondeu com a mesma coleta ou uma coleta anterior para uma ou mais aplicações desta seleção.",
-  "service-unavailable": "O backend informou aplicação indisponível ou sem métricas nesta seleção.",
+  "service-unavailable": "Não foi possível consultar as métricas de uma ou mais aplicações.",
+  "metrics-missing": "Uma aplicação estava listada, mas não forneceu métricas válidas.",
 };
 
 export function appendCollectionEvents(previous: CollectionEvent[] = [], incoming: CollectionEvent[] = []) {
