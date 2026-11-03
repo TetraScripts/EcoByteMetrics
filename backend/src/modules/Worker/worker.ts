@@ -2,6 +2,7 @@ import {CarbonApiError, CarbonAPISevice } from "../../integrations/carbon-api";
 import {ServiceApiError, ServiceAPISevice}from"../../integrations/services-api"
 import {WorkerService}  from "./worker.metric.service";
 import { WorkerCarbons } from "./worker.carbon.service";
+import { recordDiscoveredServices } from "../Services/services.service";
 
 export async function runWorker() {
   //Objetos para verificar Api Metricas e Carbons
@@ -41,6 +42,7 @@ export async function runWorker() {
   //try para verificar caso tenha erro de metricas
   try{
     const servicesMetrics = await ServiceAPI.listServices();
+    recordDiscoveredServices(servicesMetrics);
     await WorkerServiceAPI.listarServices(servicesMetrics, ServiceAPI);
   }catch(error:unknown){
     if(error instanceof ServiceApiError){

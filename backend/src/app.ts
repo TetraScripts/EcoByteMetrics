@@ -8,8 +8,6 @@ import serviceRouter from "./modules/Services/service.router.js";
 import locationRouter from "./modules/Locations/location.router.js";
 import statisticRouter from "./modules/Statistics/statistics.router.js"
 import authRouter from "./modules/Auth/auth.router";
-import {start} from "./modules/Worker/worker.job.js";
-import { runWorker } from "./modules/Worker/worker.js";
 
 import {
   getDiscoveredServices,
@@ -18,8 +16,7 @@ import {
   getCollectedMetricsByServiceId,
 } from "./modules/Services/services.service.js";
 
-runWorker();
-start();
+// Polling inicial e periódico é iniciado por server.ts.
 
 const app = express();
 
