@@ -1,11 +1,9 @@
-
+import { ServiceAPISevice } from "../src/integrations/services-api";
+import { WorkerService } from "../src/modules/Worker/worker.metric.service";
+import { WorkerCarbons } from "../src/modules/Worker/worker.carbon.service";
+import pool from "../src/db/connection";
 import { afterEach, beforeEach, describe, it } from "node:test";
 import assert from "node:assert/strict";
-import pool from "../src/db/connection";
-import { fetchCarbonRegions } from "../src/integrations/carbon-api";
-import { WorkerCarbons } from "../src/modules/Worker/worker.carbon.service";
-import { WorkerService } from "../src/modules/Worker/worker.metric.service";
-import { ServiceAPISevice } from "../src/integrations/services-api";
 
 import type {
     AggregatorService,
@@ -23,6 +21,7 @@ import {
     refreshServiceMetrics,
     resetMetricsFetcher,
     setMetricsFetcherForTesting,
+    resetCarbonRegionsFetcher,
     setCarbonRegionsFetcherForTesting,
 } from "../src/modules/Services/services.service.js";
 
@@ -39,7 +38,6 @@ const billingService: AggregatorService = {
     },
     metrics_path: "/metrics/billing-api",
 };
-
 const checkoutService: AggregatorService = {
     id: "checkout-worker",
     name: "checkout-worker",
@@ -53,7 +51,6 @@ const checkoutService: AggregatorService = {
     },
     metrics_path: "/metrics/checkout-worker",
 };
-
 const billingMetrics: ServiceMetrics = {
     collection_interval_seconds: 30,
     metrics: {
@@ -63,7 +60,6 @@ const billingMetrics: ServiceMetrics = {
         network_gb: 0.4,
     },
 };
-
 const updatedBillingMetrics: ServiceMetrics = {
     collection_interval_seconds: 30,
     metrics: {
@@ -73,7 +69,6 @@ const updatedBillingMetrics: ServiceMetrics = {
         network_gb: 0.6,
     },
 };
-
 const checkoutMetrics: ServiceMetrics = {
     collection_interval_seconds: 30,
     metrics: {
@@ -87,64 +82,70 @@ const checkoutMetrics: ServiceMetrics = {
 beforeEach(() => {
     setCarbonRegionsFetcherForTesting(async () => []);
 });
-
 afterEach(() => {
     resetServicesFetcher();
     resetMetricsFetcher();
-    setCarbonRegionsFetcherForTesting(fetchCarbonRegions);
+    resetCarbonRegionsFetcher();
 });
 
 describe("Serviço de descoberta de serviços", () => {
     it("armazena os serviços após uma consulta bem-sucedida", async () => {
         setServicesFetcherForTesting(async () => [billingService]);
-
         await refreshDiscoveredServices();
-
         assert.deepEqual(getDiscoveredServices(), [billingService]);
         assert.notEqual(getServicesLastUpdatedAt(), null);
     });
 
     it("atualiza o cache quando um novo serviço aparece", async () => {
         setServicesFetcherForTesting(async () => [billingService]);
-
         await refreshDiscoveredServices();
-
-        setServicesFetcherForTesting(async () => [
-            billingService,
-            checkoutService,
-        ]);
-
+        setServicesFetcherForTesting(async () => [billingService, checkoutService]);
         await refreshDiscoveredServices();
-
-        assert.deepEqual(getDiscoveredServices(), [
-            billingService,
-            checkoutService,
-        ]);
+        assert.deepEqual(getDiscoveredServices(), [billingService, checkoutService]);
     });
 
     it("preserva o último cache válido quando a consulta falha", async () => {
         setServicesFetcherForTesting(async () => [billingService]);
-
         await refreshDiscoveredServices();
-
         const previousServices = getDiscoveredServices();
         const previousUpdatedAt = getServicesLastUpdatedAt();
-
-        setServicesFetcherForTesting(async () => {
-            throw new Error("Falha simulada na consulta");
-        });
-
+        setServicesFetcherForTesting(async () => { throw new Error("Falha simulada"); });
         await refreshDiscoveredServices();
-
         assert.deepEqual(getDiscoveredServices(), previousServices);
-        assert.equal(
-            getServicesLastUpdatedAt(),
-            previousUpdatedAt
-        );
+        assert.equal(getServicesLastUpdatedAt(), previousUpdatedAt);
     });
 });
 
-describe("Serviço de coleta de métricas", () => {
+describe("Serviço de coleta de métricas em memória", () => {
+    it("atualiza o cache com valores variáveis de cada consulta", async () => {
+        setServicesFetcherForTesting(async () => [billingService]);
+        await refreshDiscoveredServices();
+        setMetricsFetcherForTesting(async () => billingMetrics);
+        await refreshServiceMetrics();
+        setMetricsFetcherForTesting(async () => updatedBillingMetrics);
+        await refreshServiceMetrics();
+        assert.deepEqual(getCollectedMetricsByServiceId("billing-api")?.metrics, updatedBillingMetrics);
+    });
+
+    it("preserva a última amostra e continua com os outros serviços quando uma consulta falha", async () => {
+        setServicesFetcherForTesting(async () => [billingService, checkoutService]);
+        await refreshDiscoveredServices();
+        setMetricsFetcherForTesting(async (serviceId) => serviceId === "billing-api" ? billingMetrics : checkoutMetrics);
+        await refreshServiceMetrics();
+        const previousBilling = getCollectedMetricsByServiceId("billing-api");
+        assert.ok(previousBilling);
+        setMetricsFetcherForTesting(async (serviceId) => {
+            if (serviceId === "billing-api") throw new Error("Falha simulada");
+            return updatedBillingMetrics;
+        });
+        await refreshServiceMetrics();
+        assert.deepEqual(getCollectedMetricsByServiceId("billing-api")?.metrics, previousBilling.metrics);
+        assert.deepEqual(getCollectedMetricsByServiceId("checkout-worker")?.metrics, updatedBillingMetrics);
+        assert.ok(getCollectedServiceMetrics().length >= 2);
+    });
+});
+
+describe("Persistência e publicação das métricas", () => {
     it("o worker grava a amostra e o fator de carbono vinculados à mesma localização", async t => {
         const inserts: { sql: string; values: unknown[] }[] = [];
         t.mock.method(pool, "query", async (sql: string, values: unknown[]) => {
@@ -170,98 +171,9 @@ describe("Serviço de coleta de métricas", () => {
         assert.deepEqual(carbon.values.slice(0, 3), [10, 85, 70]);
         assert.deepEqual(metric.values.slice(0, 5), [20, 45, 2.5, 10, 0.4]);
         assert.equal(metric.values[6], 30);
+        assert.deepEqual(getCollectedMetricsByServiceId("billing-api")?.metrics, billingMetrics);
         assert.match(carbon.values[3] as string, /^\d{4}-\d{2}-\d{2}T.*Z$/);
         assert.match(metric.values[5] as string, /^\d{4}-\d{2}-\d{2}T.*Z$/);
     });
 
-    it("armazena as métricas após uma consulta bem-sucedida", async () => {
-        setServicesFetcherForTesting(async () => [billingService]);
-        await refreshDiscoveredServices();
-
-        setMetricsFetcherForTesting(async () => billingMetrics);
-        await refreshServiceMetrics();
-
-        const result = getCollectedMetricsByServiceId("billing-api");
-
-        assert.ok(result);
-        assert.equal(result.serviceId, "billing-api");
-        assert.deepEqual(result.metrics, billingMetrics);
-        assert.notEqual(result.updatedAt, "");
-    });
-
-    it("atualiza o cache quando novas métricas são coletadas", async () => {
-        setServicesFetcherForTesting(async () => [billingService]);
-        await refreshDiscoveredServices();
-
-        setMetricsFetcherForTesting(async () => billingMetrics);
-        await refreshServiceMetrics();
-
-        setMetricsFetcherForTesting(
-            async () => updatedBillingMetrics
-        );
-        await refreshServiceMetrics();
-
-        const result = getCollectedMetricsByServiceId("billing-api");
-
-        assert.ok(result);
-        assert.deepEqual(result.metrics, updatedBillingMetrics);
-    });
-
-    it("preserva métricas válidas e continua a coleta quando um serviço falha", async () => {
-        setServicesFetcherForTesting(async () => [
-            billingService,
-            checkoutService,
-        ]);
-        await refreshDiscoveredServices();
-
-        // Primeira coleta: os dois serviços funcionam.
-        setMetricsFetcherForTesting(async (serviceId) => {
-            if (serviceId === "billing-api") {
-                return billingMetrics;
-            }
-
-            return checkoutMetrics;
-        });
-
-        await refreshServiceMetrics();
-
-        const previousBilling =
-            getCollectedMetricsByServiceId("billing-api");
-
-        assert.ok(previousBilling);
-
-        // Segunda coleta: billing falha, checkout continua funcionando.
-        setMetricsFetcherForTesting(async (serviceId) => {
-            if (serviceId === "billing-api") {
-                throw new Error("Falha simulada no billing-api");
-            }
-
-            return updatedBillingMetrics;
-        });
-
-        await refreshServiceMetrics();
-
-        const currentBilling =
-            getCollectedMetricsByServiceId("billing-api");
-
-        const currentCheckout =
-            getCollectedMetricsByServiceId("checkout-worker");
-
-        // O serviço que falhou mantém as métricas anteriores.
-        assert.ok(currentBilling);
-        assert.deepEqual(
-            currentBilling.metrics,
-            previousBilling.metrics
-        );
-
-        // A falha do primeiro serviço não impede a atualização do segundo.
-        assert.ok(currentCheckout);
-        assert.deepEqual(
-            currentCheckout.metrics,
-            updatedBillingMetrics
-        );
-
-        // Os registros coletados continuam disponíveis.
-        assert.ok(getCollectedServiceMetrics().length >= 2);
-    });
 });

@@ -1,11 +1,24 @@
-import { collectMonitoring, COLLECTION_INTERVAL_MS } from "../Monitoring/collector";
+import { runWorker } from "./worker";
+import { COLLECTION_INTERVAL_MS } from "../Monitoring/collector";
 
-export function start() {
-  return setInterval(() => {
-    void collectMonitoring().catch(() => console.error("Falha na coleta; os últimos dados gravados foram preservados."));
-  }, COLLECTION_INTERVAL_MS);
+let refreshInProgress = false;
+
+/** Runs discovery and metric persistence without overlapping polling cycles. */
+export async function refreshAllData(): Promise<void> {
+    if (refreshInProgress) {
+        console.warn("Ciclo anterior ainda em andamento; ignorando este disparo.");
+        return;
+    }
+    refreshInProgress = true;
+    try {
+        await runWorker();
+    } finally {
+        refreshInProgress = false;
+    }
 }
 
-export async function refreshAllData(): Promise<void> {
-  await collectMonitoring();
+export function start() {
+    return setInterval(() => {
+        void refreshAllData().catch(() => console.error("Falha na coleta; os últimos dados gravados foram preservados."));
+    }, COLLECTION_INTERVAL_MS);
 }

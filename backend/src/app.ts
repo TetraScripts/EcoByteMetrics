@@ -19,6 +19,7 @@ import {
   getCollectedMetricsByServiceId,
 } from "./modules/Services/services.service.js";
 
+// Polling inicial e periódico é iniciado por server.ts.
 const app = express();
 
 app.use(cors());
