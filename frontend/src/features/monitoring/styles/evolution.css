@@ -52,15 +52,6 @@
 .evolution-tooltip-value { padding-top: 10px; margin-top: 10px; border-top: 1px solid #edf2ee; }
 .evolution-tooltip-value > span { display: block; color: #718176; font-size: 11px; }
 .evolution-tooltip-value b { display: block; font-size: 22px; letter-spacing: -.035em; font-weight: 650; color: #087451; }
-.evolution-tooltip .evolution-tooltip-note { border-left: 2px solid #c49b54; padding-left: 9px; color: #79633b; font-size: 11px; }
-.evolution-gap-detail { padding: 16px 18px; border: 1px solid #e2e8de; border-left: 3px solid #b78328; border-radius: 10px; background: #fcfdfb; }
-.evolution-gap-detail h4 { font-size: 13px; font-weight: 650; }
-.evolution-gap-detail p, .evolution-gap-detail li { font-size: 12px; line-height: 1.6; margin-top: 8px; }
-.evolution-gap-detail .evolution-gap-time { font-variant-numeric: tabular-nums; color: #6f642f; margin-bottom: 12px; }
-.evolution-gap-detail h4:not(:first-child) { margin-top: 14px; }
-.evolution-gap-detail ul { margin: 0; padding-left: 18px; }
-.evolution-gap-detail small { display: block; color: #60766a; font-size: 10px; }
-.evolution-gap-note { color: #60766a; }
 .evolution-chart-empty { display: flex; flex-direction: column; align-items: center; justify-content: center; min-height: clamp(150px, 28dvh, 260px); gap: 10px; padding: 20px; text-align: center; color: #739786; }
 .evolution-panel h3 { font-size: 16px; letter-spacing: -.025em; font-weight: 650; }
 .evolution-chart-empty h3 { color: #315648; }

@@ -41,7 +41,6 @@ export function DashboardPage() {
   const analysis = useAnalysis();
   const [params, setParams] = useSearchParams();
   const [filtersOpen, setFiltersOpen] = useState(() => params.get("painel") === "historico");
-  useEffect(() => { setHistoryOpen?.(filtersOpen); return () => setHistoryOpen?.(false); }, [filtersOpen, setHistoryOpen]);
   const [applicationPage, setApplicationPage] = useState(0);
   const [hoveredServiceId, setHoveredServiceId] = useState("");
   const [focusedServiceId, setFocusedServiceId] = useState("");
@@ -68,6 +67,8 @@ export function DashboardPage() {
   const administration = !selectedId && tab === "administracao";
   const detailTab = ["recursos", "evolucao"].includes(params.get("detalhe") ?? "") ? params.get("detalhe")! : "resumo";
   const historicalView = selectedId ? detailTab === "evolucao" : tab === "evolucao" || tab === "comparar";
+  const showFilters = filtersOpen && !administration && !historicalView;
+  useEffect(() => { setHistoryOpen?.(showFilters); return () => setHistoryOpen?.(false); }, [showFilters, setHistoryOpen]);
   const evolutionMode = params.get("serie") === "intervalos" ? "intervals" : "cumulative";
   const filtered = Boolean(search || status || analysis.regional || analysis.date || params.has("periodo"));
   const update = useCallback((values: Record<string, string>, replace = false) => {
@@ -81,7 +82,8 @@ export function DashboardPage() {
   const services = analysis.services;
   const mapServices = useMemo(() => selected ? serviceLocationPeers(analysis.environmentServices, selected) : services, [selected, services, analysis.environmentServices]);
   const history = analysis.history;
-  const impacts = useMemo(() => applicationImpacts(services, history, metric), [services, history, metric]);
+  const showHistoricalRanking = !selectedId && tab === "evolucao" && params.get("painel") === "aplicacoes";
+  const impacts = useMemo(() => showHistoricalRanking ? applicationImpacts(services, history, metric) : [], [services, history, metric, showHistoricalRanking]);
   const latestHistory = useMemo(() => latestCollections(services), [services]);
   const latestImpacts = useMemo(() => applicationImpacts(services, latestHistory, metric, true), [services, latestHistory, metric]);
   const latestOverview = !selectedId && (tab === "geral" || tab === "mapa");
@@ -136,14 +138,13 @@ export function DashboardPage() {
         {filterButton}
       </div>}
     </div>}
-    {!administration && !historicalView && filtersOpen && <FiltersDialog onClose={() => setFiltersOpen(false)}><div className="monitoring-filters">
+    {showFilters && <FiltersDialog onClose={() => setFiltersOpen(false)}><div className="monitoring-filters">
       <label>País<select value={params.get("pais") ?? ""} onChange={event => update({ pais: event.target.value, cidade: "", regiao: "" })}><option value="">Todos os países</option>{countries.map(country => <option key={country}>{country}</option>)}</select></label>
       <label>Região<select value={params.get("regiao") ?? ""} onChange={event => update({ regiao: event.target.value, cidade: "" })}><option value="">Todas as regiões</option>{regionOptions.map(service => <option key={service.regionCode} value={service.regionCode}>{[service.city, service.region].filter(Boolean).join(" · ") || service.regionCode}</option>)}</select></label>
       <label>Situação da aplicação<select value={status} onChange={event => update({ estado: event.target.value })}><option value="">Todas as situações</option>{Object.entries(serviceStatusLabels).map(([value, label]) => <option key={value} value={value}>{label}</option>)}</select></label>
-      {historicalView && <label>Período<select value={period} onChange={event => update({ periodo: event.target.value })}><option value="24h">Até 24 horas</option><option value="7d">Até 7 dias</option></select></label>}
       <label>Consultar o passado até<input aria-label="Consultar o passado até" type="datetime-local" max={localDateTimeMax()} value={analysis.invalidDate ? "" : analysis.date} onChange={event => update({ ate: event.target.value })} /></label>
       <button className="monitoring-text-button" onClick={clearFilters}><X size={16} />Limpar filtros</button>
-      <div className="monitoring-filter-history"><h3>Escolher um horário anterior</h3><ObservationTimeline loading={loading || (!error && snapshot.historyIncluded === false)} observations={snapshot.observations ?? []} selected={analysis.observedAt} onSelect={value => update({ instante: value, ate: "" }, true)} onLive={goLive} onExplore={!selectedId && tab === "evolucao" ? () => { update({ aba: mobile ? "mapa" : "" }); setFiltersOpen(false); } : undefined} /></div>
+      <div className="monitoring-filter-history"><h3>Escolher um horário anterior</h3><ObservationTimeline loading={loading || (!error && snapshot.historyIncluded === false)} observations={snapshot.observations ?? []} selected={analysis.observedAt} onSelect={value => update({ instante: value, ate: "" }, true)} onLive={goLive} /></div>
     </div><p className="monitoring-filter-note">Limpar filtros mantém o período escolhido.</p></FiltersDialog>}
     {!administration && <>
     {analysis.invalidDate && <p className="monitoring-notice" role="alert">Escolha uma data válida até o momento atual. <button onClick={goLive}>Voltar para agora</button></p>}
@@ -156,7 +157,7 @@ export function DashboardPage() {
     </details>}
     </>}
     {selectedId ? selected && <MonitoringTabs label="Informações da aplicação" value={detailTab} tabs={[{ value: "resumo", label: "Resumo" }, { value: "recursos", label: "Recursos" }, { value: "evolucao", label: "Evolução" }]} onChange={value => update({ detalhe: value })} /> : <MonitoringTabs label="Visualização do monitoramento" value={tab} tabs={[{ value: "geral", label: "Visão geral", mobileLabel: "Serviços" }, { value: "mapa", label: "Mapa", className: "mobile-map-tab" }, { value: "evolucao", label: "Evolução" }, { value: "comparar", label: "Comparar" }, { value: "administracao", label: "Administração", restricted: true }]} onChange={value => update({ aba: value === "geral" ? "" : value })} />}
-    {!selectedId && !administration && <MonitoringSummary context={latestOverview ? undefined : dataContext} latest={latestOverview || comparisonLatest} services={summaryServices} history={summaryHistory} comparison={tab === "comparar"} loading={loading} onRefresh={() => void refresh()} />}
+    {!selectedId && !administration && <MonitoringSummary context={latestOverview ? undefined : dataContext} latest={latestOverview || comparisonLatest} services={summaryServices} history={summaryHistory} totals={summaryHistory === history ? analysis.totals : undefined} comparison={tab === "comparar"} loading={loading} onRefresh={() => void refresh()} />}
     <section key="monitoring-content" className="monitoring-view" id="monitoring-content" role="tabpanel" aria-label={selectedId ? "Detalhes da aplicação" : administration ? "Administração do ambiente" : tab === "comparar" ? "Comparação de aplicações" : tab === "evolucao" ? "Evolução do ambiente" : "Visão geral do ambiente"}>
       <div className={"monitoring-overview" + (selected ? " service-overview" : "")} data-view={tab} hidden={selectedId ? !selected : tab === "evolucao" || tab === "comparar" || administration}>
         <section className="monitoring-location" aria-label="Localização dos serviços">

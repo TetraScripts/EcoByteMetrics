@@ -12,7 +12,9 @@ test("Recharts recebe uma interrupção explícita entre períodos sem amostras"
   ]);
   assert.equal(result[2]!.from, 30_000);
   assert.equal(result[2]!.to, 120_000);
-  assert.match(result[2]!.reason!, /não informou o motivo/);
+  assert.match(result[2]!.reason!, /Não há amostras registradas neste período/);
+  assert.match(result[2]!.reason!, /pode acontecer.*programa responsável pelas coletas/);
+  assert.match(result[2]!.reason!, /Fechar apenas a página não interrompe as coletas/);
   assert.equal(source.length, 3);
 });
 

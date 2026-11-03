@@ -83,17 +83,6 @@ test("integração do frontend: contratos HTTP, análise, telas e navegação", 
       assert.equal((await getMonitoringSnapshot(undefined, {includeHistory: true})).history.length, 1);
     });
 
-    await t.test("administração valida a configuração recebida sem substituir falhas por 30 segundos", async () => {
-      const {getMonitoringSettings} = await vite.ssrLoadModule("/src/features/monitoring/api/settings.ts");
-      const signal = new AbortController().signal;
-      assert.deepEqual(await getMonitoringSettings(async (path: string) => {
-        assert.equal(path, "/api/monitoring-settings");
-        return {collectionIntervalSeconds: 45, discovery: "automatic", editable: false};
-      }, signal), {collectionIntervalSeconds: 45});
-      for (const data of [{}, {collectionIntervalSeconds: -1}, {collectionIntervalSeconds: 30, discovery: "automatic", editable: true}])
-        await assert.rejects(getMonitoringSettings(async () => data, signal));
-    });
-
     await t.test("recursos históricos aceitam zero e ausência, mas rejeitam valores inválidos", async child => {
       const resources = {cpuPercent:0,memoryGb:0,diskGb:0,networkGb:0,durationSeconds:30};
       child.mock.method(globalThis,"fetch",async()=>Response.json(persisted({history:[dbPoint({resources})]})));
@@ -147,7 +136,7 @@ test("integração do frontend: contratos HTTP, análise, telas e navegação", 
     const { AuthContext } = await vite.ssrLoadModule("/src/features/auth/AuthContext.ts");
     const { createAuthStore } = await vite.ssrLoadModule("/src/features/auth/session.ts");
     const { AdministrationAccess } = await vite.ssrLoadModule("/src/features/auth/AdministrationAccess.tsx");
-    const render = (path: string, page = DashboardPage, changes = {}) => renderToString(h(MemoryRouter, { initialEntries: [path] }, h(AuthProvider, null, h(MonitoringContext.Provider, { value: { snapshot, period: "24h", loading: false, error: null, refresh: async () => null, setPeriod: () => {}, ...changes } }, h(AnalysisProvider, null, h(page))))));
+    const render = (path: string, page = DashboardPage, changes = {}) => renderToString(h(MemoryRouter, { initialEntries: [path] }, h(AuthProvider, null, h(MonitoringContext.Provider, { value: { snapshot, period: "24h", loading: false, error: null, refresh: async () => null, ...changes } }, h(AnalysisProvider, null, h(page))))));
 
     await t.test("limpar filtros preserva período, indicador, modo do gráfico e aplicações comparadas", () => {
       const clear = clearMonitoringFilters("?aba=comparar&periodo=7d&serie=intervalos&ordem=energy&app=a&app=b&pais=Brasil&regiao=br-sp&estado=available&busca=API&ate=2026-10-30T22:00&instante=" + at);

@@ -1,5 +1,3 @@
-.ecobyte-home .hero-emblem__leaf { max-height: min(60svh, 620px); object-fit: contain; opacity: 1; }
-.ecobyte-home .hero-emblem__caption { margin-top: 20px; }
 .ecobyte-home .home-purpose, .ecobyte-home .home-questions { display: grid; grid-template-columns: 1.1fr 1fr; gap: 12%; padding: 110px max(24px, calc((100vw - 1400px) / 2)); color: #184333; background: #f3f6ef; }
 .ecobyte-home .purpose-heading h2, .ecobyte-home .home-questions h2 { font-family: var(--eb-font-heading); font-size: clamp(36px, 3.7vw, 60px); line-height: 1.15; letter-spacing: -.055em; font-weight: 450; margin: 0; }
 .ecobyte-home .purpose-copy { padding-top: 46px; }

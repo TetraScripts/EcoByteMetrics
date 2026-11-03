@@ -52,7 +52,6 @@ html:has(.monitoring-filter-dialog[open]) { overflow: hidden; }
 .monitoring-filter-dialog footer button { min-height: 44px; padding: 10px 20px; border-radius: 24px; background: var(--monitoring-green); color: white; font-weight: 600; }
 .comparison-table { min-width: 580px; }
 .administration-settings-body { padding: 0; }
-.administration-interval output { display: grid; place-items: center; min-width: 80px; min-height: 52px; border: 1px solid #d9e5df; border-radius: 8px; background: #f7faf8; font-size: 24px; font-variant-numeric: tabular-nums; }
 .monitoring-main .evolution-session-label, .monitoring-main .evolution-chart-heading > span,
 .monitoring-main .evolution-chart-reading > div > span, .monitoring-main .evolution-chart-reading time { font-size: 13px; }
 @media (min-width: 901px) {

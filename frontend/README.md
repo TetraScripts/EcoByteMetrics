@@ -50,7 +50,8 @@ Para medir o tamanho do build, execute `npm run measure:build`. O relatório dis
 | `/` | Landing page com quatro vídeos, seções explicativas e acesso ao dashboard |
 | `/dashboard` | Lista, filtros, estados, globo, resumo e evolução das amostras |
 | `/dashboard?servico=ID` | Resumo e recursos da última coleta; totais por período na Evolução; globo permanece à esquerda no desktop |
-| `/comparar` | Seleção de duas ou mais aplicações, tabela com o mesmo intervalo e cobertura por aplicação |
+| `/comparar` | Seleção de aplicações e comparação da última coleta ou dos totais no período |
+| `/dashboard?aba=administracao` | Tela reservada, com autenticação obrigatória, conta conectada e saída; configurações removidas temporariamente |
 | `/login` | Formulário conectado ao backend, sessão restaurada pelo servidor, retorno seguro e tratamento de erros |
 | `/cadastro` | Criação de conta pela API, validação e retorno ao login com confirmação e e-mail preenchido |
 | `/gerenciamento` | Funcionalidade pendente do backend |
@@ -63,9 +64,9 @@ Busca, estado, país, região, cidade, período e data são mantidos na URL. A n
 
 ## Dados, cálculos e limites
 
-O adaptador `src/features/monitoring/api/monitoring.ts` consulta `GET /backend/api/monitoring?period=24h|7d`, com `until` ISO opcional para revisão de coletas. A resposta vem do PostgreSQL. A visão geral usa `view=latest`, com catálogo e últimas leituras; Evolução, Comparar e a linha do tempo carregam o histórico quando abertos. `historyIncluded` distingue uma consulta leve de um histórico realmente vazio. A interface não consulta diretamente as APIs externas nem monta o histórico a partir das visitas ao navegador.
+O adaptador `src/features/monitoring/api/monitoring.ts` consulta `GET /backend/api/monitoring?period=24h|7d`, com `until` ISO opcional para revisão de coletas. A resposta vem do PostgreSQL. A visão geral usa `view=latest`, com catálogo e últimas leituras; Evolução, comparação por período e a linha do tempo carregam o histórico quando abertos. Comparar pela última coleta usa a mesma consulta resumida da visão geral. `historyIncluded` distingue uma consulta leve de um histórico realmente vazio. A interface não consulta diretamente as APIs externas nem monta o histórico a partir das visitas ao navegador.
 
-A visão geral e o resumo individual mostram a última leitura disponível de cada aplicação. Evolução e Comparar apresentam os totais do período; o seletor de período aparece somente nessas análises.
+A visão geral e o resumo individual mostram a última leitura disponível de cada aplicação. Evolução apresenta os totais do período. Comparar permite escolher entre a última coleta e os totais do período; o seletor de período fica disponível nas análises históricas.
 
 O backend coleta e grava a cada 30 segundos, mesmo com o navegador fechado, enquanto estiver ativo. Recarregar a página consulta novamente os dados gravados. Selecionar período ou data consulta o banco novamente; a interface não mostra uma resposta de outro recorte como se fosse o resultado novo. Em falha de rede, a última resposta permanece em memória, sem gerar amostras adicionais.
 
@@ -103,8 +104,8 @@ Este Compose inicia apenas o frontend na porta 5173 e encaminha `/backend/` para
 
 Não coloque credenciais no frontend nem implemente histórico fictício para contornar a ausência de endpoints. Validação de permissões e operações administrativas pertence ao servidor.
 
-## Ranking histórico e comparação de recursos
+## Ranking histórico e comparação
 
 A visão geral mantém aplicações removidas ao final. Em Evolução → Aplicações, o ranking ordena somente pelo impacto no período, incluindo serviços removidos quando pertencem à seleção.
 
-A API fornece recursos históricos médios ponderados pela duração de cada leitura. Os blocos adicionais de recursos e qualidade das leituras foram retirados da interface por decisão visual; a tabela principal do comparador apresenta energia e emissões no mesmo intervalo.
+A API fornece recursos históricos médios ponderados pela duração de cada leitura. Os blocos adicionais de recursos e qualidade das leituras foram retirados da interface por decisão visual; o frontend não calcula essas médias sem uso. O comparador oferece a última leitura disponível de cada aplicação ou a soma de energia e emissões no período. A última coleta usa a consulta resumida, sem baixar o histórico, e informa o horário de cada leitura.

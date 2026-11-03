@@ -4,17 +4,14 @@ import { MonitoringContext } from "@/features/monitoring/contexts/MonitoringCont
 import { useSettings } from "@/shared/preferences/useSettings";
 import { useLocation } from "react-router-dom";
 import type { MonitoringSnapshot } from "@/features/monitoring/types";
-import type { Period } from "@/shared/lib/period";
-import { summarizeCollections } from "@/features/monitoring/domain/history";
 import { isPeriod } from "@/shared/lib/period";
 import { DiscoveryError } from "@/features/monitoring/api/discoveryError";
-import { mergeMonitoringSnapshot, markStaleServices, isMonitoringPath, REFRESH_INTERVAL_MS } from "../domain/snapshot";
+import { mergeMonitoringSnapshot, markStaleServices, isMonitoringPath, needsMonitoringHistory, REFRESH_INTERVAL_MS } from "../domain/snapshot";
 import { appendCollectionEvents, createCollectionPauseTracker } from "../domain/collectionEvents";
 import { parseLocalDate } from "@/shared/lib/localDate";
 
 export function MonitoringProvider({ children }: { children: ReactNode }) {
   const { settings } = useSettings();
-  const [selectedPeriod, setPeriod] = useState<Period>(settings.defaultPeriod);
   const [liveSnapshot, setLiveSnapshot] = useState<MonitoringSnapshot>({
     regions: [],
     services: [],
@@ -29,11 +26,11 @@ export function MonitoringProvider({ children }: { children: ReactNode }) {
   const pending = useRef<AbortController | null>(null);
   const trackPause = useRef(createCollectionPauseTracker());
   const { pathname, search } = useLocation();
-  const queryPeriod = new URLSearchParams(search).get("periodo");
-  const period = isPeriod(queryPeriod) ? queryPeriod : selectedPeriod;
   const filterParams = new URLSearchParams(search);
+  const queryPeriod = filterParams.get("periodo");
+  const period = isPeriod(queryPeriod) ? queryPeriod : settings.defaultPeriod;
   const monitoringActive = isMonitoringPath(pathname) && filterParams.get("aba") !== "administracao";
-  const includeHistory = historyOpen || (filterParams.has("servico") ? filterParams.get("detalhe") === "evolucao" : ["evolucao", "comparar"].includes(filterParams.get("aba") ?? ""));
+  const includeHistory = needsMonitoringHistory(filterParams, historyOpen);
   const dateFilter = filterParams.get("ate");
   const untilTimestamp = dateFilter ? parseLocalDate(dateFilter) : Date.parse(filterParams.get("instante") ?? "");
   const invalidCutoff = Boolean((dateFilter || filterParams.get("instante")) && !Number.isFinite(untilTimestamp));
@@ -98,23 +95,9 @@ export function MonitoringProvider({ children }: { children: ReactNode }) {
     };
   }, [monitoringActive, refresh]);
 
-  const totals = useMemo(
-    () => summarizeCollections(liveSnapshot.history),
-    [liveSnapshot.history],
-  );
-  const snapshot = useMemo(() => {
-    const history = liveSnapshot.history;
-    return {
-      ...liveSnapshot,
-      history,
-      totalEnergyKwh: totals.energyKwh,
-      totalEmissionsG: totals.emissionsG,
-    };
-  }, [liveSnapshot, totals]);
-
   const monitoring = useMemo(
-    () => ({ snapshot, period, setPeriod, refresh, loading, error, setHistoryOpen }),
-    [snapshot, period, refresh, loading, error],
+    () => ({ snapshot: liveSnapshot, period, refresh, loading, error, setHistoryOpen }),
+    [liveSnapshot, period, refresh, loading, error],
   );
 
   return (

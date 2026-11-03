@@ -35,18 +35,3 @@ export function impactLocations(services: MonitoredService[], history: Collectio
     valueLabel: group.value === null ? "Estimativa incompleta" : group.value.toLocaleString("pt-BR", { maximumSignificantDigits: 4 }) + (lens === "energy" ? " kWh" : " g CO₂e"),
   }));
 }
-
-export function impactInsight(services: MonitoredService[], history: CollectionPoint[], metric: DashboardMetric, impacts?: ReturnType<typeof applicationImpacts>) {
-  if (services.length < 2) return null;
-  const ranked = impacts ?? applicationImpacts(services, history, metric);
-  if (ranked.some(entry => entry.value === null || !Number.isFinite(entry.value) ||
-    metric === "emissions" && entry.summary.emissionCount < entry.summary.count)) return null;
-  const total = ranked.reduce((sum, entry) => sum + entry.value!, 0);
-  if (!(total > 0)) return null;
-  const first = ranked[0]!;
-  const serviceIds = new Set(services.map(service => service.id));
-  const timestamps = history.filter(point => serviceIds.has(point.serviceId)).map(point => Date.parse(point.collectedAt)).filter(Number.isFinite);
-  if (!timestamps.length) return null;
-  return { serviceId: first.service.id, name: first.service.name, percent: first.value! / total * 100,
-    from: timestamps.reduce((a, b) => Math.min(a, b), Infinity), to: timestamps.reduce((a, b) => Math.max(a, b), -Infinity) };
-}

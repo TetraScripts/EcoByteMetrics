@@ -52,7 +52,6 @@
 .ecobyte-home .home-audio input { display: block; width: 90px; height: 28px; accent-color: #cae3a2; margin: 0; }
 .ecobyte-home .hero-scenes { margin-right: 145px; }
 .ecobyte-home .home-audio p { max-width: 220px; background: #174b3f; border-radius: 8px; font-size: 12px; line-height: 1.6; padding: 12px; margin: 0 0 8px; }
-.ecobyte-home .audio-sr-only { position: absolute; width: 1px; height: 1px; overflow: hidden; clip-path: inset(50%); white-space: nowrap; }
 @keyframes resourceIn { from { opacity: .3; transform: translateY(5px); } to { opacity: 1; transform: none; } }
 @media (max-width: 1500px) {
   .ecobyte-home .impact-journey, .ecobyte-home .impact-lab { padding-inline: 6vw; }
@@ -66,7 +65,6 @@
   .ecobyte-home .monitoring-preview__steps li { gap: 14px; }
   .ecobyte-home .impact-path { gap: 15px; }
   .ecobyte-home .impact-path > span { font-size: 12px; gap: 8px; }
-  .ecobyte-home .hero-emblem__leaf { opacity: 1; }
 }
 @media (max-width: 1100px) {
   .ecobyte-home .hero-bottom__note { display: none; }
@@ -92,7 +90,6 @@
   .ecobyte-home .home-audio { right: 12px; bottom: 12px; }
   .ecobyte-home .home-audio button { min-height: 36px; font-size: 11px; }
   .ecobyte-home .home-audio input { width: 62px; }
-  .ecobyte-home .hero-scroll { display: none; }
   .ecobyte-home .hero-scenes { margin-right: 135px; }
 }
 @media (prefers-reduced-motion: reduce) {

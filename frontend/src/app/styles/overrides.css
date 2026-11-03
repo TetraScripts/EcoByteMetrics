@@ -46,13 +46,9 @@ input[type='checkbox'], meter { accent-color: var(--eb-green); }
 .status-unavailable { color: var(--eb-danger); background: var(--eb-danger-bg); }
 .status-no-metrics, .status-stale { color: var(--eb-warning); background: var(--eb-warning-bg); }
 .error-message { color: var(--eb-danger); background: var(--eb-danger-bg); border-color: #e5c7c1; }
-.icon-tile-blue { color: var(--eb-info); background: #e8f1f5; }
-.icon-tile-amber { color: var(--eb-warning); background: var(--eb-warning-bg); }
 .history-toolbar > span, .date-selector > span { font-size: var(--eb-text-xs); }
-.metrics-grid { gap: var(--eb-space-4); }
 .dashboard-details, .dashboard-analysis { gap: var(--eb-space-6); }
 .research-form .button { border-radius: var(--eb-radius-md); }
-.panel-title-group { min-width: 0; }
 .app-header .desktop-nav > a { font-size: var(--eb-text-sm); padding-inline: var(--eb-space-1); }
 .app-header .desktop-nav > a.active::after { height: 2px; background: var(--eb-green); }
 
@@ -71,20 +67,7 @@ input[type='checkbox'], meter { accent-color: var(--eb-green); }
   .dashboard-main { width: calc(100% - var(--eb-space-5) * 2); }
   .page-heading h1 { font-size: 1.75rem; }
   .page-heading p { font-size: var(--eb-text-base); }
-  .page-heading .eyebrow, .panel-title-group .eyebrow { font-size: var(--eb-text-xs); letter-spacing: 0.1em; }
-  .panel { padding: var(--eb-space-5); }
-  .metric-card { padding: var(--eb-space-4); }
-  .metric-top { align-items: flex-start; }
-  .metric-top > span { font-size: var(--eb-text-xs); }
-  .metric-top .icon-tile { width: 28px; height: 28px; }
-  .metric-value { font-size: 1.75rem; }
-  .metric-note { font-size: var(--eb-text-xs); }
-  .panel-heading { flex-wrap: wrap; gap: var(--eb-space-3); }
-  .panel-heading h2 { font-size: var(--eb-text-md); }
+  .page-heading .eyebrow { font-size: var(--eb-text-xs); letter-spacing: 0.1em; }
   .history-toolbar, .date-selector { align-items: stretch; }
   .date-selector input { width: 100%; }
-}
-@media (max-width: 359px) {
-  .metrics-grid { grid-template-columns: 1fr; }
-  .metric-top { align-items: center; }
 }

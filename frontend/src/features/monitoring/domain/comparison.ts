@@ -15,14 +15,8 @@ export function compareApplications(services: MonitoredService[], history: Colle
     const points = samples.get(service.id) ?? [];
     const summary = summarizeCollections(points);
     const range = collectionRange(points);
-    const resources = points.flatMap(point => point.resources ? [point.resources] : []);
-    const durationSeconds = resources.reduce((sum, reading) => sum + reading.durationSeconds, 0);
-    const average = (key: "cpuPercent" | "memoryGb" | "diskGb" | "networkGb") =>
-      resources.reduce((sum, reading) => sum + reading[key] * reading.durationSeconds, 0) / durationSeconds;
     return {
       service, ...summary,
-      resources: durationSeconds > 0 ? {cpuPercent: average("cpuPercent"), memoryGb: average("memoryGb"),
-        diskGb: average("diskGb"), networkGb: average("networkGb"), durationSeconds} : null,
       first: range.first,
       last: range.last,
     };

@@ -17,7 +17,6 @@ import { useCarousel } from "@/features/home/hooks/useCarousel";
 
 interface HeroProps {
   copy: {
-    eyebrow: string;
     line1: string;
     line2: string;
     line3: string;

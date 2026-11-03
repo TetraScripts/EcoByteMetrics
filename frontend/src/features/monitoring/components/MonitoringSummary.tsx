@@ -8,10 +8,11 @@ import { createRefreshAnimation } from "../domain/refreshAnimation";
 import { InfoTooltip } from "@/shared/ui/InfoTooltip";
 import { serviceStatusLabels } from "../types";
 
-export function MonitoringSummary({ services, history, loading, onRefresh, comparison = false, latest = false, context }: {
+export function MonitoringSummary({ services, history, loading, onRefresh, comparison = false, latest = false, context, totals: providedTotals }: {
   services: MonitoredService[]; history: CollectionPoint[];
   loading: boolean; onRefresh: () => void;
   comparison?: boolean; latest?: boolean; context?: ReactNode;
+  totals?: ReturnType<typeof summarizeCollections>;
 }) {
   const refreshIcon = useRef<SVGSVGElement>(null);
   const animation = useRef<ReturnType<typeof createRefreshAnimation> | null>(null);
@@ -26,7 +27,7 @@ export function MonitoringSummary({ services, history, loading, onRefresh, compa
     return () => { preference.removeEventListener("change", updateMotion); controller.dispose(); animation.current = null; };
   }, [comparison]);
   useEffect(() => { animation.current?.setLoading(loading); }, [loading, comparison]);
-  const totals = summarizeCollections(history);
+  const totals = providedTotals ?? summarizeCollections(history);
   const { last } = collectionRange(history);
   const formatDate = (value: string | number) => new Date(value).toLocaleString("pt-BR");
   const refreshHelp = "A página consulta os dados salvos a cada 30 segundos enquanto está visível. Esta seta antecipa a consulta; não inicia uma nova coleta no servidor.";
