@@ -100,7 +100,9 @@ export class WorkerService {
   }
 
   private async atualizarService(service_names: string[]){
-    await updateServiceStatus(service_names);
+    if(service_names.length!==0){ 
+      await updateServiceStatus(service_names);
+    }
   }
 
   private async cadastrarServiceLocation(service: createServiceInput,local: createLocationInput, metric: CreateMetricInput
