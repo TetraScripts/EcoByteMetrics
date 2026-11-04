@@ -5,6 +5,8 @@ import {
     getUserByIdController,
     updateUserController}
     from "./user.controller";
+import { authMiddleware } from "../Auth/auth.middleware";
+import { userAccessMiddleware } from "../Auth/userAccess.middleware";
 
 const userRouter = Router();
 

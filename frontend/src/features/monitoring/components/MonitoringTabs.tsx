@@ -1,6 +1,8 @@
+import { LockKeyhole } from "lucide-react";
+
 export function MonitoringTabs({ label, tabs, value, onChange, panelId = "monitoring-content", className = "monitoring-tabs" }: {
   label: string;
-  tabs: { value: string; label: string; mobileLabel?: string; className?: string }[];
+  tabs: { value: string; label: string; mobileLabel?: string; className?: string; restricted?: boolean }[];
   value: string;
   onChange: (value: string) => void;
   panelId?: string;
@@ -20,6 +22,6 @@ export function MonitoringTabs({ label, tabs, value, onChange, panelId = "monito
     }}>
     {tabs.map(tab => <button key={tab.value} type="button" role="tab" className={tab.className}
       aria-selected={value === tab.value} tabIndex={value === tab.value ? 0 : -1}
-      aria-controls={panelId} onClick={() => onChange(tab.value)}>{tab.mobileLabel ? <><span className="tab-desktop-label">{tab.label}</span><span className="tab-mobile-label">{tab.mobileLabel}</span></> : tab.label}</button>)}
+      aria-controls={panelId} title={tab.restricted ? "Área restrita: acesso com uma conta" : undefined} onClick={() => onChange(tab.value)}>{tab.mobileLabel ? <><span className="tab-desktop-label">{tab.label}</span><span className="tab-mobile-label">{tab.mobileLabel}</span></> : tab.label}{tab.restricted && <><LockKeyhole size={14} aria-hidden="true" /><span className="sr-only"> — acesso com conta</span></>}</button>)}
   </div>;
 }

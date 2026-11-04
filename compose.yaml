@@ -2,7 +2,7 @@ services:
   postgres:
     build: ./database
     
-    container_name: database_EcoByteMetrics
+    container_name: ${POSTGRES_CONTAINER_NAME:-database_EcoByteMetrics}
     restart: unless-stopped
 
     environment:
@@ -18,7 +18,7 @@ services:
       - ./database:/docker-entrypoint-initdb.d
 
     healthcheck:
-      test: ["CMD-SHELL", "pg_isready -U \"$$POSTGRES_USER\" -d \"$$POSTGRES_DATABASE\""]
+      test: ["CMD-SHELL", "pg_isready -U \"$$POSTGRES_USER\" -d \"$$POSTGRES_DB\""]
       interval: 5s
       timeout: 5s
       retries: 10
@@ -26,11 +26,11 @@ services:
       
   backend:
     build:
-      context: ./backend
-      dockerfile: Dockerfile
+      context: .
+      dockerfile: backend/Dockerfile
     env_file: .env
 
-    container_name: ecobytemetrics-backend
+    container_name: ${BACKEND_CONTAINER_NAME:-ecobytemetrics-backend}
     restart: unless-stopped
 
     environment:
@@ -63,8 +63,10 @@ services:
       context: ./frontend
       dockerfile: Dockerfile
 
-    container_name: ecobytemetrics-frontend
+    container_name: ${FRONTEND_CONTAINER_NAME:-ecobytemetrics-frontend}
     restart: unless-stopped
+    environment:
+      BACKEND_PROXY_TARGET: http://backend:${PORT:-3000}
 
     ports:
       - "${FRONT_PORT}:${PGPORT}"

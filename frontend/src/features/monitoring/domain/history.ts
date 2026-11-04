@@ -1,4 +1,12 @@
-import type { CollectionPoint } from "@/features/monitoring/types";
+import type { CollectionPoint, MonitoredService } from "@/features/monitoring/types";
+
+export function latestCollections(services: MonitoredService[]): CollectionPoint[] {
+  return services.flatMap(service => service.energyKwh !== null && service.lastCollectionAt && Number.isFinite(Date.parse(service.lastCollectionAt)) ? [{
+    serviceId: service.id, collectedAt: service.lastCollectionAt,
+    energyKwh: service.energyKwh, emissionsG: service.emissionsG,
+    intervalSeconds: service.collectionIntervalSeconds ?? undefined,
+  }] : []);
+}
 
 interface HistoryIndex {
   positions: Map<string, number>;
@@ -66,17 +74,30 @@ export function mergeCollectionHistory(
   return history;
 }
 
+export function collectionRange(points: CollectionPoint[]) {
+  let first: number | null = null, last: number | null = null;
+  for (const point of points) {
+    const from = Date.parse(point.firstCollectedAt ?? point.collectedAt), to = Date.parse(point.collectedAt);
+    if (!Number.isFinite(from) || !Number.isFinite(to)) continue;
+    first = first === null ? from : Math.min(first, from);
+    last = last === null ? to : Math.max(last, to);
+  }
+  return { first, last };
+}
+
 export function summarizeCollections(points: CollectionPoint[]) {
   let energy = 0,
     emissions = 0,
     seconds = 0,
+    count = 0,
     emissionCount = 0;
   for (const point of points) {
     energy += point.energyKwh;
+    count += point.sampleCount ?? 1;
     seconds += point.intervalSeconds ?? 0;
     if (point.emissionsG !== null) {
       emissions += point.emissionsG;
-      emissionCount++;
+      emissionCount += point.emissionCount ?? 1;
     }
   }
   const energyKwh = points.length && Number.isFinite(energy) ? energy : null;
@@ -85,13 +106,13 @@ export function summarizeCollections(points: CollectionPoint[]) {
   return {
     energyKwh,
     emissionsG,
-    count: points.length,
+    count,
     emissionCount,
     seconds,
     energyPerHourKwh:
       seconds > 0 && energyKwh !== null ? (energyKwh * 3600) / seconds : null,
     emissionsPerHourG:
-      seconds > 0 && emissionCount === points.length && emissionsG !== null
+      seconds > 0 && emissionCount === count && emissionsG !== null
         ? (emissionsG * 3600) / seconds
         : null,
   };

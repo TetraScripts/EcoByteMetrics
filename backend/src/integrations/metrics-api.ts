@@ -80,6 +80,12 @@ export interface ServiceMetrics {
     };
 }
 
+export class MetricsApiError extends Error {
+    constructor(public readonly code: string) {
+        super("Não foi possível obter métricas válidas do serviço.");
+    }
+}
+
 export async function fetchServiceMetrics(
     serviceId: string
 ): Promise<ServiceMetrics> {
@@ -97,12 +103,13 @@ export async function fetchServiceMetrics(
     );
 
     if (!response.ok) {
-        throw new Error(
-            `Erro ao consultar métricas do serviço "${serviceId}": HTTP ${response.status}`
-        );
+        const body: unknown = await response.json().catch(() => null);
+        const code = body && typeof body === "object" && "error" in body && typeof body.error === "string" && body.error.trim()
+            ? body.error.trim() : "metrics_unavailable";
+        throw new MetricsApiError(code);
     }
 
-    const data: unknown = await response.json();
+    const data: unknown = await response.json().catch(() => { throw new MetricsApiError("invalid_metrics"); });
 
     if (
         typeof data !== "object" ||
@@ -113,9 +120,7 @@ export async function fetchServiceMetrics(
         typeof data.metrics !== "object" ||
         data.metrics === null
     ) {
-        throw new Error(
-            `Resposta inválida ao consultar métricas do serviço "${serviceId}".`
-        );
+        throw new MetricsApiError("invalid_metrics");
     }
 
     const metrics = data.metrics;
@@ -130,9 +135,7 @@ export async function fetchServiceMetrics(
         !("network_gb" in metrics) ||
         typeof metrics.network_gb !== "number"
     ) {
-        throw new Error(
-            `Métricas incompletas para o serviço "${serviceId}".`
-        );
+        throw new MetricsApiError("invalid_metrics");
     }
 
     return {

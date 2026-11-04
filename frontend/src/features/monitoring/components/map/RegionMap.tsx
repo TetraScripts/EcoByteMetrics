@@ -53,7 +53,7 @@ export function RegionMap({ services, selectedServiceId, onSelectService, histor
         onPointSelect={selectPoint} onPointHover={highlightPoint} highlightedCityId={highlightedCityId} focusCity={focusCity} rotationPaused={rotationPaused} />
     </Suspense></GlobeBoundary>
     {choosing && <div className="map-choices" aria-label={"Aplicações em " + choosing.name}>
-      <div><strong>{choosing.name} · {choosing.count} serviços</strong><button onClick={() => setGroupId("")} aria-label="Fechar seleção de aplicações">Fechar</button></div>
+      <div><strong>{choosing.name} · {choosing.count} aplicações</strong><button onClick={() => setGroupId("")} aria-label="Fechar seleção de aplicações">Fechar</button></div>
       {choosing.services.map(service => <button key={service.id} onClick={() => onSelectService(service.id)}><span>{service.name}</span><span className="monitoring-status"><i style={{ background: statusColors[service.status] }} />{serviceStatusLabels[service.status]}</span></button>)}
     </div>}
   </div>;

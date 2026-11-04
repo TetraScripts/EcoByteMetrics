@@ -1,4 +1,5 @@
 import { CarbonRegionFactor, fetchCarbonRegions } from "../../integrations/carbon-api.js";
+import type { Metric as ApiMetric, ServiceMetrics as DiscoveredService } from "../../integrations/api.types.js";
 import {
     fetchAvailableServices,
     fetchServiceMetrics,
@@ -125,12 +126,36 @@ let lastUpdatedAt: string | null = null;
 
 const collectedMetrics = new Map<string, CollectedServiceMetrics>();
 
+/** Syncs aggregator discovery data into the dashboard cache. */
+export function recordDiscoveredServices(services: DiscoveredService[], at = new Date().toISOString()): void {
+    discoveredServices = services;
+    lastUpdatedAt = at;
+}
+
+/** Publishes only samples that have already been persisted successfully. */
+export function recordCollectedServiceMetrics(serviceId: string, sample: ApiMetric, at = new Date().toISOString()): void {
+    collectedMetrics.set(serviceId, {
+        serviceId,
+        metrics: {
+            collection_interval_seconds: sample.collection_interval_seconds,
+            metrics: { ...sample.metrics },
+        },
+        updatedAt: at,
+    });
+}
+
+export function publishCollection(catalog: AggregatorService[], metrics: Map<string, ServiceMetrics>, at: string) {
+    recordDiscoveredServices(catalog, at);
+    for (const [serviceId, sample] of metrics) recordCollectedServiceMetrics(serviceId, sample, at);
+    const ids = new Set(catalog.map(service => service.id));
+    for (const id of collectedMetrics.keys()) if (!ids.has(id)) collectedMetrics.delete(id);
+}
+
 export async function refreshDiscoveredServices(): Promise<void> {
     try {
         const services = await fetchServices();
         // Atualiza a lista somente após uma consulta bem-sucedida.
-        discoveredServices = services;
-        lastUpdatedAt = new Date().toISOString();
+        recordDiscoveredServices(services);
     } catch (error: unknown) {
         console.error(
             "Falha ao consultar serviços descobertos.",
@@ -214,5 +239,9 @@ export function setCarbonRegionsFetcherForTesting(
     fetcher: CarbonRegionsFetcher
 ): void {
     fetchCarbonFactors = fetcher;
+}
+
+export function resetCarbonRegionsFetcher(): void {
+    fetchCarbonFactors = fetchCarbonRegions;
 }
 

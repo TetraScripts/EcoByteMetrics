@@ -4,8 +4,8 @@ import {
     createMetricRepository,
     getMetricByIdRepository,
     listMetricsByServiceIdRepository,
-    CreateMetricInput
-}   from "./metric.repository";
+    CreateMetricInput,
+} from "./metric.repository";
 
 export class MetricError extends Error {
     constructor(message: string, public readonly statusCode: number) {
@@ -19,29 +19,30 @@ function validateMetricId(id: number): void {
         throw new MetricError("ID da métrica inválido", 400);
     }
 }
+
 function validateServiceId(id: number): void {
     if (!Number.isSafeInteger(id) || id <= 0) {
         throw new ServicesError("ID do serviço inválido", 400);
     }
 }
 
-function validateMetricInput(metricInput: CreateMetricInput): CreateMetricInput  {
-    if (!metricInput.id_service || !Number.isSafeInteger(metricInput.id_service) || metricInput.id_service <= 0) {
-        throw new MetricError("ID do serviço inválido", 400);
+function validateMetricInput(metricInput: CreateMetricInput): CreateMetricInput {
+    validateServiceId(metricInput.id_service);
+
+    const cpu = metricInput.cpu_metric;
+    if (!Number.isFinite(cpu) || cpu < 0 || cpu > 100) {
+        throw new MetricError("Valor de CPU inválido (esperado entre 0 e 100)", 400);
     }
-    if (metricInput.cpu_metric < 0 || metricInput.cpu_metric > 100) {
-        throw new MetricError("Valor de CPU inválido", 400);
+
+    const otherMetrics = [metricInput.ram_metric, metricInput.hd_metric, metricInput.network_metric];
+    if (otherMetrics.some((value) => !Number.isFinite(value) || value < 0)) {
+        throw new MetricError("Memória, disco e rede devem ser finitos e não negativos", 400);
     }
-    if (metricInput.ram_metric < 0 || metricInput.ram_metric > 100) {
-        throw new MetricError("Valor de memória inválido", 400);
-    }   
-    if (metricInput.hd_metric < 0 || metricInput.hd_metric > 100) {
-        throw new MetricError("Valor de disco inválido", 400);
-    }
-    if (metricInput.colletion_interval_metric <= 0) {
+
+    if (!Number.isFinite(metricInput.colletion_interval_metric) || metricInput.colletion_interval_metric <= 0) {
         throw new MetricError("Intervalo de coleta inválido", 400);
     }
-    if (!metricInput.date_houry || isNaN(new Date(metricInput.date_houry).getTime())) {
+    if (!metricInput.date_houry || Number.isNaN(new Date(metricInput.date_houry).getTime())) {
         throw new MetricError("Timestamp inválido", 400);
     }
     return metricInput;
@@ -49,18 +50,16 @@ function validateMetricInput(metricInput: CreateMetricInput): CreateMetricInput 
 
 function handleRepositoryError(error: unknown): never {
     if (typeof error === "object" && error !== null && "code" in error && error.code === "23505") {
-        throw new MetricError("Já existe uma métrica com esse ID.", 409);
+        throw new MetricError("A amostra de métrica já existe para esse instante.", 409);
     }
     throw error;
 }
 
-export async function  createMetricService(metricInput: CreateMetricInput): Promise<Metric> {
-    const data = validateMetricInput(metricInput);  
-    try{
-        const metric = await createMetricRepository(data);
-        return metric;
-    }
-    catch (error) {
+export async function createMetricService(metricInput: CreateMetricInput): Promise<Metric> {
+    const data = validateMetricInput(metricInput);
+    try {
+        return await createMetricRepository(data);
+    } catch (error: unknown) {
         handleRepositoryError(error);
     }
 }
@@ -68,12 +67,11 @@ export async function  createMetricService(metricInput: CreateMetricInput): Prom
 export async function getMetricByIdService(id_metric: number): Promise<Metric | null> {
     validateMetricId(id_metric);
     const metric = await getMetricByIdRepository(id_metric);
-    if(!metric) {
+    if (!metric) {
         throw new MetricError("Métrica não encontrada", 404);
     }
     return metric;
 }
-
 
 export async function listMetricsByServiceIdService(id_service: number): Promise<Metric[]> {
     validateServiceId(id_service);
@@ -83,4 +81,3 @@ export async function listMetricsByServiceIdService(id_service: number): Promise
     }
     return metrics;
 }
-    

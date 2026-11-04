@@ -12,7 +12,13 @@ export type CreateCarbonInput = Omit<Carbon, "id_carbon">;
 
 export async function createCarbonRepository(carbon: CreateCarbonInput): Promise<Carbon> {
     const result = await pool.query(
-        "INSERT INTO carbons (id_location, intesity_co2e_kwh_carbon, renewable_percent_carbon, date_houry) VALUES ($1, $2, $3, $4) RETURNING *",
+        `INSERT INTO carbons (id_location, intesity_co2e_kwh_carbon, renewable_percent_carbon, date_houry)
+         VALUES ($1, $2, $3, $4)
+         ON CONFLICT (id_location, date_houry)
+         DO UPDATE SET
+           intesity_co2e_kwh_carbon = EXCLUDED.intesity_co2e_kwh_carbon,
+           renewable_percent_carbon = EXCLUDED.renewable_percent_carbon
+         RETURNING *`,
         [
             carbon.id_location,
             carbon.intesity_co2e_kwh_carbon,

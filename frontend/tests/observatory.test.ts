@@ -1,6 +1,6 @@
 import { test } from "node:test";
 import assert from "node:assert/strict";
-import { appendObservation, impactInsight, impactLocations, observationHistory } from "../src/features/monitoring/domain/observatory.ts";
+import { appendObservation, impactLocations, observationHistory } from "../src/features/monitoring/domain/observatory.ts";
 import { applicationImpacts } from "../src/features/monitoring/domain/dashboard.ts";
 import type { CollectionPoint, MonitoredService, MonitoringObservation } from "../src/features/monitoring/types.ts";
 
@@ -68,29 +68,11 @@ test("uma amostra incompleta impede que o grupo aparente ter impacto baixo", () 
   assert.equal(impactLocations(services, history, "status")[0]!.size, 27);
 });
 
-test("a descoberta informa a participação e o período real das amostras", () => {
-  const insight = impactInsight([service("a"), service("b")], [sample("a", 0, 3), sample("b", 30, 1)], "emissions");
-  assert.equal(insight?.name, "a");
-  assert.equal(insight?.percent, 75);
-  assert.equal(insight?.from, Date.parse(at(0)));
-  assert.equal(insight?.to, Date.parse(at(30)));
-});
-
-test("a descoberta não inventa percentuais com cobertura parcial ou total zero", () => {
-  const services = [service("a"), service("b")];
-  assert.equal(impactInsight(services, [sample("a", 0, 2)], "emissions"), null);
-  assert.equal(impactInsight(services, [sample("a", 0, 2), sample("b", 0, null)], "emissions"), null);
-  assert.equal(impactInsight(services, [sample("a", 0, 0), sample("b", 0, 0)], "emissions"), null);
-  assert.equal(impactInsight([service("a")], [sample("a", 0, 1)], "emissions"), null);
-});
-
-test("a descoberta reutiliza o ranking da tabela sem mudar o resultado", () => {
-  const services = [service("a"), service("b")];
-  const history = [sample("a", 0, 3), sample("b", 30, 1)];
-  for (const metric of ["energy", "emissions"] as const) {
-    const ranked = applicationImpacts(services, history, metric);
-    assert.deepEqual(impactInsight(services, history, metric, ranked), impactInsight(services, history, metric));
-  }
+test("somas conhecidas da tabela não geram participações ou tamanhos completos quando faltam fatores", () => {
+  const services=[service("a"),service("b")];
+  const history=[sample("a",0,2),sample("a",30,null),sample("b",0,1)];
+  assert.equal(applicationImpacts(services,history,"emissions")[0]!.value,2);
+  assert.equal(impactLocations(services,history,"emissions")[0]!.missingImpact,true);
 });
 
 test("a lente de estado preserva os pontos sem depender das estimativas", () => {

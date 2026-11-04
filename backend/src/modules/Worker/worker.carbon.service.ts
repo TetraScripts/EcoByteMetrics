@@ -1,6 +1,6 @@
 import { CarbonRegion } from "../../integrations/api.types";
 import { CarbonApiError } from "../../integrations/carbon-api";
-import { CreateCarbonInput, getCarbonByExistRepository } from "../Carbons/carbon.repository";
+import { CreateCarbonInput } from "../Carbons/carbon.repository";
 import { CarbonError, createCarbonService } from "../Carbons/carbon.service";
 import { createLocationInput } from "../Locations/location.repository";
 import { createLocation, getLocationByName } from "../Locations/location.service";
@@ -16,7 +16,7 @@ export class WorkerCarbons{
             //preenche dos dados da api para as interfaces que representa o banco de dados
             let carbon : CreateCarbonInput ={
               id_location:0,
-              date_houry: agora.toLocaleDateString().concat(" ",agora.toLocaleTimeString()),
+              date_houry: agora.toISOString(),
               renewable_percent_carbon:carbonsReg[i].renewable_share_percent,
               intesity_co2e_kwh_carbon:carbonsReg[i].carbon_intensity_gco2e_per_kwh
             }
@@ -61,11 +61,9 @@ export class WorkerCarbons{
         }else{
           carbon.id_location=Lugar.id_location
         }
-        let reposta = await getCarbonByExistRepository(carbon.renewable_percent_carbon, carbon.intesity_co2e_kwh_carbon)
-        if(!reposta){
-          await createCarbonService(carbon);
-          console.log("Cadastrado Carbon");
-        }
+        // Cada localização e instante têm sua própria amostra, mesmo com valores iguais.
+        await createCarbonService(carbon);
+        console.log("Cadastrado Carbon");
             
       }catch(error){
         if(error instanceof Error)

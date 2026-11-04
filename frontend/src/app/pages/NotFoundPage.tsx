@@ -1,5 +1,6 @@
 import { Link } from "react-router-dom";
 import { Brand } from "@/shared/ui/Brand";
+import "../styles/not-found.css";
 
 export function NotFoundPage() {
   return (
