@@ -56,3 +56,10 @@
   .globe-background[data-mask="legacy"] canvas { mask-image: linear-gradient(to bottom, transparent 0, transparent 210px, rgb(0 0 0 / 35%) 280px, #000 400px); }
   .globe-fade { background: linear-gradient(to bottom, #fff 0, #fff 210px, rgb(255 255 255 / 65%) 280px, transparent 400px); }
 }
+@media (max-width: 900px) {
+  /* OrbitControls sets touch-action inline; vertical swipes must still scroll the page. */
+  .globe-background canvas { touch-action: pan-y !important; }
+  .globe-background[data-mask="legacy"] canvas { mask-image: none; }
+  .globe-background .globe-fade { display: none; }
+  .map-choices > button { flex-wrap: wrap; }
+}

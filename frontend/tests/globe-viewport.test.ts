@@ -1,7 +1,54 @@
 import { test } from "node:test";
 import assert from "node:assert/strict";
 import { PerspectiveCamera, Vector3 } from "three";
-import { animateGlobeViewport, getGlobePixelRatio, getGlobeViewport, restoreGlobeViewport } from "../src/features/monitoring/components/map/globeViewport.ts";
+import { animateGlobeViewport, getGlobePixelRatio, getGlobeViewport, isGlobeInteractionPoint, restoreGlobeViewport } from "../src/features/monitoring/components/map/globeViewport.ts";
+
+test("o globo mobile ocupa quase toda a menor dimensão do mapa, centralizado em retrato e paisagem", () => {
+  for (const [width, height, mapWidth, mapHeight] of [[320, 720, 284, 284], [390, 844, 354, 354], [680, 900, 644, 644], [844, 390, 796, 260]]) {
+    const anchor = { left: 18, top: 200, width: mapWidth!, height: mapHeight! };
+    const target = getGlobeViewport({ width: width!, height: height! }, anchor);
+    assert.equal(target.width, width);
+    assert.equal(target.height, height);
+    const camera = new PerspectiveCamera();
+    animateGlobeViewport(camera, target, 0, () => 0, () => {});
+    camera.position.set(0, 0, 250);
+    camera.lookAt(0, 0, 0);
+    camera.updateMatrixWorld();
+    const center = new Vector3().project(camera);
+    const centerX = (center.x + 1) * width! / 2, centerY = (1 - center.y) * height! / 2;
+    assert.ok(Math.abs(centerX - anchor.left - mapWidth! / 2) < 1e-9);
+    assert.ok(Math.abs(centerY - anchor.top - mapHeight! / 2) < 1e-9);
+    const radius = 100, z = radius * radius / 250, edge = radius * Math.sqrt(1 - (radius / 250) ** 2);
+    const right = new Vector3(edge, 0, z).project(camera);
+    const diameter = ((right.x + 1) * width! / 2 - centerX) * 2;
+    const fraction = diameter / Math.min(mapWidth!, mapHeight!);
+    assert.ok(fraction > .9 && fraction < 1);
+  }
+});
+
+test("o zoom mobile ultrapassa o espaço inicial sem encontrar um recorte retangular", () => {
+  const viewport = { width: 390, height: 844 };
+  const anchor = { left: 18, top: 300, width: 354, height: 354 };
+  const camera = new PerspectiveCamera();
+  animateGlobeViewport(camera, getGlobeViewport(viewport, anchor), 0, () => 0, () => {});
+  camera.position.set(0, 0, 190);
+  camera.lookAt(0, 0, 0);
+  camera.updateMatrixWorld();
+  const radius = 100, z = radius * radius / 190, edge = radius * Math.sqrt(1 - (radius / 190) ** 2);
+  const top = (1 - new Vector3(0, edge, z).project(camera).y) * viewport.height / 2;
+  const bottom = (1 - new Vector3(0, -edge, z).project(camera).y) * viewport.height / 2;
+  assert.ok(top < anchor.top && top > 0);
+  assert.ok(bottom > anchor.top + anchor.height && bottom < viewport.height);
+  assert.equal(camera.view!.fullHeight, viewport.height);
+});
+
+test("gestos iniciados nos cantos, cabeçalho e fora do mapa não interagem com o globo", () => {
+  const anchor = { left: 18, top: 300, width: 354, height: 354 };
+  assert.equal(isGlobeInteractionPoint(anchor, 195, 477), true);
+  for (const [x, y] of [[0, 477], [389, 477], [195, 299], [195, 655], [195, 50]])
+    assert.equal(isGlobeInteractionPoint(anchor, x!, y!), false);
+  assert.equal(isGlobeInteractionPoint({ ...anchor, height: 0 }, 195, 300), false);
+});
 
 test("a projection reset cannot move the globe behind the applications", () => {
   const camera = new PerspectiveCamera();
@@ -66,6 +113,8 @@ test("rolar a página desloca o globo com o conteúdo sem mudar sua escala", () 
 test("o enquadramento permanece válido em uma janela estreita", () => {
   const result = getGlobeViewport({ width: 390, height: 844 }, { left: 18, top: 200, width: 354, height: 354 });
   assert.deepEqual(result.offset, [0, -45]);
+  assert.equal(result.width, 390);
+  assert.equal(result.height, 844);
   assert.ok(Number.isFinite(result.fieldOfView));
   assert.ok(result.fieldOfView > 50 && result.fieldOfView < 180);
 });

@@ -9,10 +9,7 @@ export class StatisticRepository {
                 m.date_houry AS collected_at,
                 m.colletion_interval_metric AS collection_interval_seconds,
 
-                COALESCE(
-                    c.intesity_co2e_kwh_carbon,
-                    0
-                ) AS carbon_intensity_gco2e_per_kwh,
+                m.carbon_intensity AS carbon_intensity_gco2e_per_kwh,
 
                 (
                     (m.cpu_metric / 100.0 * 100) +
@@ -26,16 +23,6 @@ export class StatisticRepository {
 
             INNER JOIN Services AS s
                 ON s.id_service = m.id_service
-
-            LEFT JOIN LATERAL (
-                SELECT
-                    cb.intesity_co2e_kwh_carbon
-                FROM Carbons AS cb
-                WHERE cb.id_location = s.id_location
-                  AND cb.date_houry <= m.date_houry
-                ORDER BY cb.date_houry DESC
-                LIMIT 1
-            ) AS c ON TRUE
 
             WHERE s.active_service = TRUE
         ),
@@ -66,9 +53,9 @@ export class StatisticRepository {
                     SUM(consumption_kwh), 0
                 )::float8 AS "consumoTotalKwh",
 
-                COALESCE(
-                    SUM(emissions_co2e), 0
-                )::float8 AS "emissaoTotalCo2e",
+                SUM(emissions_co2e)::float8 AS "emissaoTotalCo2e",
+                COUNT(*)::int AS "sampleCount",
+                COUNT(emissions_co2e)::int AS "coveredEmissionSamples",
 
                 (
                     SELECT MAX(date_houry)
@@ -102,9 +89,9 @@ export class StatisticRepository {
                         SUM(i.consumption_kwh), 0
                     )::float8 AS "consumoKwh",
 
-                    COALESCE(
-                        SUM(i.emissions_co2e), 0
-                    )::float8 AS "emissaoCo2e"
+                    SUM(i.emissions_co2e)::float8 AS "emissaoCo2e",
+                    COUNT(i.collected_at)::int AS "sampleCount",
+                    COUNT(i.emissions_co2e)::int AS "coveredEmissionSamples"
 
                 FROM Services AS s
 

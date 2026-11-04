@@ -17,7 +17,7 @@ export class WorkerCarbons{
             //preenche dos dados da api para as interfaces que representa o banco de dados
             let carbon : CreateCarbonInput ={
               id_location:0,
-              date_houry: agora.toLocaleDateString().concat(" ",agora.toLocaleTimeString()),
+              date_houry: agora.toISOString(),
               renewable_percent_carbon:carbonsReg[i].renewable_share_percent,
               intesity_co2e_kwh_carbon:carbonsReg[i].carbon_intensity_gco2e_per_kwh
             }

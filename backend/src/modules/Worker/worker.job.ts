@@ -1,22 +1,24 @@
-// src/modules/workers/cron-job.ts
-import {refreshDiscoveredServices,refreshServiceMetrics} from "../Services/services.service";
-import { runWorker} from './worker';
-import cron from 'node-cron';
+import { runWorker } from "./worker";
+import { COLLECTION_INTERVAL_MS } from "../Monitoring/collector";
 
-// Configura para rodar a cada 60 segundos
-export function start() {
-    return cron.schedule('*/1 * * * *', () => {
-    runWorker();
-  });
-}
+let refreshInProgress = false;
 
+/** Runs discovery and metric persistence without overlapping polling cycles. */
 export async function refreshAllData(): Promise<void> {
-  // Primeiro atualiza a lista de serviços.
-  await refreshDiscoveredServices();
-
-  // Depois consulta as métricas da lista atualizada.
-  await refreshServiceMetrics();
+    if (refreshInProgress) {
+        console.warn("Ciclo anterior ainda em andamento; ignorando este disparo.");
+        return;
+    }
+    refreshInProgress = true;
+    try {
+        await runWorker();
+    } finally {
+        refreshInProgress = false;
+    }
 }
 
- 
-
+export function start() {
+    return setInterval(() => {
+        void refreshAllData().catch(() => console.error("Falha na coleta; os últimos dados gravados foram preservados."));
+    }, COLLECTION_INTERVAL_MS);
+}

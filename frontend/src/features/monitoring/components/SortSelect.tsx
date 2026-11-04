@@ -69,7 +69,7 @@ export function SortSelect({ value, onChange }: SortSelectProps) {
         ref={triggerRef}
         type="button"
         className="monitoring-sort-trigger"
-        aria-label="Ordenar aplicações"
+        aria-label="Indicador das aplicações"
         aria-haspopup="listbox"
         aria-expanded={open}
         aria-controls={open ? popupId : undefined}
@@ -81,7 +81,7 @@ export function SortSelect({ value, onChange }: SortSelectProps) {
           }
         }}
       >
-        <span className="monitoring-sort-label">Ordenar:</span>
+        <span className="monitoring-sort-label">Indicador:</span>
         <span className="monitoring-sort-current">{activeOption.label}</span>
         <ChevronDown
           size={16}
@@ -95,7 +95,7 @@ export function SortSelect({ value, onChange }: SortSelectProps) {
           id={popupId}
           className="monitoring-sort-popup"
           role="listbox"
-          aria-label="Opções de ordenação"
+          aria-label="Indicadores, do maior para o menor"
         >
           {options.map(({ value: optValue, label, unit, icon: Icon }) => {
             const selected = value === optValue;

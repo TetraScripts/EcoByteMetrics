@@ -42,7 +42,16 @@ export interface MonitoredService {
   statusMessage?: string;
 }
 
+export interface HistoricalResources {
+  cpuPercent: number;
+  memoryGb: number;
+  diskGb: number;
+  networkGb: number;
+  durationSeconds: number;
+}
+
 export interface CollectionPoint {
+  resources?: HistoricalResources | null;
   serviceId: string;
   regionCode?: string;
   country?: string | null;
@@ -53,9 +62,18 @@ export interface CollectionPoint {
   energyKwh: number;
   emissionsG: number | null;
   intervalSeconds?: number;
+  sampleCount?: number;
+  emissionCount?: number;
+  bucketSeconds?: number;
+  firstCollectedAt?: string;
 }
 
 export interface MonitoringSnapshot {
+  historyIncluded?: boolean;
+  source?: "database";
+  historyPeriod?: "24h" | "7d";
+  historyUntil?: string;
+  selectedAt?: string | null;
   refreshedAt?: string;
   observations?: MonitoringObservation[];
   collectionEvents?: CollectionEvent[];
@@ -73,12 +91,13 @@ export interface MonitoringSnapshot {
 export interface CollectionEvent {
   from: string;
   to: string;
-  kind: "tab-hidden" | "monitoring-inactive" | "request-failed" | "no-new-samples" | "service-unavailable";
+  kind: "tab-hidden" | "monitoring-inactive" | "request-failed" | "no-new-samples" | "service-unavailable" | "metrics-missing";
   serviceIds?: string[];
 }
 
 export interface MonitoringObservation {
   observedAt: string;
+  collectionCount?: number;
   services: MonitoredService[];
   samples: CollectionPoint[];
   warning?: string;

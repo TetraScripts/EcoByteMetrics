@@ -1,7 +1,8 @@
 import { test } from "node:test";
 import assert from "node:assert/strict";
-import { applicationImpacts, collectionSeries, chartSeries, filterApplications, groupServiceLocations, serviceLocationPeers } from "../src/features/monitoring/domain/dashboard.ts";
-import { mergeCollectionHistory } from "../src/features/monitoring/domain/history.ts";
+import { applicationImpacts, filterApplications, groupServiceLocations, serviceLocationPeers } from "../src/features/monitoring/domain/dashboard.ts";
+import { latestCollections, mergeCollectionHistory } from "../src/features/monitoring/domain/history.ts";
+import { evolutionData } from "../src/features/monitoring/domain/evolution.ts";
 import type { CollectionPoint, MonitoredService } from "../src/features/monitoring/types.ts";
 
 const service = (id: string, extra: Partial<MonitoredService> = {}): MonitoredService => ({
@@ -13,11 +14,28 @@ const sample = (serviceId: string, second: number, emissionsG: number | null, en
   energyKwh, emissionsG, intervalSeconds: 30,
 });
 
+test("visão geral usa a última leitura individual, preservando zero, ausência e removidas ao final", () => {
+  const at = "2026-10-30T23:40:00Z";
+  const services = [
+    service("current", { energyKwh: 0.001, emissionsG: 0.3, lastCollectionAt: at }),
+    service("zero", { energyKwh: 0, emissionsG: 0, lastCollectionAt: at }),
+    service("unknown", { energyKwh: 0.002, emissionsG: null, lastCollectionAt: at }),
+    service("removed", { status: "removed", energyKwh: 1, emissionsG: 99, lastCollectionAt: "2026-10-29T12:00:00Z" }),
+    service("uncollected"),
+  ];
+  const latest = latestCollections(services);
+  assert.equal(latest.length, 4);
+  const ranked = applicationImpacts(services, latest, "emissions", true);
+  assert.deepEqual(ranked.map(row => [row.service.id, row.value]), [["current",0.3],["zero",0],["uncollected",null],["unknown",null],["removed",99]]);
+  assert.equal(applicationImpacts(services, latest, "energy").find(row => row.service.id === "unknown")!.value, 0.002);
+  assert.equal(latest.find(row => row.serviceId === "removed")!.collectedAt, "2026-10-29T12:00:00Z");
+});
+
 test("removed applications stay last for both metrics and return to ranking when available", () => {
   const services = [service("removed", { status: "removed" }), service("active"), service("missing"), service("removed-low", { status: "removed" })];
   const history = [sample("removed", 0, 100, 100), sample("active", 0, 1, 1), sample("removed-low", 0, 2, 2)];
   for (const metric of ["emissions", "energy"] as const) {
-    assert.deepEqual(applicationImpacts(services, history, metric).map(entry => entry.service.id), ["active", "missing", "removed", "removed-low"]);
+    assert.deepEqual(applicationImpacts(services, history, metric, true).map(entry => entry.service.id), ["active", "missing", "removed", "removed-low"]);
     const restored = services.map(entry => entry.id === "removed" ? { ...entry, status: "available" as const } : entry);
     assert.equal(applicationImpacts(restored, history, metric)[0]!.service.id, "removed");
   }
@@ -79,10 +97,10 @@ test("ordenação soma amostras únicas e mantém zero válido antes de valores 
   assert.deepEqual(ranked.map(value => [value.service.id, value.value]), [["high", 5], ["zero", 0], ["missing", null]]);
 });
 
-test("emissões incompletas não aparentam ser uma aplicação de baixo impacto", () => {
+test("emissões somam as amostras disponíveis mesmo quando há registros incompletos", () => {
   const points = [sample("partial", 0, 1), sample("partial", 30, null)];
   const ranked = applicationImpacts([service("partial")], points, "emissions");
-  assert.equal(ranked[0]!.value, null);
+  assert.equal(ranked[0]!.value, 1);
   assert.equal(ranked[0]!.summary.emissionCount, 1);
   assert.equal(applicationImpacts([service("partial")], points, "energy")[0]!.value, 0.002);
 });
@@ -95,33 +113,40 @@ test("recuperar o fator completa a amostra sem duplicar energia", () => {
   assert.equal(applicationImpacts([service("a")], history, "energy")[0]!.value, 0.001);
 });
 
-test("evolução acumulada reúne serviços no mesmo horário sem duplicar cache", () => {
-  const a = sample("a", 0, 2), b = sample("b", 0, 3), later = sample("a", 30, 4);
-  const points = collectionSeries([later, b, a, a], "emissions", true);
-  assert.deepEqual(points.map(value => value.value), [5, 9]);
-  assert.ok(points[1]!.timestamp > points[0]!.timestamp);
+test("lista, soma das barras e último acumulado usam as mesmas estimativas em todas as resoluções", () => {
+  for (const step of [30,7200,172800]) {
+    const partial = {...sample("a",step*2,0),sampleCount:4,emissionCount:2};
+    const history=[sample("a",0,null),sample("a",step,2),sample("b",step,3),partial,partial,
+      sample("b",step*3,null),sample("a",step*4,5),sample("b",step*5,null)];
+    for (const metric of ["energy","emissions"] as const) {
+      const rows=applicationImpacts([service("a"),service("b")],history,metric);
+      const expected=rows.reduce((sum,row)=>sum+(row.value??0),0);
+      const intervals=evolutionData(history,metric,"intervals");
+      const cumulative=evolutionData(history,metric,"cumulative");
+      assert(Math.abs(intervals.points.reduce((sum,point)=>sum+(point.value??0),0)-expected)<1e-12);
+      assert(Math.abs(cumulative.points.at(-1)!.value!-expected)<1e-12);
+      assert.equal(intervals.summary.count,10);
+      if (metric==="emissions") {
+        assert.equal(intervals.summary.emissionCount,5);
+        assert.match(cumulative.points.at(-1)!.reason!,/5 de 10 amostras/);
+      }
+    }
+  }
 });
 
-test("evolução individual preserva ausência e interrompe a linha em lacunas", () => {
-  const points = collectionSeries([sample("a", 0, 1), sample("a", 30, null), sample("a", 60, 2), sample("a", 300, 3)], "emissions");
-  assert.deepEqual(points.map(value => value.value), [1, null, 2, 3]);
-  assert.equal(points[2]!.gap, true);
-  assert.equal(points[3]!.gap, true);
+test("soma conhecida preserva zero parcial, contagens agregadas e ausência sem estimativa", () => {
+  const points=[{...sample("partial",0,0),sampleCount:4,emissionCount:2},sample("missing",0,null)];
+  const rows=applicationImpacts([service("partial"),service("missing")],points,"emissions");
+  assert.equal(rows[0]!.value,0);
+  assert.equal(rows[0]!.summary.emissionCount,2);
+  assert.equal(rows[1]!.value,null);
 });
 
-test("acumulado incompleto não parece completo nem reconecta após uma emissão ausente", () => {
-  const points = collectionSeries([sample("a", 0, 1), sample("b", 0, null), sample("a", 30, 3)], "emissions", true);
-  assert.deepEqual(points.map(point => point.value), [null, null]);
-  assert.deepEqual(collectionSeries([sample("a", 0, 1), sample("b", 0, null)], "energy", true).map(point => point.value), [0.002]);
-});
-
-test("gráficos longos limitam elementos preservando extremos, datas e lacunas", () => {
-  const points = Array.from({ length: 100_000 }, (_, index) => ({ timestamp: index, value: index === 45_555 ? 999_999 : index, gap: false }));
-  const reduced = chartSeries(points);
-  assert.ok(reduced.length <= 360);
-  assert.equal(reduced[0]!.timestamp, 0);
-  assert.equal(reduced.at(-1)!.timestamp, 99_999);
-  assert.ok(reduced.some(point => point.value === 999_999));
-  points[50_000]!.gap = true;
-  assert.ok(chartSeries(points).some(point => point.gap && Math.abs(point.timestamp - 50_000) < 1200));
+test("ranking histórico ordena pelo impacto, preservando removidas ao final apenas na visão geral", () => {
+  const services = [service("active"), service("removed", {status: "removed"})];
+  const history = [sample("active", 0, 1, 1), sample("removed", 0, 10, 10)];
+  for (const metric of ["energy", "emissions"] as const) {
+    assert.deepEqual(applicationImpacts(services, history, metric).map(row => row.service.id), ["removed", "active"]);
+    assert.deepEqual(applicationImpacts(services, history, metric, true).map(row => row.service.id), ["active", "removed"]);
+  }
 });

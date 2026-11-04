@@ -158,7 +158,7 @@
 
 @media (max-width: 680px) {
   .monitoring-sort-trigger {
-    min-height: 35px;
+    min-height: 44px;
     padding: 5px 11px;
     font-size: 12px;
   }

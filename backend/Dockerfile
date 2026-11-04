@@ -1,16 +1,18 @@
 FROM node:22-alpine
 
-WORKDIR /app
+WORKDIR /app/backend
 
-COPY package*.json ./
+COPY backend/package*.json ./
 
 RUN npm ci
 
-COPY . .
+COPY backend/tsconfig.json ./
+COPY backend/src ./src
+COPY database/migrations /app/database/migrations
 
 RUN npm run build
 
-ARG PORT
+ARG PORT=3000
 
 ENV PORT=$PORT
 

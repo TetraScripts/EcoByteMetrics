@@ -33,7 +33,6 @@ const DashboardPage = lazy(() =>
     default: module.DashboardPage,
   })),
 );
-const ComparisonPage = lazy(() => import("@/features/monitoring/pages/ComparisonPage").then(module => ({ default: module.ComparisonPage })));
 
 const titles: Record<string, string> = {
   "/": "Entendendo o hoje",
@@ -94,15 +93,15 @@ export function App() {
       >
         <Routes>
           <Route path="/" element={<HomePage />} />
-          <Route path="/login" element={<LoginPage />} />
-          <Route path="/cadastro" element={<LoginPage register />} />
+          <Route path="/login" element={<LoginPage key="login" />} />
+          <Route path="/cadastro" element={<LoginPage key="register" register />} />
           <Route element={<AppLayout />}>
-            <Route path="/pesquisa" element={<LegacyMapRedirect />} />
-            <Route path="/servicos" element={<LegacyMapRedirect />} />
-            <Route path="/energia" element={<LegacyMapRedirect metric="energy" />} />
-            <Route path="/emissoes" element={<LegacyMapRedirect metric="emissions" />} />
+            <Route path="/pesquisa" element={<LegacyDashboardRedirect />} />
+            <Route path="/servicos" element={<LegacyDashboardRedirect />} />
+            <Route path="/energia" element={<LegacyDashboardRedirect metric="energy" />} />
+            <Route path="/emissoes" element={<LegacyDashboardRedirect metric="emissions" />} />
             <Route path="/dashboard" element={<DashboardPage />} />
-            <Route path="/comparar" element={<ComparisonPage />} />
+            <Route path="/comparar" element={<LegacyDashboardRedirect comparison />} />
             {deferredPages.map(({ path, title }) => (
               <Route key={path} path={path} element={<UnderConstructionPage title={title} />} />
             ))}
@@ -115,9 +114,9 @@ export function App() {
   );
 }
 
-function LegacyMapRedirect({ metric }: { metric?: "energy" | "emissions" }) {
+function LegacyDashboardRedirect({ metric, comparison }: { metric?: "energy" | "emissions"; comparison?: boolean }) {
   const { search } = useLocation();
-  return <Navigate to={dashboardLocation(search, { metric })} replace />;
+  return <Navigate to={dashboardLocation(search, { metric, comparison })} replace />;
 }
 
 function LegacyServiceRedirect() {

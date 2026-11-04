@@ -23,17 +23,23 @@ export function getGlobePixelRatio(viewport: Viewport, devicePixelRatio: number)
 }
 
 export function getGlobeViewport(viewport: Viewport, anchor: Anchor, fieldOfView = 50) {
+  const size = viewport.width <= 900 ? Math.min(anchor.width, anchor.height) : anchor.height;
   return {
     ...viewport,
     offset: [
       anchor.left + anchor.width / 2 - viewport.width / 2,
       anchor.top + anchor.height / 2 - viewport.height / 2,
     ] as [number, number],
-    // Mantém a escala da coluna ao ampliar o canvas para toda a janela.
+    // O mapa define a escala inicial; o canvas da janela permite ampliar além dele.
     fieldOfView: 2 * Math.atan(
-      Math.tan(fieldOfView * Math.PI / 360) * viewport.height / Math.max(anchor.height, 1),
+      Math.tan(fieldOfView * Math.PI / 360) * viewport.height / Math.max(size, 1),
     ) * 180 / Math.PI,
   };
+}
+
+export function isGlobeInteractionPoint(anchor: Anchor, x: number, y: number) {
+  return anchor.width > 0 && anchor.height > 0 && x >= anchor.left && x <= anchor.left + anchor.width &&
+    y >= anchor.top && y <= anchor.top + anchor.height;
 }
 
 export function animateGlobeViewport(camera: PerspectiveCamera, target: ReturnType<typeof getGlobeViewport>, duration: number,
