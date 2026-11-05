@@ -11,8 +11,8 @@ export async function collectOnce(dependencies = {
   metrics: fetchServiceMetrics,
   regions: async () => (await new CarbonAPISevice().listCabons()).regions,
 }) {
-  // Preserve the last known catalog if discovery is down. Those services are
-  // recorded as unavailable, while the rest of the collection cycle survives.
+// Preservar o último catálogo conhecido caso a descoberta esteja inativa. Esses serviços são
+// registrados como indisponíveis, enquanto o restante do ciclo de coleta permanece ativo.
   let catalog = getDiscoveredServices();
   let discoveryFailed = false;
   try {
@@ -80,7 +80,7 @@ export async function collectOnce(dependencies = {
     client.release();
   }
 
-  // Publish only committed data, keeping the legacy endpoint and SQL in sync.
+// Publicar somente os dados confirmados, mantendo o legado do endpoint e o SQL sincronizados.
   publishCollection(catalog, cycle.metrics, cycle.at);
   return cycle;
 }
