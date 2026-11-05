@@ -93,4 +93,14 @@ app.use((req: Request, res: Response, next: NextFunction) => {
   });
 });
 
+// Middleware global para erros encaminhados pelas rotas.
+app.use((error: unknown, _req: Request, res: Response, _next: NextFunction) => {
+  console.error("Erro interno na API.", error);
+  res.status(500).json({
+    status: 500,
+    erro: "Erro interno",
+    mensagem: "Não foi possível concluir a solicitação.",
+  });
+});
+
 export default app;

@@ -2,7 +2,7 @@ import pool from "../../db/connection";
 import { fetchAvailableServices, fetchServiceMetrics, MetricsApiError } from "../../integrations/metrics-api";
 import { CarbonAPISevice } from "../../integrations/carbon-api";
 import { persistCollection, type Collection } from "./collection.repository";
-import { publishCollection } from "../Services/services.service";
+import { getDiscoveredServices, publishCollection } from "../Services/services.service";
 
 export const COLLECTION_INTERVAL_MS = 30_000;
 export async function collectOnce(dependencies = {
@@ -10,12 +10,25 @@ export async function collectOnce(dependencies = {
   metrics: fetchServiceMetrics,
   regions: async () => (await new CarbonAPISevice().listCabons()).regions,
 }) {
-  const catalog = await dependencies.services();
-  if (new Set(catalog.map(service => service.id)).size !== catalog.length || catalog.some(service => !service.id || !service.name)) throw new Error("Catálogo de serviços inválido");
+  let catalog = getDiscoveredServices();
+  let discoveryFailed = false;
+  try {
+    catalog = await dependencies.services();
+    if (new Set(catalog.map(service => service.id)).size !== catalog.length || catalog.some(service => !service.id || !service.name)) {
+      throw new Error("Catálogo de serviços inválido");
+    }
+  } catch (error) {
+    if (catalog.length === 0) throw error;
+    discoveryFailed = true;
+    console.error("Falha ao atualizar serviços; mantendo catálogo conhecido nesta coleta.", error);
+  }
   const cycle: Collection = { at: new Date().toISOString(), catalog, metrics: new Map(), errors: {}, regions: null };
+  if (discoveryFailed) {
+    for (const service of catalog) cycle.errors[service.id] = "service_unavailable";
+  }
   try { cycle.regions = await dependencies.regions(); }
   catch { console.error("Fatores de carbono indisponíveis nesta coleta; emissões serão desconhecidas."); }
-  for (let start = 0; start < catalog.length; start += 6) {
+  for (let start = 0; !discoveryFailed && start < catalog.length; start += 6) {
     await Promise.all(catalog.slice(start, start + 6).map(async service => {
       try {
         const sample = await dependencies.metrics(service.id);
