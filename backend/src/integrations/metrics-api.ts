@@ -104,8 +104,22 @@ export async function fetchServiceMetrics(
 
     if (!response.ok) {
         const body: unknown = await response.json().catch(() => null);
-        const code = body && typeof body === "object" && "error" in body && typeof body.error === "string" && body.error.trim()
-            ? body.error.trim() : "metrics_unavailable";
+        const receivedCode =
+            body && typeof body === "object" && "error" in body &&
+            typeof body.error === "string" && body.error.trim()
+                ? body.error.trim()
+                : null;
+        const knownCodes = new Set([
+            "metrics_missing",
+            "invalid_metrics",
+            "service_unavailable",
+            "metrics_unavailable",
+        ]);
+        const code = receivedCode && knownCodes.has(receivedCode)
+            ? receivedCode
+            : response.status === 404
+                ? "metrics_missing"
+                : "service_unavailable";
         throw new MetricsApiError(code);
     }
 
