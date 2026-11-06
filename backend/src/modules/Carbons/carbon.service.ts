@@ -68,9 +68,9 @@ export async function getCarbonByIdService(id_carbon: number): Promise<Carbon | 
     }
 }
 
-export async function getCarbonByExitsService(renewable_percent_carbon:number, intesity_co2e_kwh_carbon:number): Promise<boolean> {
+export async function getCarbonByExitsService(id_location:number, renewable_percent_carbon:number, intesity_co2e_kwh_carbon:number): Promise<boolean> {
     try{
-        const carbon = await getCarbonByExistRepository(renewable_percent_carbon, intesity_co2e_kwh_carbon);
+        const carbon = await getCarbonByExistRepository(id_location, renewable_percent_carbon, intesity_co2e_kwh_carbon);
         if(carbon)
             return true;
         return false;

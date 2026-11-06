@@ -1,7 +1,7 @@
 import { CarbonRegion } from "../../integrations/api.types";
 import { CarbonApiError } from "../../integrations/carbon-api";
-import { CreateCarbonInput } from "../Carbons/carbon.repository";
-import { CarbonError, createCarbonService } from "../Carbons/carbon.service";
+import { CreateCarbonInput, getCarbonByExistRepository } from "../Carbons/carbon.repository";
+import { CarbonError, createCarbonService, getCarbonByExitsService } from "../Carbons/carbon.service";
 import { createLocationInput } from "../Locations/location.repository";
 import { createLocation, getLocationByName } from "../Locations/location.service";
 
@@ -62,9 +62,11 @@ export class WorkerCarbons{
           carbon.id_location=Lugar.id_location
         }
         // Cada localização e instante têm sua própria amostra, mesmo com valores iguais.
-        await createCarbonService(carbon);
-        console.log("Cadastrado Carbon");
-            
+        const resp=await getCarbonByExitsService(carbon.id_location, carbon.renewable_percent_carbon, carbon.intesity_co2e_kwh_carbon);
+        if(!resp){
+          console.log("Cadastrado Carbon");
+          await createCarbonService(carbon);
+        }
       }catch(error){
         if(error instanceof Error)
           console.error(error);

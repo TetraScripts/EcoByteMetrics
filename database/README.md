@@ -17,7 +17,8 @@ Este repositório contém a modelagem de dados relacional, os scripts DDL de cri
 
 ```bash
 database/
-├── README.md       # Orientações para restauração, DML e volume Docker        
+├── README.md       # Orientações para restauração, DML e volume Docker
+├── Dockerfile      # Arquivo de configuração do conteiner database 
 └── DDL.sql         # Estrutura principal do banco
 ```
 

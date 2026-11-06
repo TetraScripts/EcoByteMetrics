@@ -34,7 +34,7 @@ export async function createServiceRepository(serv: createServiceInput): Promise
 }
 export async function updateServiceStatusRepository(service_names:string[]): Promise<void> {
     
-    const res= await pool.query(
+    await pool.query(
     `UPDATE services
         SET active_service = FALSE,
             date_houry = NOW()
@@ -43,7 +43,7 @@ export async function updateServiceStatusRepository(service_names:string[]): Pro
             name_service = ANY($1::text[])
         ) RETURNING *`,
         [service_names]);
-        console.log(res.rows)
+
 }
 export async function getServiceByIdRepository(id_service: number): Promise<Service | null> {
     const result = await pool.query("SELECT * FROM services WHERE id_service = $1", [id_service]);

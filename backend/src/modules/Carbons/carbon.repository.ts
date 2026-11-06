@@ -34,9 +34,9 @@ export async function getCarbonByIdRepository(id_carbon: number): Promise<Carbon
     return result.rows[0] || null;
 }
 
-export async function getCarbonByExistRepository(renewable_percent_carbon:number, intesity_co2e_kwh_carbon:number): Promise<Carbon | null> {
-    const result = await pool.query("SELECT * FROM carbons WHERE renewable_percent_carbon = $1 and intesity_co2e_kwh_carbon = $2", 
-        [renewable_percent_carbon, intesity_co2e_kwh_carbon]);
+export async function getCarbonByExistRepository(id_location:number,renewable_percent_carbon:number, intesity_co2e_kwh_carbon:number): Promise<Carbon | null> {
+    const result = await pool.query("SELECT * FROM carbons WHERE renewable_percent_carbon = $1 and intesity_co2e_kwh_carbon = $2 and id_location = $3",
+        [renewable_percent_carbon, intesity_co2e_kwh_carbon, id_location]);
     return result.rows[0] || null;
 }
 

@@ -9,8 +9,7 @@ import locationRouter from "./modules/Locations/location.router.js";
 import statisticRouter from "./modules/Statistics/statistics.router.js"
 import authRouter from "./modules/Auth/auth.router";
 import monitoringRouter from "./modules/Monitoring/monitoring.router";
-import { authMiddleware } from "./modules/Auth/auth.middleware";
-import { COLLECTION_INTERVAL_MS } from "./modules/Monitoring/collector";
+import {start} from "./modules/Worker/worker.job.js"
 
 import {
   getDiscoveredServices,
@@ -18,6 +17,9 @@ import {
   getCollectedServiceMetrics,
   getCollectedMetricsByServiceId,
 } from "./modules/Services/services.service.js";
+
+//Cria Um thead paralela para fazer a percistencia
+start();
 
 // Polling inicial e periódico é iniciado por server.ts.
 const app = express();
@@ -39,12 +41,17 @@ app.get("/services", (_req: Request, res: Response) => {
   });
 });
 
+// Retorna as métricas coletadas de todos os serviços.
+app.get("/metrics", (_req: Request, res: Response) => {
+  res.json({
+    metrics: getCollectedServiceMetrics(),
+  });
+});
+
 // Rotas do módulo de usuários.
 app.use("/api/users", userRouter);
+//Rota do monitor
 app.use("/api/monitoring", monitoringRouter);
-app.get("/api/monitoring-settings", authMiddleware, (_req, res) => {
-  res.set("Cache-Control", "no-store").json({collectionIntervalSeconds: COLLECTION_INTERVAL_MS / 1000, discovery: "automatic", editable: false});
-});
 // Rotas do módulo de métricas.
 app.use("/api/metrics", metricRouter);
 //Rota do Carbon
@@ -55,12 +62,7 @@ app.use("/api/services", serviceRouter);
 app.use("/api/statistics", statisticRouter)
 //Rota da Localização
 app.use("/api/locations",locationRouter);
-// Retorna as métricas coletadas de todos os serviços.
-app.get("/metrics", (_req: Request, res: Response) => {
-  res.json({
-    metrics: getCollectedServiceMetrics(),
-  });
-});
+
 
 // Retorna as métricas coletadas de um serviço específico.
 app.get("/metrics/:serviceId", (req: Request, res: Response) => {
