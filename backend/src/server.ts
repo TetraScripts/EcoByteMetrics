@@ -1,4 +1,3 @@
-import "dotenv/config";
 import app from "./app";
 import { migrateMonitoring } from "./db/migrate";
 import { start, refreshAllData } from "./modules/Worker/worker.job";

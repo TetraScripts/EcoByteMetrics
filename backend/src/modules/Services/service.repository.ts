@@ -34,16 +34,45 @@ export async function createServiceRepository(serv: createServiceInput): Promise
 }
 export async function updateServiceStatusRepository(service_names:string[]): Promise<void> {
     
-    const res= await pool.query(
-    `UPDATE services
-        SET active_service = FALSE,
-            date_houry = NOW()
-        WHERE active_service = TRUE
-        AND NOT (
-            name_service = ANY($1::text[])
-        ) RETURNING *`,
-        [service_names]);
-        console.log(res.rows)
+    const client = await pool.connect();
+
+    try {
+        await client.query("BEGIN");
+
+        // 1. Reativar serviços que voltaram a aparecer na API
+        const activated = await client.query(
+            `UPDATE services
+             SET active_service = TRUE,
+                 date_houry = NOW()
+             WHERE active_service = FALSE
+               AND name_service = ANY($1::text[])
+             RETURNING *`,
+            [service_names]
+        );
+
+        // 2. Desativar serviços que não aparecem mais na API
+        const deactivated = await client.query(
+            `UPDATE services
+             SET active_service = FALSE,
+                 date_houry = NOW()
+             WHERE active_service = TRUE
+               AND NOT (
+                   name_service = ANY($1::text[])
+               )
+             RETURNING *`,
+            [service_names]
+        );
+
+        await client.query("COMMIT");
+        console.log(`Serviços atualizados: ${activated.rowCount} ativados, ${deactivated.rowCount} desativados.`);
+
+    } catch (error) {
+        await client.query("ROLLBACK");
+        throw error;
+
+    } finally {
+        client.release();
+    }
 }
 export async function getServiceByIdRepository(id_service: number): Promise<Service | null> {
     const result = await pool.query("SELECT * FROM services WHERE id_service = $1", [id_service]);

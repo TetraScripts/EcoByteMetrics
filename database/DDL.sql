@@ -2,7 +2,9 @@ create table Users(
 	id_user int GENERATED ALWAYS AS IDENTITY PRIMARY KEY,
 	name_user varchar(50) not null,
 	email_user varchar(254) not null unique,
-	password_user varchar(255)not null
+	password_user varchar(255)not null,
+	role_user varchar(20) not null default 'USER',
+	 check(role_user in ('USER','ADMIN'))
 );
 create table Locations(
 	id_location int GENERATED ALWAYS AS IDENTITY PRIMARY KEY,

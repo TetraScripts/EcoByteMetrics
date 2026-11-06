@@ -1,7 +1,7 @@
 import { CarbonRegion } from "../../integrations/api.types";
 import { CarbonApiError } from "../../integrations/carbon-api";
 import { CreateCarbonInput } from "../Carbons/carbon.repository";
-import { CarbonError, createCarbonService } from "../Carbons/carbon.service";
+import { CarbonError, CarbonService } from "../Carbons/carbon.service";
 import { createLocationInput } from "../Locations/location.repository";
 import { createLocation, getLocationByName } from "../Locations/location.service";
 
@@ -51,6 +51,7 @@ export class WorkerCarbons{
     }
     //metodo asyc que cadastrar cada item da lista
     private async cadastrarCarbonLocation(carbon:CreateCarbonInput, local:createLocationInput){
+        const carbonService = new CarbonService();
         try{
         const Lugar= await getLocationByName(local.longitude_location, local.latitude_location)
         if(!Lugar){
@@ -62,9 +63,14 @@ export class WorkerCarbons{
           carbon.id_location=Lugar.id_location
         }
         // Cada localização e instante têm sua própria amostra, mesmo com valores iguais.
-        await createCarbonService(carbon);
-        console.log("Cadastrado Carbon");
-            
+        const result = await carbonService.getCarbonByExits(carbon.id_location, carbon.renewable_percent_carbon, carbon.intesity_co2e_kwh_carbon);
+        if (!result) {
+          await carbonService.createCarbon(carbon);
+          console.log("Cadastrado Carbon");
+        }else{
+          await carbonService.updateCarbon(carbon);
+          console.log("Atualizado Carbon");
+        }
       }catch(error){
         if(error instanceof Error)
           console.error(error);
