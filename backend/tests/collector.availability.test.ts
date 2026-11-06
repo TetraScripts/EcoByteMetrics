@@ -21,6 +21,7 @@ const knownService = {
 test("falha de descoberta preserva o catálogo e sinaliza serviço indisponível sem interromper o ciclo", async t => {
   publishCollection([knownService], new Map(), "2026-11-05T00:00:00.000Z");
   const statements: { sql: string; values?: unknown[] }[] = [];
+  let metricCalls = 0;
   const client = {
     async query(sql: string, values?: unknown[]) {
       statements.push({ sql, values });
@@ -32,12 +33,13 @@ test("falha de descoberta preserva o catálogo e sinaliza serviço indisponível
 
   const cycle = await collectOnce({
     services: async () => { throw new Error("aggregator unavailable"); },
-    metrics: async () => { throw new Error("metrics must not be queried after discovery failure"); },
+    metrics: async () => { metricCalls++; throw new Error("métricas não devem ser consultadas após falha na descoberta"); },
     regions: async () => [],
   });
 
   assert.deepEqual(cycle.catalog, [knownService]);
   assert.deepEqual(cycle.errors, { [knownService.id]: "service_unavailable" });
+  assert.equal(metricCalls, 0);
   assert.deepEqual(getDiscoveredServices(), [knownService]);
   assert.equal(statements.some(({ sql }) => /INSERT INTO metrics\s*\(/i.test(sql)), false);
   const stored = statements.find(({ sql }) => /INSERT INTO monitoring_collections/i.test(sql));
