@@ -3,8 +3,7 @@ import { type Request, type Response } from "express";
 import { StatisticService } from "./statistics.service.js";
 
 export class StatisticController {
-    private statisticService: StatisticService =
-        new StatisticService();
+    private statisticService: StatisticService = new StatisticService();
 
     summary = async (_req: Request, res: Response): Promise<void> => {
         try {
@@ -54,4 +53,28 @@ export class StatisticController {
             });
         }
     };
+
+    getGlobalStatistics = async (req: Request,res: Response): Promise<void> => {
+    try {
+
+      const period = String(req.query.periodo ?? "24h");
+
+      const statistics =
+        await this.statisticService.getGlobalStatistics(period);
+
+      res.status(200).json({
+        success: true,
+        data: statistics
+      });
+
+    } catch (error) {
+
+      console.error("Erro ao obter indicadores globais:", error);
+
+      res.status(500).json({
+        success: false,
+        message: "Não foi possível obter os indicadores globais."
+      });
+    }
+  };
 }
