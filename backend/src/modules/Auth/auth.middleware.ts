@@ -2,11 +2,8 @@
 import type { RequestHandler } from "express";
 import jwt from "jsonwebtoken";
 
-export const authMiddleware: RequestHandler = (
-  req,
-  res,
-  next
-) => {
+export const authMiddleware: RequestHandler = (req, res, next) => {
+
   const secret = process.env.JWT_SECRET;
 
   if (!secret) {

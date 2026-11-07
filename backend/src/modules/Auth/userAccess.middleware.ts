@@ -1,11 +1,7 @@
 import type { RequestHandler } from "express";
 import type { JwtPayload } from "jsonwebtoken";
 
-export const userAccessMiddleware: RequestHandler = (
-  req,
-  res,
-  next
-) => {
+export const userAccessMiddleware: RequestHandler = (req, res, next) => {
   const auth = res.locals.auth as JwtPayload | undefined;
 
   const authenticatedUserId = Number(auth?.sub);
@@ -21,6 +17,5 @@ export const userAccessMiddleware: RequestHandler = (
     });
     return;
   }
-
   next();
 };

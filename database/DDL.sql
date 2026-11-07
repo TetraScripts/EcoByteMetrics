@@ -39,7 +39,7 @@ create table Metrics (
 	CHECK (cpu_metric BETWEEN 0 AND 100),
 	ram_metric numeric not null check(ram_metric>=0),
 	hd_metric numeric not null check(hd_metric>=0),
-	network_metric numeric not null check(hd_metric>=0),
+	network_metric numeric not null check(network_metric>=0),
 	date_houry TIMESTAMPTZ NOT NULL,
 	colletion_interval_metric numeric not null,
 	carbon_intensity numeric,

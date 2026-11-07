@@ -1,54 +1,53 @@
-import type { Request, Response } from "express";
-import {
-    UserError,
-    createUserService,
-    deleteUserService,
-    getUserByIdService,
-    updateUserService} 
-    from "./user.service";
+import type { Request, Response, NextFunction, } from "express";
+import {UserError,UserService} from "./user.service";
 
 
-function handleError(error: unknown, res: Response): void {
+function handleError(error: unknown, res: Response, next:NextFunction): void {
     if (error instanceof UserError) {
         res.status(error.statusCode).json({ erro: error.message });
         return;
     }
-    console.error("Erro interno ao processar usuário.");
     res.status(500).json({ erro: "Não foi possível processar a solicitação." });
+    next(error);
 }
 
-export async function createUserController(req: Request, res: Response): Promise<void> {
-    try {
-        const user = await createUserService(req.body);
-        res.location(`${req.baseUrl}/${user.id_user}`).status(201).json(user);
-    } catch (error) {
-        handleError(error, res);
-    }
-}
-export async function getUserByIdController(req: Request, res: Response): Promise<void> {
-    try {
-        const id = Number(req.params.id_user)
-        const user = await getUserByIdService(id);
-        res.status(200).json(user);
-    } catch (error) {
-        handleError(error, res);
-    }
-}
+export class UserController{
+    private userService = new UserService();
 
-export async function updateUserController(req: Request, res: Response): Promise<void> {
-    try {
-        const user = await updateUserService(Number(req.params.id_user), req.body);
-        res.status(200).json(user);
-    } catch (error) {
-        handleError(error, res);
+    createUserController =async (req: Request, res: Response, next:NextFunction): Promise<void> => {
+        try {
+            const user = await this.userService.createUserService(req.body);
+            res.location(`${req.baseUrl}/${user.id_user}`).status(201).json(user);
+        } catch (error) {
+            handleError(error, res, next);
+        }
     }
-}
 
-export async function deleteUserController(req: Request, res: Response): Promise<void> {
-    try {
-        const user = await deleteUserService(Number(req.params.id_user));
-        res.status(200).json(user);
-    } catch (error) {
-        handleError(error, res);
+    async getUserByIdController(req: Request, res: Response, next:NextFunction): Promise<void> {
+        try {
+            const id = Number(req.params.id_user)
+            const user = await this.userService.getUserByIdService(id);
+            res.status(200).json(user);
+        } catch (error) {
+            handleError(error, res, next);
+        }
+    }
+    async updateUserController(req: Request, res: Response, next:NextFunction): Promise<void> {
+        try {
+            const idUser=Number(req.params.id_user)
+            const user = await this.userService.updateUserService(idUser, req.body);
+            res.status(200).json(user);
+        } catch (error) {
+            handleError(error, res,next);
+        }
+    }
+
+    async deleteUserController(req: Request, res: Response, next:NextFunction): Promise<void> {
+        try {
+            const user = await this.userService.deleteUserService(Number(req.params.id_user));
+            res.status(200).json(user);
+        } catch (error) {
+            handleError(error, res, next);
+        }
     }
 }

@@ -1,6 +1,5 @@
 import { runWorker } from "./worker";
-import { COLLECTION_INTERVAL_MS, collectMonitoring } from "../Monitoring/collector";
-import cron from 'node-cron';
+import { COLLECTION_INTERVAL_MS } from "../Monitoring/collector";
 
 let refreshInProgress = false;
 
@@ -12,12 +11,10 @@ export async function refreshAllData(): Promise<void> {
     }
     refreshInProgress = true;
     try {
-        runWorker();
-        collectMonitoring();
+        await runWorker();
     } finally {
         refreshInProgress = false;
     }
-    
 }
 
 export function start() {

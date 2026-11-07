@@ -9,99 +9,117 @@ import {
 
 import {
     Service,
-    createServiceInput,
-    createServiceRepository,
-    getServiceByExistRepository,
-    getServiceByIdRepository,
-    listServicesByLocationIdRepository,
-    listServicesRepository,
-    updateServiceStatusRepository
+    ServiceRepository,
+    createServiceInput
 } from "./service.repository.js";
 
 export class ServicesError extends Error {
     constructor(message: string, public readonly statusCode: number) {
         super(message);
-        this.name = "ServicesError";
+        this.statusCode = statusCode;
+        this.message = message;
+        this.name = "ServiceError";
     }
-}
 
-function validateServiceId(id: number): void {
-    if (!Number.isSafeInteger(id) || id <= 0) {
-        throw new ServicesError("ID do serviço inválido", 400);
+    static validateLocationId(id_service: number): void {
+        if (!id_service || !Number.isSafeInteger(id_service) || id_service <= 0) {
+            throw new ServicesError("ID do Localização inválido", 400);
+        }
     }
-}
-function validateLocationId(id: number): void {
-    if (!Number.isSafeInteger(id) || id <= 0) {
-        throw new ServicesError("ID do Localização inválido", 400);
-    }
-}
 
-function validadeServiceInput(serviceInput: Omit<Service, "id_service">): Omit<Service, "id_service"> {
-    if (!serviceInput.id_location || !Number.isSafeInteger(serviceInput.id_location) || serviceInput.id_location <= 0) {
-        throw new ServicesError("ID da localização inválido", 400);
+    static validateServiceId(id_location: number): void {
+        if (!id_location ||!Number.isSafeInteger(id_location) || id_location <= 0) {
+            throw new ServicesError("ID do serviço inválido", 400);
+        }
     }
-    if (!serviceInput.name_service || serviceInput.name_service.trim() === "") {
-        throw new ServicesError("Nome do serviço inválido", 400);
-    }
-    if (!serviceInput.path_metric || serviceInput.path_metric.trim() === "") {
-        throw new ServicesError("Caminho da métrica inválido", 400);
-    }
-    if (!serviceInput.path_metric.startsWith("/")) {
-        throw new ServicesError("Caminho da métrica deve começar com '/'", 400);
-    }
-    return serviceInput;
-}
 
-function handleRepositoryError(error: unknown): never {
-    if (typeof error === "object" && error !== null && "code" in error && error.code === "23505") {
-        throw new ServicesError("Já existe um serviço com esse nome.", 409);
-    }
-    throw error; 
-}
+    static validadeServiceInput(serviceInput: createServiceInput): createServiceInput {
+        this.validateLocationId(serviceInput.id_location);
+        if ( typeof serviceInput.name_service !== "string" ||!serviceInput.name_service.trim()) {
+            throw new ServicesError("Nome do serviço inválido", 400);
+        }
 
-export async function createService(service:createServiceInput):Promise<Service> {
-    const data = validadeServiceInput(service)
-    try{
-        const service = await createServiceRepository(data)
+        if (typeof serviceInput.path_metric !== "string" ||!serviceInput.path_metric.trim() ||!serviceInput.path_metric.startsWith("/")) {
+            throw new ServicesError("Caminho da métrica inválido", 400);
+        }
+
+        if (typeof serviceInput.active_service !== "boolean") {
+            throw new ServicesError("Estado do serviço inválido", 400);
+        }
+        return serviceInput;
+    }
+    static handleRepositoryError(error: unknown): never {
+        if (error instanceof ServicesError) {
+            throw error;
+        }
+        if (typeof error === "object" && error !== null &&"code" in error &&typeof error.code === "string") {
+            switch (error.code) {
+                case "23505":
+                    throw new ServicesError("Registro duplicado.", 409);
+
+                case "23503":
+                    throw new ServicesError("Localização não encontrada.", 400);
+
+                case "23502":
+                    throw new ServicesError("Campo obrigatório não informado.", 400);
+
+                case "23514":
+                    throw new ServicesError("Valor fora das restrições permitidas.", 400);
+            }
+        }
+        throw error;
+    }
+}
+export class ServiceS{
+    private serviceRepository = new ServiceRepository;
+
+    async createService(service:createServiceInput):Promise<Service> {
+        const data = ServicesError.validadeServiceInput(service)
+        try{
+            const service = await this.serviceRepository.createServiceRepository(data)
+            if(!service){
+                throw new ServicesError("Não foi possivel cadastrar Serviço",500);
+            }
+            return service;
+        }catch(error){
+            ServicesError.handleRepositoryError(error)
+        }
+    }
+
+    async  updateServiceStatus(services_name:string[]): Promise<void> {
+        await this.serviceRepository.updateServiceStatusRepository(services_name);
+    }
+
+    async getServiceById(id_service:number):Promise<Service> {
+        ServicesError.validateServiceId(id_service)
+        const service = await this.serviceRepository.getServiceByIdRepository(id_service);
+        if(!service){
+            throw new ServicesError("Serviço não encotrado", 404);
+        }
         return service;
-    }catch(error){
-        handleRepositoryError(error)
+    }
+
+    async getServiceByExist(name_service:string):Promise<Service|null> {
+        const service = await this.serviceRepository.getServiceByExistRepository(name_service);
+        return service||null;
+    }
+
+    async listServiceByLocation(id_location:number):Promise<Service[]> {
+        ServicesError.validateLocationId(id_location);
+        const service = await this.serviceRepository.listServicesByLocationIdRepository(id_location);
+        if(!service || service.length===0){
+            throw new ServicesError("Serviço não encotrado", 404);
+        }
+        return service;
+    }
+    async listServices():Promise<Service[]> {
+        const service = await this.serviceRepository.listServicesRepository();
+        if(service.length === 0){
+            throw new ServicesError("Não existe serviço", 404);
+        }
+        return service;
     }
 }
-export async function updateServiceStatus(services_name:string[]): Promise<void> {
-  await updateServiceStatusRepository(services_name);
-}
-export async function getServiceById(id_service:number):Promise<Service> {
-    validateServiceId(id_service)
-    const service = await getServiceByIdRepository(id_service)
-    if(!service){
-        throw new ServicesError("Serviço não encotrado", 404)
-    }
-    return service;
-}
-
-export async function getServiceByExist(name_service:string):Promise<Service|null> {
-    const service = await getServiceByExistRepository(name_service)
-    return service||null;
-}
-
-export async function listServiceByLocation(id_location:number):Promise<Service> {
-    validateLocationId(id_location);
-    const service = await listServicesByLocationIdRepository(id_location)
-    if(!service){
-        throw new ServicesError("Serviço não encotrado", 404)
-    }
-    return service;
-}
-
-export async function listServices():Promise<Service[]> {
-    const service = await listServicesRepository()
-    if(service.length === 0){
-        throw new ServicesError("Não existe serviço", 404)
-    }
-    return service;
-}
-
 // função de agregação para criar um novo serviço
 // função de agregação para criar um novo serviço
 type ServicesFetcher = () => Promise<AggregatorService[]>;

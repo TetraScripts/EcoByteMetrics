@@ -1,4 +1,3 @@
-import { updateServiceStatus } from "../modules/Services/services.service";
 import { ApiError, Metric, ServiceMetrics } from "./api.types";
 
 export class ServiceAPISevice {
@@ -79,7 +78,7 @@ export class ServiceAPISevice {
                 "EXTERNAL_API_INVALID_JSON"
             );
         }
-        ServiceApiError.validarEstruturaLista(data)
+        await ServiceApiError.validarEstruturaLista(data)
         return data as ServiceMetrics[];
     }
     //pega um service na API
@@ -231,7 +230,7 @@ export class ServiceApiError extends Error implements ApiError {
         }
 
     }
-    static validarEstruturaLista(data: unknown): void {
+    static async validarEstruturaLista(data: unknown): Promise<void> {
         if (!Array.isArray(data) || data.length == 0) {
             throw new ServiceApiError(
                 "A API retornou uma lista inválida ou vazia",
@@ -265,7 +264,7 @@ export class ServiceApiError extends Error implements ApiError {
 
 
             }
-            this.validarEstrutura(item.location);
+            await this.validarEstrutura(item.location);
         }
 
     }

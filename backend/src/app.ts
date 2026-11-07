@@ -24,6 +24,25 @@ const app = express();
 
 app.use(cors());
 app.use(express.json());
+
+// Tratamento de métodos HTTP não permitidos
+export function methodNotAllowed(allowedMethods: string[]) {
+    return (req: Request, res: Response): void => {
+
+        res.set("Allow", allowedMethods.join(", "));
+
+        if (req.method === "OPTIONS") {
+            res.status(204).end();
+            return;
+        }
+
+        res.status(405).json({
+            erro: "Método HTTP não permitido",
+            metodo: req.method,
+            metodosPermitidos: allowedMethods
+        });
+    };
+}
 // Rotas existentes da API.
 // Verifica se o backend está respondendo.
 app.use("/auth", authRouter);

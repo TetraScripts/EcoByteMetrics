@@ -1,40 +1,33 @@
 /* Valida as credenciais, compara a senha com o hash e gera o JWT. */
 import bcrypt from "bcryptjs";
 import jwt, { type SignOptions } from "jsonwebtoken";
-import { getUserByEmailRepository } from "./auth.repository";
+import { AuthUser, AuthUserRepository, LoginInput } from "./auth.repository";
 
 export class AuthError extends Error {
-  constructor(
-    message: string,
-    public readonly statusCode: number
-  ) {
-    super(message);
-    this.name = "AuthError";
-  }
+  constructor(message: string, public readonly statusCode: number) {
+        super(message);
+        this.statusCode = statusCode;
+        this.message = message;
+        this.name = "AuthError";
+    }
 }
-
-export type LoginInput = {
-  email: string;
-  password: string;
-};
 
 export type LoginResult = {
   token: string;
   tokenType: "Bearer";
   expiresIn: string;
 };
-
-export async function loginService(
-  input: LoginInput
-): Promise<LoginResult> {
-  const email = input.email.trim().toLowerCase();
+export class AuthUserService{
+   private authUser = new AuthUserRepository();
+   async loginService(input: LoginInput): Promise<LoginResult> {
+    const email = input.email.trim().toLowerCase();
   const password = input.password;
 
   if (!email || !password) {
     throw new AuthError("E-mail e senha são obrigatórios.", 400);
   }
 
-  const user = await getUserByEmailRepository(email);
+  const user = await this.authUser.getUserByEmailRepository(email);
 
   if (!user) {
     throw new AuthError("E-mail ou senha inválidos.", 401);
@@ -73,4 +66,6 @@ export async function loginService(
     tokenType: "Bearer",
     expiresIn,
   };
+  }
 }
+

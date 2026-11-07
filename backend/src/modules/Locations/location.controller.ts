@@ -1,55 +1,49 @@
 import {NextFunction, Request, Response} from "express";
-/* Controlador para gerenciar operações relacionadas a localizações.
-   Este módulo fornece funções para criar, buscar por ID e listar todas as localizações.
-   Ele lida com erros específicos de localização e envia respostas HTTP apropriadas.
-*/
-import{
-    LocationError,
-    createLocation,
-    getLocationById,
-    listLocationALl
-}from "./location.service";
-/* Função handleError que trata erros específicos de localização,
-    enviando uma resposta HTTP com o status e a mensagem de erro apropriados.
-*/
+import{ LocationError,LocationService}from "./location.service";
+export {type Location} from "./location.repository"
 function handleError(error: unknown, res: Response, next: NextFunction): void {
     if (error instanceof LocationError) {
         res.status(error.statusCode).json({ erro: error.message });
+        return;
+    }
+    next(error);
+}
+export class LocationController{
+    private locationService = new LocationService();
+    createLocationController = async (req: Request, res: Response, next: NextFunction): Promise<void> => {
+      
+        try {
+            let location = await this.locationService.createLocation(req.body);
+            if(!location){
+                throw new LocationError("Não foi possível criar o registro de Location", 500);
+            }
+            res.location(`${req.baseUrl}/${location.id_location}`).status(201).json(location);
+        } catch (error) {
+            handleError(error, res, next);
+        }
+    }
+    getLocationByIdController = async (req: Request, res: Response, next: NextFunction): Promise<void> => {
+        try {
+            const id_location = Number(req.params.id_location)
+            if(isNaN(id_location) || id_location<=0){
+                throw new LocationError("ID da localização inválido", 404);
+            }
+            const location = await this.locationService.getLocationById(id_location);
+            res.status(200).json(location);
+        } catch (error) {
+            handleError(error, res, next);
+        }
+    }
+    listLocationController = async (req: Request, res: Response, next: NextFunction): Promise<void>=> {
+        try {
+            const location = await this.locationService.listLocationALl();
+            if(!location || location.length===0){
+                throw new LocationError("Não existe localização cadastrada", 404);
+            }
+            res.status(200).json(location);
+        } catch (error) {
+            handleError(error, res, next);
+        }
     }
 }
-/* Função assíncrona createLocationController que lida com a criação de uma nova localização.
-   Ela chama a função createLocation do serviço, envia uma resposta HTTP com o status 201 (Criado) e a localização criada.
-   Em caso de erro, chama a função handleError para tratar o erro.
-*/
-export async function createLocationController(req: Request, res: Response, next: NextFunction): Promise<void> {
-    try {
-        const location = await createLocation(req.body);
-        res.location(`${req.baseUrl}/${location.id_location}`).status(201).json(location);
-    } catch (error) {
-        handleError(error, res, next);
-    }
-}
-/* Função assíncrona getLocationByIdController que lida com a busca de uma localização por ID.
-   Ela chama a função getLocationById do serviço, envia uma resposta HTTP com o status 200 (OK) e a localização encontrada.
-   Em caso de erro, chama a função handleError para tratar o erro.
-*/
-export async function getLocationByIdController(req: Request, res: Response, next: NextFunction): Promise<void> {
-    try {
-        const location = await getLocationById(Number(req.params.id_location));
-        res.status(200).json(location);
-    } catch (error) {
-        handleError(error, res, next);
-    }
-}
-/* Função assíncrona listLocationController que lida com a listagem de todas as localizações.
-   Ela chama a função listLocationALl do serviço, envia uma resposta HTTP com o status 200 (OK) e a lista de localizações encontradas.
-   Em caso de erro, chama a função handleError para tratar o erro.
-*/
-export async function listLocationController(req: Request, res: Response, next: NextFunction): Promise<void> {
-    try {
-        const location = await listLocationALl();
-        res.status(200).json(location);
-    } catch (error) {
-        handleError(error, res, next);
-    }
-}
+

@@ -3,7 +3,7 @@ import { CarbonApiError } from "../../integrations/carbon-api";
 import { CreateCarbonInput } from "../Carbons/carbon.repository";
 import { CarbonError, CarbonService } from "../Carbons/carbon.service";
 import { createLocationInput } from "../Locations/location.repository";
-import { createLocation, getLocationByName } from "../Locations/location.service";
+import { LocationService } from "../Locations/location.service";
 
 export class WorkerCarbons{
     //metodo async que pegar uma lista de Carbons e cadastra a lista
@@ -52,10 +52,11 @@ export class WorkerCarbons{
     //metodo asyc que cadastrar cada item da lista
     private async cadastrarCarbonLocation(carbon:CreateCarbonInput, local:createLocationInput){
         const carbonService = new CarbonService();
+        const locationService  = new LocationService();
         try{
-        const Lugar= await getLocationByName(local.longitude_location, local.latitude_location)
+        const Lugar= await locationService.getLocationByName(local.longitude_location, local.latitude_location)
         if(!Lugar){
-          const l = await createLocation(local);
+          const l = await locationService.createLocation(local);
           carbon.id_location=l.id_location;
           console.log("Cadastrado Location");
           
