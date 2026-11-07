@@ -9,7 +9,8 @@ import locationRouter from "./modules/Locations/location.router.js";
 import statisticRouter from "./modules/Statistics/statistics.router.js";
 import authRouter from "./modules/Auth/auth.router";
 import monitoringRouter from "./modules/Monitoring/monitoring.router";
-import {start} from "./modules/Worker/worker.job.js"
+import { authMiddleware } from "./modules/Auth/auth.middleware";
+import { COLLECTION_INTERVAL_MS } from "./modules/Monitoring/collector";
 
 import {
   getDiscoveredServices,
@@ -19,7 +20,7 @@ import {
 } from "./modules/Services/services.service.js";
 
 //Cria Um thead paralela para fazer a percistencia
-start();
+
 
 // Polling inicial e periódico é iniciado por server.ts.
 const app = express();

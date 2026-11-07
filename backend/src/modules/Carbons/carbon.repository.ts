@@ -1,7 +1,7 @@
 import pool from "../../db/connection";
 
 export type Carbon = {
-  id_carbon:number,
+    id_carbon:number,
 	id_location:number,
 	date_houry: string,
 	intesity_co2e_kwh_carbon:number,
@@ -21,6 +21,21 @@ export class CarbonRepository {
                 carbon.intesity_co2e_kwh_carbon,
                 carbon.renewable_percent_carbon,
                 carbon.date_houry
+            ]
+        );
+        return result.rows[0];
+    }
+    async updateCarbon(carbon: CreateCarbonInput): Promise<Carbon> {
+        const result = await pool.query(
+            `UPDATE carbons
+             SET intesity_co2e_kwh_carbon = $1, renewable_percent_carbon = $2, date_houry = $3
+             WHERE id_location = $4
+             RETURNING *`,
+            [
+                carbon.intesity_co2e_kwh_carbon,
+                carbon.renewable_percent_carbon,
+                carbon.date_houry,
+                carbon.id_location
             ]
         );
         return result.rows[0];

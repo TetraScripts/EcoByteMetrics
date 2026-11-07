@@ -53,4 +53,44 @@ export class StatisticController {
             });
         }
     };
+
+    calculationEnergyByUnit = async(req:Request, res:Response):Promise<void>=>{
+        try{
+            let nomeService:string|null;
+            nomeService = String(req.params.nome_service);
+            console.log("Nome do serviço recebido:", nomeService);
+            if (!nomeService || nomeService.trim() === "") {
+                res.status(400).json({ message: "O nome do serviço é obrigatório."});
+                return;
+            }
+            const serviceEnergy=await this.statisticService.getEnergyCalculationUnitService(nomeService);
+            if (!serviceEnergy) {
+                res.status(404).json({message: "Serviço não encontrado."});
+                return;
+            }
+            
+            res.status(200).json(serviceEnergy);
+
+        }catch(error:unknown){
+            console.error("Erro ao buscar cálculo energético:", error);
+            res.status(500).json({ message: "Erro interno ao calcular energia do serviço."});
+        }
+    }
+
+    calculationEnergy = async(req:Request, res:Response):Promise<void>=>{
+        try{
+            const serviceEnergy=await this.statisticService.getEnergyCalculationService();
+            if (serviceEnergy.length === 0) {
+                res.status(404).json({message: "Nenhum cálculo energético encontrado."});
+                return;
+            }
+            
+            res.status(200).json(serviceEnergy);
+
+        }catch(error:unknown){
+            console.error("Erro ao buscar cálculo energético:", error);
+            res.status(500).json({ message: "Erro interno ao calcular energia do serviço."});
+        }
+    }
+
 }

@@ -1,4 +1,3 @@
-
 import { Router, Request, Response } from "express";
 import { CarbonController } from "./carbon.controller";
 
