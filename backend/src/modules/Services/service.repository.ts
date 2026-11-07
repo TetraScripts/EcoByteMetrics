@@ -33,17 +33,39 @@ export async function createServiceRepository(serv: createServiceInput): Promise
     return result.rows[0] || null;
 }
 export async function updateServiceStatusRepository(service_names:string[]): Promise<void> {
-    
-    const res= await pool.query(
-    `UPDATE services
-        SET active_service = FALSE,
-            date_houry = NOW()
-        WHERE active_service = TRUE
-        AND NOT (
-            name_service = ANY($1::text[])
-        ) RETURNING *`,
-        [service_names]);
-        console.log(res.rows)
+    const client = await pool.connect();
+    try {
+        await client.query('BEGIN');
+
+        const deactivated= await client.query(
+        `UPDATE services
+            SET active_service = FALSE,
+                date_houry = NOW()
+            WHERE active_service = TRUE
+            AND NOT (
+                name_service = ANY($1::text[])
+            ) RETURNING *`,
+            [service_names]);
+
+        const activated = await client.query(
+        `UPDATE services
+             SET active_service = TRUE,
+                 date_houry = NOW()
+             WHERE active_service = FALSE
+               AND name_service = ANY($1::text[])
+             RETURNING *`,
+            [service_names]);
+        await client.query('COMMIT');
+        console.log('Deactivated services:', deactivated.rows);
+        console.log('Activated services:', activated.rows);
+    } catch (error) {
+        console.error('Error updating service status:', error);
+        await client.query('ROLLBACK');
+        throw error;
+    }finally {
+        client.end();
+    }
+        
 }
 export async function getServiceByIdRepository(id_service: number): Promise<Service | null> {
     const result = await pool.query("SELECT * FROM services WHERE id_service = $1", [id_service]);
