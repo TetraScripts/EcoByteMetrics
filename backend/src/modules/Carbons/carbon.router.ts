@@ -14,13 +14,13 @@ router.post("/", carbonController.createCarbon);
 router.all("/", methodNotAllowed(["POST", "OPTIONS"]));
 
 // Listar todos os registros
-router.get("/all",  carbonController.listCarbons);
+router.get("/all", carbonController.listCarbons);
 
 // Métodos não permitidos em /all
-router.all("/all",  methodNotAllowed(["GET", "HEAD", "OPTIONS"]));
+router.all("/all", methodNotAllowed(["GET", "HEAD", "OPTIONS"]));
 
 // Listar registros por localização
-router.get("/loc/:id_location",  carbonController.listCarbonsByLocationId);
+router.get("/loc/:id_location", carbonController.listCarbonsByLocationId);
 
 // Métodos não permitidos em /loc/:id_location
 router.all(
