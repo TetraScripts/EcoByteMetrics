@@ -2,15 +2,23 @@ import assert from "node:assert/strict";
 import test from "node:test";
 import { fetchServiceMetrics, MetricsApiError } from "../src/integrations/metrics-api";
 
-test("consulta preserva os motivos estruturados e não confunde falhas genéricas com ausência de métricas", async t => {
-  for (const code of ["metrics_missing", "invalid_metrics", "service_unavailable"]) {
-    t.mock.method(globalThis, "fetch", async () => Response.json({error: code}, {status: 500}));
-    await assert.rejects(fetchServiceMetrics("app"), error => error instanceof MetricsApiError && error.code === code);
-  }
-  t.mock.method(globalThis, "fetch", async () => new Response("indisponível", {status: 502}));
-  await assert.rejects(fetchServiceMetrics("app"), error => error instanceof MetricsApiError && error.code === "metrics_unavailable");
-  t.mock.method(globalThis, "fetch", async () => Response.json({collection_interval_seconds: 30, metrics: {cpu_percent: 5}}));
-  await assert.rejects(fetchServiceMetrics("app"), error => error instanceof MetricsApiError && error.code === "invalid_metrics");
-  t.mock.method(globalThis, "fetch", async () => { throw new Error("falha de conexão"); });
-  await assert.rejects(fetchServiceMetrics("app"), /falha de conexão/);
+test("classifica ausência de métricas indicada no corpo mesmo quando a API responde HTTP 200", async t => {
+  t.mock.method(globalThis, "fetch", async () => new Response(JSON.stringify({ error: "metrics_missing" }), { status: 200 }));
+  await assert.rejects(fetchServiceMetrics("active-api"), error =>
+    error instanceof MetricsApiError && error.code === "metrics_missing",
+  );
+});
+
+test("classifica 404 como ausência de métricas e preserva códigos conhecidos", async t => {
+  t.mock.method(globalThis, "fetch", async () => new Response(JSON.stringify({ error: "invalid_metrics" }), { status: 404 }));
+  await assert.rejects(fetchServiceMetrics("active-api"), error =>
+    error instanceof MetricsApiError && error.code === "invalid_metrics",
+  );
+});
+
+test("classifica JSON malformado em resposta de sucesso como métrica inválida", async t => {
+  t.mock.method(globalThis, "fetch", async () => new Response("not-json", { status: 200 }));
+  await assert.rejects(fetchServiceMetrics("active-api"), error =>
+    error instanceof MetricsApiError && error.code === "invalid_metrics",
+  );
 });

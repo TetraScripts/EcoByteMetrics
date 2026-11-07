@@ -74,3 +74,29 @@ test("coletor grava motivos distintos sem interromper aplicações saudáveis ne
   const stored = writes.find(write => /INSERT INTO monitoring_collections/.test(write.sql));
   assert.deepEqual(JSON.parse(stored!.values![2] as string),result.errors);
 });
+
+test("falha na descoberta mantém o catálogo conhecido e persiste os serviços como indisponíveis", async t => {
+  publishCollection([service], new Map(), "2026-11-05T00:00:00.000Z");
+  const statements: { sql: string; values?: unknown[] }[] = [];
+  const client = {
+    async query(sql: string, values?: unknown[]) {
+      statements.push({ sql, values });
+      return { rowCount: 1, rows: [{ id_location: 1, id_service: 2 }] };
+    },
+    release() {},
+  };
+  t.mock.method(pool, "connect", async () => client);
+
+  const cycle = await collectOnce({
+    services: async () => { throw new Error("aggregator unavailable"); },
+    metrics: async () => { throw new Error("metrics should not be requested"); },
+    regions: async () => [],
+  });
+
+  assert.deepEqual(cycle.catalog, [service]);
+  assert.deepEqual(cycle.errors, { [service.id]: "service_unavailable" });
+  assert.equal(statements.filter(({ sql }) => /INSERT INTO metrics\s*\(/i.test(sql)).length, 0);
+  const stored = statements.find(({ sql }) => /INSERT INTO monitoring_collections/i.test(sql));
+  assert.ok(stored);
+  assert.deepEqual(JSON.parse(stored.values?.[2] as string), cycle.errors);
+});
