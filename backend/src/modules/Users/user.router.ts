@@ -10,9 +10,6 @@ import { userAccessMiddleware } from "../Auth/userAccess.middleware";
 
 const userRouter = Router();
 
-import { authMiddleware } from "../Auth/auth.middleware";
-import { userAccessMiddleware } from "../Auth/userAccess.middleware";
-
 userRouter.post("/", createUserController);
 userRouter.get(
     "/:id_user",

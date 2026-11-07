@@ -7,13 +7,6 @@ export type User = {
   name_user: string;
 };
 
-export type CreateUserInput = {
-  email_user: string;
-  name_user: string;
-  password_user: string;
-  token_user: string;
-};
-
 // Dados que podem ser retornados pela API.
 export type SafeUser = {
   id_user: number;
@@ -83,6 +76,10 @@ export async function getUserPasswordHashRepository(
      FROM users
      WHERE id_user = $1`,
     [id]
+  );
+
+  return result.rows[0] || null;
+}
 
 // Atualizar usuário.
 export async function upadateUserRepository({

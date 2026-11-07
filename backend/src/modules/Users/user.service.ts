@@ -124,7 +124,7 @@ export async function createUserService(
 // Buscar usuário por ID.
 export async function getUserByIdService(
     id: number
-): Promise<SafeUser | null> {
+): Promise<SafeUser> {
     validateUserId(id);
 
     const user = await getUserByIdRepository(id);
@@ -216,7 +216,7 @@ export async function updateUserService(
 // Excluir usuário.
 export async function deleteUserService(
     id: number
-): Promise<SafeUser | null> {
+): Promise<SafeUser> {
     validateUserId(id);
 
     const user = await deleteUserRepository(id);
