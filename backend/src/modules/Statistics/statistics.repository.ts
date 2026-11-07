@@ -224,7 +224,7 @@ export class StatisticRepository {
       unavailable_services: Number(row.unavailable_services),
       total_services: Number(row.total_services)
     };
-        return result.rows;
+  
  }
 
     async getEnergyCalculationUnitService(nome_service:string){
