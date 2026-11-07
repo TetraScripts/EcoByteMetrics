@@ -1,6 +1,8 @@
 services:
   postgres:
-    build: ./database
+    build:
+      context: ./database
+      dockerfile: Dockerfile
     
     container_name: ${POSTGRES_CONTAINER_NAME:-database_EcoByteMetrics}
     restart: unless-stopped
