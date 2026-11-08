@@ -14,10 +14,10 @@ Esta documentação especifica os contratos técnicos de todas as rotas HTTP exp
 ## 🔑 1. Autenticação & Acesso `( RP06 )`
 
 ### `POST /auth/login`
-Autentica o usuário administrativo no backend e gera o Token JWT para acesso a recursos protegidos `( RP06 )`.
+Autentica um usuário `ADMIN` ou `USER` e gera um JWT com o perfil no claim `role`. O token é utilizado nas rotas protegidas; as rotas de escrita administrativa exigem perfil `ADMIN`.
 
 * **Método:** `POST`
-* **URL:** `/api/auth/login`
+* **URL:** `/auth/login`
 * **Headers:**
   ```http
   Content-Type: application/json
@@ -25,34 +25,33 @@ Autentica o usuário administrativo no backend e gera o Token JWT para acesso a 
 * **Corpo da Requisição (Body):**
   ```json
   {
-    "email": "admin@greener.com",
-    "senha": "senhaSegura123"
+    "email": "admin@exemplo.com",
+    "password": "<senha definida no provisionamento>"
   }
   ```
 * **Códigos de Resposta:**
   * **`200 OK` — Autenticação realizada com sucesso:**
     ```json
     {
-      "token": "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpZCI6MSwiZW1haWwiOiJhZG1pbkBncmVlbmVyLmNvbSIsImlhdCI6MTY3MjUxODQwMCwiZXhwIjoxNjcyNjA0ODAwfQ...",
-      "usuario": {
-        "id": 1,
-        "nome": "Administrador GreenER",
-        "email": "admin@greener.com"
-      }
+      "token": "<JWT>",
+      "tokenType": "Bearer",
+      "expiresIn": "1h"
     }
     ```
   * **`400 Bad Request` — Campos obrigatórios ausentes:**
     ```json
     {
-      "error": "Os campos e-mail e senha são obrigatórios."
+      "message": "Informe o e-mail e a senha."
     }
     ```
   * **`401 Unauthorized` — Credenciais incorretas:**
     ```json
     {
-      "error": "E-mail ou senha inválidos."
+      "message": "E-mail ou senha inválidos."
     }
     ```
+
+O login também define o cookie de sessão `ecobyte_session` como `HttpOnly` e `SameSite=Strict`. O JWT contém `sub`, `email` e `role` (`ADMIN` ou `USER`). Para chamadas com Bearer, envie `Authorization: Bearer <token>`. O endpoint é montado em `/auth`, sem o prefixo `/api`.
 
 ---
 
@@ -147,7 +146,7 @@ Obtém o detalhamento de um serviço específico, incluindo seus dados geográfi
         "cpuUsage": 45.2,
         "memoryUsage": 512.0,
         "consumoKwh": 0.1240,
-        "emissaoCo2e": 12.8500
+        "emissaoCo2eG": 12850.0000
       },
       "ultimaLeitura": "2026-10-13T11:00:00Z"
     }
@@ -164,7 +163,7 @@ Obtém o detalhamento de um serviço específico, incluindo seus dados geográfi
 ## 📊 3. Métricas, Histórico & Indicadores `( RF03, RF07, RF08, RF09, RF10 )`
 
 ### `GET /services/:id/metrics`
-Consulta a série temporal histórica das coletas de hardware e cálculos de consumo energético (kWh) e carbono (CO₂e) de um determinado serviço `( RF03, RF07, RF10 )`.
+Consulta a série temporal histórica das coletas de hardware e cálculos de consumo energético (kWh) e carbono (gCO₂e) de um determinado serviço `( RF03, RF07, RF10 )`.
 
 * **Método:** `GET`
 * **URL:** `/api/services/:id/metrics`
@@ -185,14 +184,14 @@ Consulta a série temporal histórica das coletas de hardware e cálculos de con
           "cpuUsage": 40.0,
           "memoryUsage": 500.0,
           "consumoKwh": 0.1100,
-          "emissaoCo2e": 11.4000
+          "emissaoCo2eG": 11400.0000
         },
         {
           "dataHoraColeta": "2026-10-13T11:00:00Z",
           "cpuUsage": 45.2,
           "memoryUsage": 512.0,
           "consumoKwh": 0.1240,
-          "emissaoCo2e": 12.8500
+          "emissaoCo2eG": 12850.0000
         }
       ]
     }
@@ -214,7 +213,7 @@ Retorna a consolidação agregada dos indicadores operacionais e ambientais do a
       "servicosIndisponiveis": 1,
       "servicosSemMetricas": 1,
       "consumoTotalKwh": 145.2800,
-      "emissaoTotalCo2e": 1420.5000,
+      "emissaoTotalCo2eG": 1420500.0000,
       "dataHoraUltimaAtualizacao": "2026-10-13T11:00:00Z"
     }
     ```
@@ -224,7 +223,7 @@ Retorna a consolidação agregada dos indicadores operacionais e ambientais do a
 ## 🏆 4. Ranking & Comparador `( RF14, RF15 )`
 
 ### `GET /dashboard/ranking`
-Obtém a lista ordenada de serviços por maior consumo energético ou emissão de CO₂e no período especificado `( RF14 )`.
+Obtém a lista ordenada de serviços por maior consumo energético ou emissão de CO₂e (g) no período especificado `( RF14 )`.
 
 * **Método:** `GET`
 * **URL:** `/api/dashboard/ranking`
@@ -243,14 +242,14 @@ Obtém a lista ordenada de serviços por maior consumo energético ou emissão d
           "id_servico": "data-processing-service",
           "nome": "Serviço de Processamento de Dados",
           "consumoKwh": 45.1200,
-          "emissaoCo2e": 480.2000
+          "emissaoCo2eG": 480200.0000
         },
         {
           "posicao": 2,
           "id_servico": "payment-service",
           "nome": "Serviço de Pagamentos",
           "consumoKwh": 12.8000,
-          "emissaoCo2e": 132.5000
+          "emissaoCo2eG": 132500.0000
         }
       ]
     }
@@ -275,14 +274,14 @@ Permite a comparação direta de métricas de uso e indicadores ambientais entre
         {
           "id_servico": "payment-service",
           "consumoKwh": 12.8000,
-          "emissaoCo2e": 132.5000,
+          "emissaoCo2eG": 132500.0000,
           "mediaCpu": 48.5,
           "status": "ACTIVE"
         },
         {
           "id_servico": "auth-service",
           "consumoKwh": 2.1000,
-          "emissaoCo2e": 21.8000,
+          "emissaoCo2eG": 21800.0000,
           "mediaCpu": 12.2,
           "status": "NO_METRICS"
         }

@@ -76,7 +76,7 @@ create table Metrics (
 	CHECK (cpu_metric BETWEEN 0 AND 100),
 	ram_metric numeric not null check(ram_metric>=0),
 	hd_metric numeric not null check(hd_metric>=0),
-	network_metric numeric not null check(hd_metric>=0),
+	network_metric numeric not null check(network_metric>=0),
 	date_houry TIMESTAMPTZ NOT NULL,
 	colletion_interval_metric numeric not null,
 	carbon_intensity numeric,
@@ -149,7 +149,7 @@ Query SQL utilizada pelo backend para consolidar os rankings de consumo e emiss�
 const sortColumn =
     orderBy === "kwh"
     ? '"consumoKwh"'
-    : '"emissaoCo2e"';
+    : '"emissaoCo2eG"';
 
 	WITH sample_energy AS (
             SELECT
@@ -157,13 +157,10 @@ const sortColumn =
                 m.date_houry AS collected_at,
                 m.colletion_interval_metric AS collection_interval_seconds,
 
-                COALESCE(
-                    c.intesity_co2e_kwh_carbon,
-                    0
-                ) AS carbon_intensity_gco2e_per_kwh,
+                m.carbon_intensity AS carbon_intensity_gco2e_per_kwh,
 
                 (
-                    (m.cpu_metric / 100.0 * 100) +
+                    (m.cpu_metric / 100.0 * 120) +
                     (m.ram_metric * 0.375) +
                     (m.hd_metric * 0.01) +
                     (m.network_metric * 0.02)
@@ -175,15 +172,6 @@ const sortColumn =
             INNER JOIN Services AS s
                 ON s.id_service = m.id_service
 
-            LEFT JOIN LATERAL (
-                SELECT
-                    cb.intesity_co2e_kwh_carbon
-                FROM Carbons AS cb
-                WHERE cb.id_location = s.id_location
-                  AND cb.date_houry <= m.date_houry
-                ORDER BY cb.date_houry DESC
-                LIMIT 1
-            ) AS c ON TRUE
 
             WHERE s.active_service = TRUE
         ),
@@ -194,7 +182,7 @@ const sortColumn =
                 collected_at,
                 consumption_kwh,
                 consumption_kwh *
-                    carbon_intensity_gco2e_per_kwh AS emissions_co2e
+                    carbon_intensity_gco2e_per_kwh AS emissions_co2e_g
             FROM sample_energy
         ),
 		SELECT
@@ -204,9 +192,7 @@ const sortColumn =
             COALESCE(
                 SUM(i.consumption_kwh), 0
             )::float8 AS "consumoKwh",
-            COALESCE(
-                SUM(i.emissions_co2e), 0
-            )::float8 AS "emissaoCo2e"
+            SUM(i.emissions_co2e_g)::float8 AS "emissaoCo2eG"
 
             FROM Services AS s
 
@@ -260,3 +246,31 @@ postgres:
 volumes:
   postgres_data:
 ```
+
+## Primeiro usuário administrador
+
+O `DML.sql` não define uma senha padrão e não cria um administrador automaticamente. A senha do ADMIN é escolhida pelo responsável pela implantação; não existe uma senha de administrador compartilhada pelo projeto.
+
+1. Gere um hash bcrypt usando a dependência `bcryptjs` já instalada no backend. No terminal, dentro de `backend`, solicite a senha sem gravá-la no repositório:
+
+   ```bash
+   read -rsp "Senha forte para o ADMIN: " ADMIN_PASSWORD; echo
+   ADMIN_HASH=$(ADMIN_PASSWORD="$ADMIN_PASSWORD" node -e 'const bcrypt = require("bcryptjs"); process.stdout.write(bcrypt.hashSync(process.env.ADMIN_PASSWORD, 12))')
+   unset ADMIN_PASSWORD
+   ```
+
+2. Insira a conta com uma consulta parametrizada. Substitua os parâmetros pelos valores escolhidos e passe o hash gerado em `$3` (não passe a senha em texto puro):
+
+   ```sql
+   INSERT INTO users (name_user, email_user, password_user, role_user)
+   VALUES ($1, $2, $3, 'ADMIN')
+   ON CONFLICT (email_user) DO NOTHING;
+   ```
+
+   Exemplo de parâmetros: `$1` = nome do administrador; `$2` = e-mail em letras minúsculas; `$3` = conteúdo de `ADMIN_HASH`.
+
+3. Faça login em `POST /auth/login` com o e-mail e a senha escolhidos no passo 1. A API compara a senha com o hash bcrypt e emite um JWT com `role: "ADMIN"`.
+
+**Não confunda credenciais:** `POSTGRES_PASSWORD` autentica a conexão com o PostgreSQL; a senha escolhida acima autentica o usuário ADMIN na aplicação. As senhas aleatórias usadas pelos testes são apenas fixtures e não são credenciais de implantação. Novos cadastros pela API recebem sempre o perfil `USER`.
+
+Não versione `.env`, senhas, hashes de produção ou tokens. Se a conta já existir, `ON CONFLICT DO NOTHING` não altera seu perfil nem sua senha; faça a recuperação por um procedimento administrativo autorizado.

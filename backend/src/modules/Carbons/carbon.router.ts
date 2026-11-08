@@ -3,12 +3,13 @@ import { Router, Request, Response } from "express";
 import { CarbonController } from "./carbon.controller";
 import { methodNotAllowed } from "../../app";
 import { authMiddleware } from "../Auth/auth.middleware";
+import { adminMiddleware } from "../Auth/admin.middleware";
 
 const router = Router();
 const carbonController = new CarbonController();
 
 // Criar registro de carbono
-router.post("/", carbonController.createCarbon);
+router.post("/", authMiddleware, adminMiddleware, carbonController.createCarbon);
 
 // Métodos não permitidos na raiz
 router.all("/", methodNotAllowed(["POST", "OPTIONS"]));

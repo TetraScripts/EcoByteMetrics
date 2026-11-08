@@ -3,7 +3,7 @@ import pool from "../../db/connection.js";
 
 export interface GlobalStatistics {
   total_consumption_kwh: number;
-  total_co2e_kg: number;
+  total_co2e_g: number | null;
   active_services: number;
   unavailable_services: number;
   total_services: number;
@@ -20,7 +20,7 @@ export class StatisticRepository {
                 m.carbon_intensity AS carbon_intensity_gco2e_per_kwh,
 
                 (
-                    (m.cpu_metric / 100.0 * 100) +
+                    (m.cpu_metric / 100.0 * 120) +
                     (m.ram_metric * 0.375) +
                     (m.hd_metric * 0.01) +
                     (m.network_metric * 0.02)
@@ -29,6 +29,8 @@ export class StatisticRepository {
 
             FROM Metrics AS m
 
+            -- INNER JOIN is only for referential integrity (a metric must belong to a service).
+            -- Carbon coverage is independent: m.carbon_intensity may be NULL and the sample remains.
             INNER JOIN Services AS s
                 ON s.id_service = m.id_service
 
@@ -41,7 +43,7 @@ export class StatisticRepository {
                 collected_at,
                 consumption_kwh,
                 consumption_kwh *
-                    carbon_intensity_gco2e_per_kwh AS emissions_co2e
+                    carbon_intensity_gco2e_per_kwh AS emissions_co2e_g
             FROM sample_energy
         )
     `;
@@ -61,9 +63,9 @@ export class StatisticRepository {
                     SUM(consumption_kwh), 0
                 )::float8 AS "consumoTotalKwh",
 
-                SUM(emissions_co2e)::float8 AS "emissaoTotalCo2e",
+                SUM(emissions_co2e_g)::float8 AS "emissaoTotalCo2eG",
                 COUNT(*)::int AS "sampleCount",
-                COUNT(emissions_co2e)::int AS "coveredEmissionSamples",
+                COUNT(emissions_co2e_g)::int AS "coveredEmissionSamples",
 
                 (
                     SELECT MAX(date_houry)
@@ -83,7 +85,7 @@ export class StatisticRepository {
     const sortColumn =
       orderBy === "kwh"
         ? '"consumoKwh"'
-        : '"emissaoCo2e"';
+        : '"emissaoCo2eG"';
 
     const result = await pool.query(
       `
@@ -97,9 +99,9 @@ export class StatisticRepository {
                         SUM(i.consumption_kwh), 0
                     )::float8 AS "consumoKwh",
 
-                    SUM(i.emissions_co2e)::float8 AS "emissaoCo2e",
+                    SUM(i.emissions_co2e_g)::float8 AS "emissaoCo2eG",
                     COUNT(i.collected_at)::int AS "sampleCount",
-                    COUNT(i.emissions_co2e)::int AS "coveredEmissionSamples"
+                    COUNT(i.emissions_co2e_g)::int AS "coveredEmissionSamples"
 
                 FROM Services AS s
 
@@ -115,7 +117,7 @@ export class StatisticRepository {
                     s.name_service
 
                 ORDER BY
-                    ${sortColumn} DESC,
+                    ${sortColumn} DESC NULLS LAST,
                     nome ASC;
             `,
       [period]
@@ -148,37 +150,21 @@ export class StatisticRepository {
 
           (
             (
-              (m.cpu_metric / 100 * 100) +
+              (m.cpu_metric / 100.0 * 120) +
               (m.ram_metric * 0.375) +
               (m.hd_metric * 0.01) +
               (m.network_metric * 0.02)
             ) * m.colletion_interval_metric / 3600000
           ) AS consumption_kwh,
 
-          COALESCE(carbon.intensity, 0) AS carbon_intensity
+          m.carbon_intensity AS carbon_intensity
 
         FROM metrics m
 
+        -- INNER JOIN validates the metric owner only. The factor is the historical
+        -- snapshot stored on this metric and may legitimately be NULL.
         INNER JOIN services s
           ON s.id_service = m.id_service
-
-        INNER JOIN locations l
-          ON l.id_location = s.id_location
-
-        LEFT JOIN LATERAL (
-          SELECT
-            cb.intesity_co2e_kwh_carbon AS intensity
-
-          FROM carbons cb
-
-          WHERE cb.id_location = l.id_location
-            AND cb.date_houry <= m.date_houry
-
-          ORDER BY cb.date_houry DESC
-
-          LIMIT 1
-
-        ) carbon ON TRUE
 
         WHERE s.active_service = TRUE
           AND m.date_houry >= NOW() - $1::interval
@@ -190,13 +176,10 @@ export class StatisticRepository {
           0
         ) AS total_consumption_kwh,
 
-        COALESCE(
-          SUM(
-            ic.consumption_kwh *
-            ic.carbon_intensity / 1000
-          ),
-          0
-        ) AS total_co2e_kg,
+        -- kWh * gCO2e/kWh = gCO2e; do not divide by 1000.
+        SUM(
+          ic.consumption_kwh * ic.carbon_intensity
+        ) AS total_co2e_g,
 
         ss.active_services,
         ss.unavailable_services,
@@ -219,7 +202,7 @@ export class StatisticRepository {
 
     return {
       total_consumption_kwh: Number(row.total_consumption_kwh),
-      total_co2e_kg: Number(row.total_co2e_kg),
+      total_co2e_g: row.total_co2e_g == null ? null : Number(row.total_co2e_g),
       active_services: Number(row.active_services),
       unavailable_services: Number(row.unavailable_services),
       total_services: Number(row.total_services)
@@ -236,7 +219,7 @@ export class StatisticRepository {
                     m.date_houry,
 
                     -- Potência da CPU (W)
-                    (m.cpu_metric / 100.0) * 100 AS cpu_power_w,
+                    (m.cpu_metric / 100.0) * 120 AS cpu_power_w,
 
                     -- Potência da memória (W)
                     m.ram_metric * 0.375 AS ram_power_w,
@@ -249,7 +232,7 @@ export class StatisticRepository {
 
                     -- Potência total (W)
                     (
-                        (m.cpu_metric / 100.0) * 100 +
+                        (m.cpu_metric / 100.0) * 120 +
                         (m.ram_metric * 0.375) +
                         (m.hd_metric * 0.01) +
                         (m.network_metric * 0.02)
@@ -258,7 +241,7 @@ export class StatisticRepository {
                     -- Consumo energético (kWh)
                     (
                         (
-                            (m.cpu_metric / 100.0) * 100 +
+                            (m.cpu_metric / 100.0) * 120 +
                             (m.ram_metric * 0.375) +
                             (m.hd_metric * 0.01) +
                             (m.network_metric * 0.02)
@@ -266,34 +249,26 @@ export class StatisticRepository {
                     ) / 3600000.0 AS consumption_kwh,
 
                     -- Intensidade de carbono
-                    c.intesity_co2e_kwh_carbon,
+                    m.carbon_intensity,
 
-                    -- Emissão de CO2e (kg)
+                    -- Emissão de CO2e (g)
                     (
                         (
                             (
-                                (m.cpu_metric / 100.0) * 100 +
+                                (m.cpu_metric / 100.0) * 120 +
                                 (m.ram_metric * 0.375) +
                                 (m.hd_metric * 0.01) +
                                 (m.network_metric * 0.02)
                             ) * m.colletion_interval_metric
                         ) / 3600000.0
-                        * c.intesity_co2e_kwh_carbon
-                    ) / 1000.0 AS co2e_kg
+                        * m.carbon_intensity
+                    ) AS co2e_g
 
                 FROM Services s
 
                 INNER JOIN Metrics m
                     ON s.id_service = m.id_service
 
-                INNER JOIN LATERAL (
-                    SELECT cb.intesity_co2e_kwh_carbon
-                    FROM Carbons cb
-                    WHERE cb.id_location = s.id_location
-                    AND cb.date_houry <= m.date_houry
-                    ORDER BY cb.date_houry DESC
-                    LIMIT 1
-                ) c ON TRUE
 
                 WHERE s.name_service=$1
 
@@ -316,7 +291,7 @@ export class StatisticRepository {
                     m.date_houry,
 
                     -- Potência da CPU (W)
-                    (m.cpu_metric / 100.0) * 100 AS cpu_power_w,
+                    (m.cpu_metric / 100.0) * 120 AS cpu_power_w,
 
                     -- Potência da memória (W)
                     m.ram_metric * 0.375 AS ram_power_w,
@@ -329,7 +304,7 @@ export class StatisticRepository {
 
                     -- Potência total (W)
                     (
-                        (m.cpu_metric / 100.0) * 100 +
+                        (m.cpu_metric / 100.0) * 120 +
                         (m.ram_metric * 0.375) +
                         (m.hd_metric * 0.01) +
                         (m.network_metric * 0.02)
@@ -338,7 +313,7 @@ export class StatisticRepository {
                     -- Consumo energético (kWh)
                     (
                         (
-                            (m.cpu_metric / 100.0) * 100 +
+                            (m.cpu_metric / 100.0) * 120 +
                             (m.ram_metric * 0.375) +
                             (m.hd_metric * 0.01) +
                             (m.network_metric * 0.02)
@@ -346,34 +321,26 @@ export class StatisticRepository {
                     ) / 3600000.0 AS consumption_kwh,
 
                     -- Intensidade de carbono
-                    c.intesity_co2e_kwh_carbon,
+                    m.carbon_intensity,
 
-                    -- Emissão de CO2e (kg)
+                    -- Emissão de CO2e (g)
                     (
                         (
                             (
-                                (m.cpu_metric / 100.0) * 100 +
+                                (m.cpu_metric / 100.0) * 120 +
                                 (m.ram_metric * 0.375) +
                                 (m.hd_metric * 0.01) +
                                 (m.network_metric * 0.02)
                             ) * m.colletion_interval_metric
                         ) / 3600000.0
-                        * c.intesity_co2e_kwh_carbon
-                    ) / 1000.0 AS co2e_kg
+                        * m.carbon_intensity
+                    ) AS co2e_g
 
                 FROM Services s
 
                 INNER JOIN Metrics m
                     ON s.id_service = m.id_service
 
-                INNER JOIN LATERAL (
-                    SELECT cb.intesity_co2e_kwh_carbon
-                    FROM Carbons cb
-                    WHERE cb.id_location = s.id_location
-                    AND cb.date_houry <= m.date_houry
-                    ORDER BY cb.date_houry DESC
-                    LIMIT 1
-                ) c ON TRUE
 
                 ORDER BY
                     s.id_service,

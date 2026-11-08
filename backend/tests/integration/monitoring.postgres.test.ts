@@ -36,6 +36,7 @@ async function isolated(t: TestContext, body: (client: Client) => Promise<void>)
 test("migração preserva registros e interpreta timestamps legados como UTC, mesmo em outro fuso", async t => {
   await isolated(t, async client => {
     await client.query(`
+      CREATE TABLE users(id_user serial PRIMARY KEY,name_user varchar(50) NOT NULL,email_user varchar(254) NOT NULL UNIQUE,password_user varchar(255) NOT NULL);
       CREATE TABLE locations(id_location serial PRIMARY KEY,name_location varchar(50) UNIQUE,country_location text,region_location text,city_location text,latitude_location float8,longitude_location float8);
       CREATE TABLE services(id_service serial PRIMARY KEY,id_location int,name_service varchar(50) UNIQUE,path_metric varchar(50),active_service boolean,date_houry timestamp);
       CREATE TABLE metrics(id_metric bigserial PRIMARY KEY,id_service int,cpu_metric numeric,ram_metric numeric,hd_metric numeric,network_metric numeric,date_houry timestamp,colletion_interval_metric numeric,UNIQUE(id_service,date_houry));
@@ -58,8 +59,10 @@ test("migração preserva registros e interpreta timestamps legados como UTC, me
     assert.equal(snapshot.history[0].emissionsG, null);
     assert.equal(snapshot.totalEmissionsG, null);
     const statistics = await new StatisticRepository().getStatisticsSummaryQuery();
-    assert.equal(statistics.emissaoTotalCo2e, null);
+    assert.equal(statistics.emissaoTotalCo2eG, null);
     assert.equal(statistics.coveredEmissionSamples, 0);
+    const global = await new StatisticRepository().getCalculationEmissionQuery("30 days");
+    assert.equal(global.total_co2e_g, null, "amostra sem fator não pode receber fator histórico nem virar zero");
   });
 });
 
@@ -90,6 +93,11 @@ test("histórico SQL preserva zero, ausência de fator, identidade, corte tempor
     assert.equal(snapshot.history[0].emissionsG, 0);
     assert.equal(snapshot.history[1].emissionsG, null);
     assert.equal(snapshot.history.reduce((sum, point) => sum + point.emissionCount, 0), 1);
+    const statistics = await new StatisticRepository().getStatisticsSummaryQuery();
+    assert.equal(statistics.emissaoTotalCo2eG, 0, "fator zero produz zero gramas, distinto de fator ausente");
+    assert.equal(statistics.coveredEmissionSamples, 1);
+    const global = await new StatisticRepository().getCalculationEmissionQuery("30 days");
+    assert.equal(global.total_co2e_g, 0, "o cálculo global usa o fator gravado na própria amostra");
     assert.equal(snapshot.services[0].status, "unavailable");
     assert.equal(snapshot.collectionEvents.length, 1);
     assert.equal(snapshot.services[0].id, app.id);
@@ -185,7 +193,9 @@ test("recuperação legada usa a região e o último fator anterior sem preenche
     const rows = await client.query("SELECT carbon_intensity::float8 AS factor FROM metrics ORDER BY id_metric");
     assert.deepEqual(rows.rows.map(row => row.factor), [null,85,0,null,123,null]);
     const versions = await client.query("SELECT version FROM schema_migrations ORDER BY version");
-    assert.deepEqual(versions.rows.map(row => row.version), ["001_persisted_monitoring","002_recover_legacy_carbon"]);
+    assert.deepEqual(versions.rows.map(row => row.version), ["001_persisted_monitoring","002_recover_legacy_carbon","003_user_roles"]);
+    const userRole = await client.query("SELECT column_default FROM information_schema.columns WHERE table_schema = current_schema() AND table_name = 'users' AND column_name = 'role_user'");
+    assert.equal(userRole.rows[0].column_default, "'USER'::character varying");
     const snapshot = await readMonitoring({period:"24h",until:"2026-10-30T23:03:00Z",serviceIds:[]});
     assert.equal(snapshot.history.reduce((sum, point) => sum + point.sampleCount,0),6);
     assert.equal(snapshot.history.reduce((sum, point) => sum + point.emissionCount,0),3);

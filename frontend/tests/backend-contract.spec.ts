@@ -30,8 +30,8 @@ test('develop metrics envelope preserves resources, interval and backend timesta
     status: 'available', cpuPercent: 50, memoryGb: 2, diskGb: 10, networkGb: 1,
     collectionIntervalSeconds: 60, lastCollectionAt: stamp,
   });
-  expect(snapshot.totalEnergyKwh).toBeCloseTo(0.000847833333333, 12);
-  expect(snapshot.totalEmissionsG).toBeCloseTo(0.072065833333333, 12);
+  expect(snapshot.totalEnergyKwh).toBeCloseTo(0.0010145, 12);
+  expect(snapshot.totalEmissionsG).toBeCloseTo(0.0862325, 12);
   expect(snapshot.history).toHaveLength(1);
   expect(snapshot.history[0].collectedAt).toBe(stamp);
 });

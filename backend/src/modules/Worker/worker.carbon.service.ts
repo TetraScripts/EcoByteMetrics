@@ -68,21 +68,9 @@ export class WorkerCarbons{
         }else{
           carbon.id_location=lugar.id_location
         }
-        let reposta = await carbonService.getCarbonByExits(carbon.id_location,carbon.renewable_percent_carbon, carbon.intesity_co2e_kwh_carbon)
-        if(!reposta){
-          //chama a função que cadastra o registro de carbono e retorna o id_carbon
-          await carbonService.createCarbon(carbon);
-          console.log("Cadastrado Carbon");
-        }
-        // Cada localização e instante têm sua própria amostra, mesmo com valores iguais.
-        const result = await carbonService.getCarbonByExits(carbon.id_location, carbon.renewable_percent_carbon, carbon.intesity_co2e_kwh_carbon);
-        if (!result) {
-          await carbonService.createCarbon(carbon);
-          console.log("Cadastrado Carbon");
-        }else{
-          await carbonService.updateCarbon(carbon);
-          console.log("Atualizado Carbon");
-        }
+        // Upsert pela chave (id_location, date_houry): preserva todo o histórico.
+        await carbonService.createCarbon(carbon);
+        console.log("Registro de carbono persistido");
       }catch(error){
         if(error instanceof Error)
           console.error(error);

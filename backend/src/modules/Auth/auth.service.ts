@@ -1,7 +1,7 @@
 /* Valida as credenciais, compara a senha com o hash e gera o JWT. */
 import bcrypt from "bcryptjs";
 import jwt, { type SignOptions } from "jsonwebtoken";
-import { AuthUser, AuthUserRepository, LoginInput } from "./auth.repository";
+import { AuthUserRepository, LoginInput } from "./auth.repository";
 
 export class AuthError extends Error {
   constructor(message: string, public readonly statusCode: number) {
@@ -42,6 +42,10 @@ export class AuthUserService{
     throw new AuthError("E-mail ou senha inválidos.", 401);
   }
 
+  if (user.role_user !== "ADMIN" && user.role_user !== "USER") {
+    throw new AuthError("A conta não possui um perfil de acesso válido.", 403);
+  }
+
   const secret = process.env.JWT_SECRET;
 
   if (!secret) {
@@ -56,7 +60,7 @@ export class AuthUserService{
   };
 
   const token = jwt.sign(
-    { email: user.email_user },
+    { email: user.email_user, role: user.role_user },
     secret,
     options
   );

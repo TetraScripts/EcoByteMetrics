@@ -42,6 +42,8 @@ Cada parcela é calculada conforme os indicadores disponíveis e os respectivos 
 
 ### 3.1. Processamento
 
+A implementação utiliza potência máxima de referência de **120 W**, conforme o exemplo metodológico deste documento.
+
 A parcela referente à CPU considera a taxa de utilização do processador em relação à sua potência máxima de referência.
 
 ```text

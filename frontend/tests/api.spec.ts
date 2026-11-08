@@ -24,8 +24,8 @@ test('adapter uses regional codes, actual intervals and localized API locations'
     expect(service.regionCode).toBe('br-sudeste');
     expect(service.carbonIntensity).toBe(85);
     expect(service.renewablePercent).toBe(83);
-    expect(service.energyKwh).toBeCloseTo(50.87 / 60 / 1000, 10);
-    expect(service.emissionsG).toBeCloseTo(0.0720658333333, 10);
+    expect(service.energyKwh).toBeCloseTo(60.87 / 60 / 1000, 10);
+    expect(service.emissionsG).toBeCloseTo(0.0862325, 10);
     expect(estimateEnergy(50, 2, 10, 1, 30)).toBeCloseTo(service.energyKwh! / 2, 10);
     expect(snapshot.history[0].regionCode).toBe('br-sudeste');
     expect(snapshot.history[0].country).toBe('Brasil');

@@ -3,8 +3,8 @@ create table Users(
 	name_user varchar(50) not null,
 	email_user varchar(254) not null unique,
 	password_user varchar(255)not null,
-	role_user varchar(20) not null default 'USER',
-	 check(role_user in ('USER','ADMIN'))
+	role_user varchar(20) NOT NULL DEFAULT 'USER',
+	CONSTRAINT chk_users_role_user CHECK (role_user IN ('USER', 'ADMIN'))
 );
 create table Locations(
 	id_location int GENERATED ALWAYS AS IDENTITY PRIMARY KEY,
@@ -39,7 +39,7 @@ create table Metrics (
 	CHECK (cpu_metric BETWEEN 0 AND 100),
 	ram_metric numeric not null check(ram_metric>=0),
 	hd_metric numeric not null check(hd_metric>=0),
-	network_metric numeric not null check(network_metric>=0),
+	network_metric numeric NOT NULL CONSTRAINT chk_metrics_network_nonnegative CHECK (network_metric >= 0),
 	date_houry TIMESTAMPTZ NOT NULL,
 	colletion_interval_metric numeric not null,
 	carbon_intensity numeric,

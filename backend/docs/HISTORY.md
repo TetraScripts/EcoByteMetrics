@@ -27,7 +27,7 @@ O coletor preserva o código estruturado de erro da API. `metrics_missing` e `in
 
 Cada métrica guarda o fator e a localização recebidos na mesma rodada. Fator ausente é `null`; zero recebido é zero válido. Um catálogo de carbono indisponível não reutiliza silenciosamente um fator antigo para a nova amostra. Agregados parciais informam quantas amostras têm estimativa; gráficos de emissões incompletas não apresentam um total completo inventado.
 
-As fórmulas continuam sendo estimativas: CPU de 100 W a 100%, RAM de 0,375 W/GB, disco de 0,01 W/GB e rede de 0,02 W/GB, multiplicados pela duração da amostra. Emissões são energia × fator em g CO₂e/kWh.
+As fórmulas continuam sendo estimativas: CPU de 120 W a 100%, RAM de 0,375 W/GB, disco de 0,01 W/GB e rede de 0,02 W/GB, multiplicados pela duração da amostra. Emissões são energia × fator em g CO₂e/kWh.
 
 ## Migração
 

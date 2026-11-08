@@ -8,7 +8,7 @@ export async function migrateMonitoring() {
     await client.query("BEGIN");
     await client.query("SELECT pg_advisory_xact_lock(hashtext('ecobytemetrics_migrations'))");
     await client.query("CREATE TABLE IF NOT EXISTS schema_migrations (version text PRIMARY KEY, applied_at timestamptz NOT NULL DEFAULT now())");
-    for (const version of ["001_persisted_monitoring", "002_recover_legacy_carbon"]) {
+    for (const version of ["001_persisted_monitoring", "002_recover_legacy_carbon", "003_user_roles"]) {
       const applied = await client.query("SELECT 1 FROM schema_migrations WHERE version = $1", [version]);
       if (!applied.rowCount) {
         await client.query(readFileSync(resolve(__dirname, `../../../database/migrations/${version}.sql`), "utf8"));

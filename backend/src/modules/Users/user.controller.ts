@@ -7,7 +7,6 @@ function handleError(error: unknown, res: Response, next:NextFunction): void {
         res.status(error.statusCode).json({ erro: error.message });
         return;
     }
-    res.status(500).json({ erro: "Não foi possível processar a solicitação." });
     next(error);
 }
 
@@ -23,7 +22,7 @@ export class UserController{
         }
     }
 
-    async getUserByIdController(req: Request, res: Response, next:NextFunction): Promise<void> {
+    getUserByIdController = async (req: Request, res: Response, next:NextFunction): Promise<void> => {
         try {
             const id = Number(req.params.id_user)
             const user = await this.userService.getUserByIdService(id);
@@ -32,7 +31,7 @@ export class UserController{
             handleError(error, res, next);
         }
     }
-    async updateUserController(req: Request, res: Response, next:NextFunction): Promise<void> {
+    updateUserController = async (req: Request, res: Response, next:NextFunction): Promise<void> => {
         try {
             const idUser=Number(req.params.id_user)
             const user = await this.userService.updateUserService(idUser, req.body);
@@ -42,7 +41,7 @@ export class UserController{
         }
     }
 
-    async deleteUserController(req: Request, res: Response, next:NextFunction): Promise<void> {
+    deleteUserController = async (req: Request, res: Response, next:NextFunction): Promise<void> => {
         try {
             const user = await this.userService.deleteUserService(Number(req.params.id_user));
             res.status(200).json(user);

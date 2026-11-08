@@ -3,7 +3,7 @@ import pool from "../../db/connection";
 
 export type AuthUser = {
   id_user: number;
-  nome_user:string;
+  name_user: string;
   email_user: string;
   password_user: string;
   role_user: "ADMIN" | "USER";

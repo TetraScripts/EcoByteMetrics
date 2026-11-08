@@ -2,12 +2,13 @@ import {Router} from "express";
 import {MetricController} from "./metric.controller";
 import { methodNotAllowed } from "../../app";
 import { authMiddleware } from "../Auth/auth.middleware";
+import { adminMiddleware } from "../Auth/admin.middleware";
 
 const router = Router();
 let metricController = new MetricController();
 
 router.get("/list/:id_service",  metricController.listMetricsByServiceIdController);
-router.post("/", metricController.createMetricController);
+router.post("/", authMiddleware, adminMiddleware, metricController.createMetricController);
 router.get("/:id_metric", metricController.getMetricByIdController);
 
 router.all("/:id_metric",  methodNotAllowed(["GET", "HEAD", "OPTIONS"]));

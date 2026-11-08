@@ -130,7 +130,7 @@ export function estimateEnergy(
   seconds: number,
 ) {
   return (
-    (((cpu / 100) * 100 + memory * 0.375 + disk * 0.01 + network * 0.02) *
+    (((cpu / 100) * 120 + memory * 0.375 + disk * 0.01 + network * 0.02) *
       (seconds / 3600)) /
     1000
   );

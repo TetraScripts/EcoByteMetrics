@@ -25,6 +25,12 @@ export const authMiddleware: RequestHandler = (req, res, next) => {
 
   try {
     const payload = jwt.verify(token, secret);
+    if (typeof payload === "string" || typeof payload.sub !== "string" ||
+        !Number.isSafeInteger(Number(payload.sub)) || Number(payload.sub) <= 0 ||
+        (payload.role !== "ADMIN" && payload.role !== "USER")) {
+      res.status(401).json({ message: "Token inválido ou sem perfil de acesso." });
+      return;
+    }
 
     res.locals.auth = payload;
     next();
