@@ -15,7 +15,11 @@ export class CarbonRepository {
     async createCarbon(carbon: CreateCarbonInput): Promise<Carbon> {
         const result = await pool.query(
             `INSERT INTO carbons (id_location, intesity_co2e_kwh_carbon, renewable_percent_carbon, date_houry)
-               VALUES ($1, $2, $3, $4) RETURNING *`,  
+               VALUES ($1, $2, $3, $4)
+               ON CONFLICT (id_location, date_houry) DO UPDATE SET
+                 intesity_co2e_kwh_carbon = EXCLUDED.intesity_co2e_kwh_carbon,
+                 renewable_percent_carbon = EXCLUDED.renewable_percent_carbon
+               RETURNING *`,  
             [
                 carbon.id_location,
                 carbon.intesity_co2e_kwh_carbon,
@@ -29,7 +33,7 @@ export class CarbonRepository {
         const result = await pool.query(
             `UPDATE carbons
              SET intesity_co2e_kwh_carbon = $1, renewable_percent_carbon = $2, date_houry = $3
-             WHERE id_location = $4
+             WHERE id_location = $4 AND date_houry = $3
              RETURNING *`,
             [
                 carbon.intesity_co2e_kwh_carbon,
@@ -64,6 +68,3 @@ export class CarbonRepository {
         return result.rows;
     }
 }
-
-
-

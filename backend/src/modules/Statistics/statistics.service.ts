@@ -27,15 +27,15 @@ export class StatisticService{
     }
     async getGlobalStatistics(period: string): Promise<GlobalStatistics> {
 
-        const selectedPeriod = this.periods[period];
+    const selectedPeriod = this.periods[period];
 
-        if (!selectedPeriod) {
-        throw new Error("Período de consulta inválido.");
-        }
+    if (!selectedPeriod) {
+      throw new Error("Período de consulta inválido.");
+    }
 
-        return await this.statisticRepository
-        .getCalculationEmissionQuery(selectedPeriod);
-    } 
+    return await this.statisticRepository
+      .getCalculationEmissionQuery(selectedPeriod);
+  }
 
     async getEnergyCalculationUnitService(nome_service:string){
         if(nome_service){

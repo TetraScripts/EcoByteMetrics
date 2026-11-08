@@ -23,10 +23,7 @@ export class StatisticController {
         }
     };
 
-    ranking = async (
-        req: Request,
-        res: Response
-    ): Promise<void> => {
+    ranking = async (req: Request,res: Response): Promise<void> => {
         try {
             const requestedPeriod = req.query.periodo;
             const requestedOrder = req.query.ordenarPor;
@@ -92,5 +89,27 @@ export class StatisticController {
             res.status(500).json({ message: "Erro interno ao calcular energia do serviço."});
         }
     }
+    getGlobalStatistics = async (req: Request,res: Response): Promise<void> => {
+    try {
 
+      const period = String(req.query.periodo ?? "24h");
+
+      const statistics =
+        await this.statisticService.getGlobalStatistics(period);
+
+      res.status(200).json({
+        success: true,
+        data: statistics
+      });
+
+    } catch (error) {
+
+      console.error("Erro ao obter indicadores globais:", error);
+
+      res.status(500).json({
+        success: false,
+        message: "Não foi possível obter os indicadores globais."
+      });
+    }
+  };
 }

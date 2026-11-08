@@ -1,0 +1,36 @@
+@scope (.ecobyte-home) {
+  .project-section {
+    padding: var(--eb-space-24) max(var(--eb-page-gutter), calc((100vw - 1392px) / 2));
+    scroll-margin-top: var(--eb-space-6);
+  }
+  .project-heading { max-width: 560px; }
+  .project-eyebrow { color: var(--eb-green); font-size: var(--eb-text-xs); letter-spacing: 0.14em; font-weight: var(--eb-weight-semibold); }
+  .project-heading h2 { margin: var(--eb-space-4) 0 var(--eb-space-6); font-size: clamp(1.75rem, 2.6vw, 2.5rem); line-height: var(--eb-leading-heading); font-weight: var(--eb-weight-semibold); letter-spacing: -0.04em; }
+  .project-heading h2 span { color: var(--eb-green); }
+  .project-section p { margin: 0; font-size: var(--eb-text-md); line-height: var(--eb-leading-body); color: var(--eb-ink-secondary); }
+  .project-section h3 { margin: 0 0 var(--eb-space-2); font-size: var(--eb-text-lg); line-height: var(--eb-leading-heading); font-weight: var(--eb-weight-semibold); }
+  .workflow { display: grid; grid-template-columns: minmax(0, 0.85fr) minmax(0, 1.15fr); align-items: start; gap: var(--eb-space-24); background: var(--eb-surface-page); border-top: 1px solid var(--eb-border); }
+  .workflow-grid { display: grid; gap: var(--eb-space-6); list-style: none; padding: 0; margin: 0; }
+  .workflow-grid li { display: grid; grid-template-columns: 40px minmax(0, 1fr); gap: 0 var(--eb-space-4); border-top: 1px solid var(--eb-border); padding-top: var(--eb-space-6); }
+  .workflow-grid li:first-child { border-top: 0; padding-top: 0; }
+  .workflow-step { display: flex; flex-direction: column; align-items: flex-start; gap: var(--eb-space-3); grid-row: span 2; color: var(--eb-green); font-size: var(--eb-text-xs); font-weight: var(--eb-weight-semibold); }
+  .workflow-grid li p { font-size: var(--eb-text-base); }
+  .calculation, .project-about { display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); align-items: center; gap: var(--eb-space-24); }
+  .calculation { background: var(--eb-surface-subtle); }
+  .calculation .calculation-note { margin-top: var(--eb-space-6); font-size: var(--eb-text-base); color: var(--eb-ink-muted); }
+  .calculation-model { border: 1px solid var(--eb-border); border-radius: var(--eb-radius-lg); padding: var(--eb-space-8); background: var(--eb-surface); }
+  .formula-row { padding: var(--eb-space-6) 0; border-bottom: 1px solid var(--eb-border); }
+  .formula-row > span { display: block; margin-bottom: var(--eb-space-3); font-size: var(--eb-text-xs); color: var(--eb-ink-muted); }
+  .formula-row p { font-size: var(--eb-text-base); }
+  .calculation-model .model-note { font-size: var(--eb-text-xs); line-height: var(--eb-leading-body); margin-top: var(--eb-space-5); color: var(--eb-ink-muted); }
+  .project-about { align-items: start; background: var(--eb-surface); }
+  @media (max-width: 1000px) {
+    .project-section { padding-block: var(--eb-space-16); }
+    .workflow, .calculation, .project-about { gap: var(--eb-space-12); }
+  }
+  @media (max-width: 760px) {
+    .workflow, .calculation, .project-about { grid-template-columns: 1fr; gap: var(--eb-space-8); }
+    .project-section p { font-size: var(--eb-text-base); }
+    .calculation-model { padding: var(--eb-space-6); }
+  }
+}

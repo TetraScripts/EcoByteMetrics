@@ -46,13 +46,6 @@ app.get("/metrics", (_req: Request, res: Response) => {
   });
 });
 
-// Retorna as métricas coletadas de todos os serviços.
-app.get("/metrics", (_req: Request, res: Response) => {
-  res.json({
-    metrics: getCollectedServiceMetrics(),
-  });
-});
-
 app.use("/api/users", userRouter);
 //Rota do monitor
 app.use("/api/monitoring", monitoringRouter);
