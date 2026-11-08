@@ -10,7 +10,7 @@ export const serviceStatusLabels: Record<ServiceStatus, string> = {
   available: "Disponível",
   stale: "Dados desatualizados",
   unavailable: "Indisponível",
-  "no-metrics": "Sem métricas",
+  "no-metrics": "Ausência de Métricas",
   removed: "Removido",
 };
 
