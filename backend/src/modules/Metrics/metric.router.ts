@@ -4,12 +4,27 @@ import {
     getMetricByIdController,
     listMetricsByServiceIdController,
 } from "./metric.controller";
+import { authMiddleware } from "../Auth/auth.middleware";
 
 const router = Router();
 
-router.get("/list/:id_service", listMetricsByServiceIdController);
-router.post("/", createMetricController);
-router.get("/:id_metric", getMetricByIdController);
+router.get(
+    "/list/:id_service",
+    authMiddleware,
+    listMetricsByServiceIdController
+);
+
+router.post(
+    "/",
+    authMiddleware,
+    createMetricController
+);
+
+router.get(
+    "/:id_metric",
+    authMiddleware,
+    getMetricByIdController
+);
 
 
 router.get("/", (req, res) => {
