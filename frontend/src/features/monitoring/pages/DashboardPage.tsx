@@ -29,9 +29,6 @@ import { formatDataPeriod, formatNumber, formatRecordedPeriod } from "@/shared/l
 import { CountryFlag } from "@/shared/ui/CountryFlag";
 import { TopographicSides } from "../components/TopographicSides";
 import { AdministrationAccess } from "@/features/auth/AdministrationAccess";
-import { ServiceImpactRanking } from "@/features/monitoring/components/ServiceImpactRanking";
-import { getDashboardSummary, type DashboardSummary } from "@/features/monitoring/api/dashboard";
-import { Panel } from "@/components/UI";
 
 const stamp = (value?: string | null) => value ? new Date(value).toLocaleString("pt-BR") : "Ainda não realizada";
 
@@ -42,8 +39,6 @@ function ServiceStatus({ service }: { service: MonitoredService }) {
 export function DashboardPage() {
   const { snapshot, loading, error, refresh, period, setHistoryOpen } = useMonitoring();
   const analysis = useAnalysis();
-  const [dashboardSummary, setDashboardSummary] = useState<DashboardSummary | null>(null);
-  const [summaryError, setSummaryError] = useState<string | null>(null);
   const [params, setParams] = useSearchParams();
   const [filtersOpen, setFiltersOpen] = useState(() => params.get("painel") === "historico");
   const [applicationPage, setApplicationPage] = useState(0);
@@ -60,47 +55,6 @@ export function DashboardPage() {
   const heading = useRef<HTMLHeadingElement>(null);
   const previousSelection = useRef("");
   const restoringListFocus = useRef(false);
-  useEffect(() => {
-    let active = true;
-    let pending: AbortController | null = null;
-    const refreshSummary = () => {
-      pending?.abort();
-      const controller = new AbortController();
-      pending = controller;
-      void getDashboardSummary(controller.signal)
-        .then(summary => {
-          if (!Number.isSafeInteger(summary.totalServicos) ||
-            !Number.isSafeInteger(summary.servicosAtivos) ||
-            !Number.isSafeInteger(summary.servicosIndisponiveis) ||
-            !Number.isSafeInteger(summary.servicosSemMetricas) ||
-            summary.totalServicos !== summary.servicosAtivos + summary.servicosIndisponiveis + summary.servicosSemMetricas ||
-            !Number.isFinite(summary.consumoTotalKwh) ||
-            summary.consumoTotalKwh < 0 ||
-            (summary.emissaoTotalCo2e !== null &&
-              (!Number.isFinite(summary.emissaoTotalCo2e) || summary.emissaoTotalCo2e < 0))) {
-            throw new Error("A resposta do resumo do backend está fora do contrato.");
-          }
-          if (active) {
-            setDashboardSummary(summary);
-            setSummaryError(null);
-          }
-        })
-        .catch((cause: unknown) => {
-          if (active && !controller.signal.aborted) {
-            setSummaryError(
-              cause instanceof Error ? cause.message : "Falha ao carregar o resumo.",
-            );
-          }
-        });
-    };
-    refreshSummary();
-    const timer = window.setInterval(refreshSummary, 30_000);
-    return () => {
-      active = false;
-      window.clearInterval(timer);
-      pending?.abort();
-    };
-  }, []);
   const selectedId = params.get("servico") ?? "";
   const selectedCandidate = analysis.environmentServices.find(service => service.id === selectedId);
   const selected = analysis.services.find(service => service.id === selectedId);
@@ -204,25 +158,6 @@ export function DashboardPage() {
     </>}
     {selectedId ? selected && <MonitoringTabs label="Informações da aplicação" value={detailTab} tabs={[{ value: "resumo", label: "Resumo" }, { value: "recursos", label: "Recursos" }, { value: "evolucao", label: "Evolução" }]} onChange={value => update({ detalhe: value })} /> : <MonitoringTabs label="Visualização do monitoramento" value={tab} tabs={[{ value: "geral", label: "Visão geral", mobileLabel: "Serviços" }, { value: "mapa", label: "Mapa", className: "mobile-map-tab" }, { value: "evolucao", label: "Evolução" }, { value: "comparar", label: "Comparar" }, { value: "administracao", label: "Administração", restricted: true }]} onChange={value => update({ aba: value === "geral" ? "" : value })} />}
     {!selectedId && !administration && <MonitoringSummary context={latestOverview ? undefined : dataContext} latest={latestOverview || comparisonLatest} services={summaryServices} history={summaryHistory} totals={summaryHistory === history ? analysis.totals : undefined} comparison={tab === "comparar"} loading={loading} onRefresh={() => void refresh()} />}
-    {latestOverview && <Panel title="Resumo consolidado do backend" eyebrow="TODOS OS SERVIÇOS">
-      {summaryError && <p className="form-message error-message" role="alert">{summaryError}</p>}
-      {!dashboardSummary && !summaryError && <p className="globe-fallback" role="status">Carregando indicadores consolidados…</p>}
-      {dashboardSummary && <>
-        <dl className="api-details">
-          <div><dt>Total de serviços</dt><dd>{dashboardSummary.totalServicos}</dd></div>
-          <div><dt>Ativos</dt><dd>{dashboardSummary.servicosAtivos}</dd></div>
-          <div><dt>Indisponíveis</dt><dd>{dashboardSummary.servicosIndisponiveis}</dd></div>
-          <div><dt>Sem métricas</dt><dd>{dashboardSummary.servicosSemMetricas}</dd></div>
-          <div><dt>Consumo estimado total</dt><dd>{formatNumber(dashboardSummary.consumoTotalKwh)} kWh</dd></div>
-          <div><dt>Emissão estimada total</dt><dd>{formatNumber(dashboardSummary.emissaoTotalCo2e)} gCO₂e</dd></div>
-          <div><dt>Atualização</dt><dd>{dashboardSummary.dataHoraUltimaAtualizacao
-            ? new Date(dashboardSummary.dataHoraUltimaAtualizacao).toLocaleString("pt-BR")
-            : "Aguardando coleta"}</dd></div>
-        </dl>
-        <p className="service-impact-note">Indicadores globais; os cartões acima respeitam os filtros da tela.</p>
-      </>}
-    </Panel>}
-    {latestOverview && <ServiceImpactRanking period={period} />}
     <section key="monitoring-content" className="monitoring-view" id="monitoring-content" role="tabpanel" aria-label={selectedId ? "Detalhes da aplicação" : administration ? "Administração do ambiente" : tab === "comparar" ? "Comparação de aplicações" : tab === "evolucao" ? "Evolução do ambiente" : "Visão geral do ambiente"}>
       <div className={"monitoring-overview" + (selected ? " service-overview" : "")} data-view={tab} hidden={selectedId ? !selected : tab === "evolucao" || tab === "comparar" || administration}>
         <section className="monitoring-location" aria-label="Localização dos serviços">
