@@ -1,20 +1,40 @@
 import { promises } from "node:dns";
 import pool from "../../db/connection";
 
+// Dados completos armazenados no banco de dados.
 export type User = {
   id_user: number;
   email_user: string;
   name_user: string;
 };
 
+// Dados que podem ser retornados pela API.
+export type SafeUser = {
+  id_user: number;
+  email_user: string;
+  name_user: string;
+};
+
+// Dados necessários para cadastrar um usuário.
 export type CreateUserInput = {
   email_user: string;
   name_user: string;
   password_user: string;
 };
 
-export type UpdateUser = CreateUserInput & {
+// Atualizar o usuário.
+export type UpdateUserInput = {
   id_user: number;
+  email_user: string;
+  name_user: string;
+  password_user?: string;
+};
+
+export type UpdateUser = {
+  id_user: number;
+  email_user: string;
+  name_user: string;
+  password_user: string;
 };
 export class UserRepository{
    
@@ -28,8 +48,10 @@ export class UserRepository{
       return result.rows[0];
   }
 
-  async getUserByIdRepository(id_user:number):Promise<User | null>{
-    const result = await pool.query(
+export async function getUserByIdRepository(
+  id: number
+): Promise<User | null> {
+  const result = await pool.query(
     `SELECT id_user, name_user, email_user
      FROM users
      WHERE id_user = $1`,
@@ -38,8 +60,13 @@ export class UserRepository{
     return result.rows[0] || null;
   }
 
-  async upadateUserRepository(user:UpdateUser): Promise<User|null>{
-    const result = await pool.query(
+export async function upadateUserRepository({
+  id_user,
+  email_user,
+  name_user,
+  password_user,
+}: UpdateUser): Promise<User | null> {
+  const result = await pool.query(
     `UPDATE users
      SET email_user = $2,
          name_user = $3,
