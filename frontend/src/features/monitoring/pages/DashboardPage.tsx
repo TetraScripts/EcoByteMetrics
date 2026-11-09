@@ -1,3 +1,4 @@
+import { useEffect, useState } from "react";
 import {
   Activity,
   CalendarDays,
@@ -19,9 +20,15 @@ import { formatNumber } from "@/shared/lib/format";
 import { analysisLink } from "@/features/monitoring/domain/analysis";
 import { useMonitoring } from "@/features/monitoring/hooks/useMonitoring";
 import { useAnalysis } from "@/features/monitoring/hooks/useAnalysis";
+import {
+  getDashboardSummary,
+  type DashboardSummary,
+} from "@/features/monitoring/api/dashboard";
 
 export function DashboardPage() {
-  const { snapshot, error, loading } = useMonitoring();
+  const { snapshot, error, loading, period } = useMonitoring();
+  const [dashboardSummary, setDashboardSummary] = useState<DashboardSummary | null>(null);
+  const [summaryError, setSummaryError] = useState<string | null>(null);
   const [params, setParams] = useSearchParams();
   const {
     services,
@@ -69,6 +76,57 @@ export function DashboardPage() {
   const renewable = renewables.length
     ? renewables.reduce((sum, value) => sum + value, 0) / renewables.length
     : null;
+  useEffect(() => {
+    let active = true;
+    let pending: AbortController | null = null;
+    const refreshSummary = () => {
+      pending?.abort();
+      const controller = new AbortController();
+      pending = controller;
+      void getDashboardSummary(controller.signal)
+        .then((summary) => {
+          if (!Number.isSafeInteger(summary.totalServicos) ||
+            !Number.isSafeInteger(summary.servicosAtivos) ||
+            !Number.isSafeInteger(summary.servicosIndisponiveis) ||
+            !Number.isSafeInteger(summary.servicosSemMetricas) ||
+            summary.totalServicos !== summary.servicosAtivos +
+              summary.servicosIndisponiveis + summary.servicosSemMetricas ||
+            summary.servicosAtivos < 0 ||
+            summary.servicosIndisponiveis < 0 ||
+            summary.servicosSemMetricas < 0 ||
+            !Number.isFinite(summary.consumoTotalKwh) ||
+            summary.consumoTotalKwh < 0 ||
+            (summary.emissaoTotalCo2e !== null &&
+              (!Number.isFinite(summary.emissaoTotalCo2e) ||
+                summary.emissaoTotalCo2e < 0)) ||
+            (summary.dataHoraUltimaAtualizacao !== null &&
+              (!Number.isFinite(Date.parse(summary.dataHoraUltimaAtualizacao)) ||
+                !/T.*(?:Z|[+-]\d{2}:\d{2})$/.test(
+                  summary.dataHoraUltimaAtualizacao,
+                )))) {
+            throw new Error("A resposta do resumo do backend está fora do contrato.");
+          }
+          if (active) {
+            setDashboardSummary(summary);
+            setSummaryError(null);
+          }
+        })
+        .catch((cause: unknown) => {
+          if (active && !controller.signal.aborted) {
+            setSummaryError(
+              cause instanceof Error ? cause.message : "Falha ao carregar o resumo.",
+            );
+          }
+        });
+    };
+    refreshSummary();
+    const timer = window.setInterval(refreshSummary, 30_000);
+    return () => {
+      active = false;
+      window.clearInterval(timer);
+      pending?.abort();
+    };
+  }, []);
   const categories = [
     { label: "Disponíveis", count: active, color: "#087d62" },
     {
@@ -199,6 +257,28 @@ export function DashboardPage() {
           }
         />
       </div>
+      <Panel title="Resumo consolidado do backend" eyebrow="TODOS OS SERVIÇOS">
+        {summaryError && <p className="form-message error-message" role="alert">{summaryError}</p>}
+        {!dashboardSummary && !summaryError && (
+          <p className="globe-fallback" role="status">Carregando indicadores consolidados…</p>
+        )}
+        {dashboardSummary && (
+          <>
+            <dl className="api-details">
+              <div><dt>Total de serviços</dt><dd>{dashboardSummary.totalServicos}</dd></div>
+              <div><dt>Ativos</dt><dd>{dashboardSummary.servicosAtivos}</dd></div>
+              <div><dt>Indisponíveis</dt><dd>{dashboardSummary.servicosIndisponiveis}</dd></div>
+              <div><dt>Sem métricas</dt><dd>{dashboardSummary.servicosSemMetricas}</dd></div>
+              <div><dt>Consumo estimado total</dt><dd>{formatNumber(dashboardSummary.consumoTotalKwh)} kWh</dd></div>
+              <div><dt>Emissão estimada total</dt><dd>{formatNumber(dashboardSummary.emissaoTotalCo2e)} gCO₂e</dd></div>
+              <div><dt>Atualização</dt><dd>{dashboardSummary.dataHoraUltimaAtualizacao
+                ? new Date(dashboardSummary.dataHoraUltimaAtualizacao).toLocaleString("pt-BR")
+                : "Aguardando coleta"}</dd></div>
+            </dl>
+            <p className="service-impact-note">Indicadores globais; os cartões acima respeitam os filtros da tela.</p>
+          </>
+        )}
+      </Panel>
       <div className="dashboard-details">
         <Panel icon={Activity} title="Dados da métrica da API">
           <dl className="api-details">
@@ -309,7 +389,7 @@ export function DashboardPage() {
             </ul>
           </div>
         </Panel>
-        <ServiceImpactRanking history={history} services={snapshot.services} />
+        <ServiceImpactRanking period={period} />
       </div>
       <ServiceCollectionSummary services={services} />
       <RegionMap

@@ -12,8 +12,22 @@ import {
   getCollectedServiceMetrics,
   getCollectedMetricsByServiceId,
 } from "./modules/Services/services.service.js";
+import {
+  getDashboardRanking,
+  getDashboardSummary,
+  type DashboardPeriod,
+  type RankingMetric,
+} from "./modules/Dashboard/dashboard.service.js";
 
 const app = express();
+
+function isRankingMetric(value: unknown): value is RankingMetric {
+  return value === "kwh" || value === "co2e";
+}
+
+function isDashboardPeriod(value: unknown): value is DashboardPeriod {
+  return value === "1h" || value === "24h" || value === "7d";
+}
 
 app.use(cors());
 app.use(express.json());
@@ -41,6 +55,32 @@ app.use("/api/carbons",carbonRouter);
 app.use("/api/services", serviceRouter);
 //Rota da Localização
 app.use("/api/locations",locationRouter);
+
+app.get("/api/dashboard/summary", (_req: Request, res: Response) => {
+  res.status(200).json(getDashboardSummary());
+});
+
+app.get("/api/dashboard/ranking", (req: Request, res: Response) => {
+  const rawOrderBy = req.query.ordenarPor ?? "co2e";
+  const rawPeriod = req.query.periodo ?? "24h";
+  if (!isRankingMetric(rawOrderBy)) {
+    res.status(400).json({
+      error: "O parâmetro ordenarPor deve ser 'kwh' ou 'co2e'.",
+    });
+    return;
+  }
+  if (!isDashboardPeriod(rawPeriod)) {
+    res.status(400).json({
+      error: "O parâmetro periodo deve ser '1h', '24h' ou '7d'.",
+    });
+    return;
+  }
+
+  res.status(200).json(
+    getDashboardRanking(rawPeriod, rawOrderBy),
+  );
+});
+
 // Retorna as métricas coletadas de todos os serviços.
 app.get("/metrics", (_req: Request, res: Response) => {
   res.json({

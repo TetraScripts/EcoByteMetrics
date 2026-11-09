@@ -7,7 +7,7 @@
     "dev": "tsx watch src/server.ts",
     "build": "tsc",
     "start": "node dist/server.js",
-    "test": "tsx --test tests/services.service.test.ts"
+    "test": "tsx --test tests/services.service.test.ts tests/dashboard.contract.test.ts tests/dashboard.routes.test.ts"
   },
   "dependencies": {
     "cors": "^2.8.6",

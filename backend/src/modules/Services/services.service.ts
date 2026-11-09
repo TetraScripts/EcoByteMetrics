@@ -99,6 +99,10 @@ export interface CollectedServiceMetrics {
     updatedAt: string;
 }
 
+export interface CollectionFailure {
+    reason: "missing" | "unavailable";
+}
+
 type MetricsFetcher = (
     serviceId: string
 ) => Promise<ServiceMetrics>;
@@ -110,6 +114,9 @@ let discoveredServices: AggregatorService[] = [];
 let lastUpdatedAt: string | null = null;
 
 const collectedMetrics = new Map<string, CollectedServiceMetrics>();
+const collectedMetricsHistory = new Map<string, CollectedServiceMetrics[]>();
+const collectionFailures = new Map<string, CollectionFailure>();
+const METRICS_HISTORY_RETENTION_MS = 7 * 24 * 60 * 60 * 1000;
 
 export async function refreshDiscoveredServices(): Promise<void> {
     const services = await fetchServices();
@@ -133,18 +140,41 @@ export async function refreshServiceMetrics(): Promise<void> {
     for (const service of discoveredServices) {
         try {
             const metrics = await fetchMetrics(service.id);
-
-            collectedMetrics.set(service.id, {
+            const collected = {
                 serviceId: service.id,
                 metrics,
                 updatedAt: new Date().toISOString(),
-            });
+            };
+            collectedMetrics.set(service.id, collected);
+            collectionFailures.delete(service.id);
+
+            const history = collectedMetricsHistory.get(service.id) ?? [];
+            history.push(collected);
+            collectedMetricsHistory.set(service.id, history);
         } catch (error: unknown) {
+            collectionFailures.set(service.id, {
+                reason:
+                    error instanceof Error && /HTTP 404\b/.test(error.message)
+                        ? "missing"
+                        : "unavailable",
+            });
             console.error(
                 `Falha ao consultar métricas do serviço "${service.id}".`,
                 error
             );
             // Mantém as últimas métricas válidas desse serviço.
+        }
+    }
+
+    const minimumTimestamp = Date.now() - METRICS_HISTORY_RETENTION_MS;
+    for (const [serviceId, history] of collectedMetricsHistory) {
+        const retained = history.filter(
+            (sample) => Date.parse(sample.updatedAt) >= minimumTimestamp,
+        );
+        if (retained.length) {
+            collectedMetricsHistory.set(serviceId, retained);
+        } else {
+            collectedMetricsHistory.delete(serviceId);
         }
     }
 }
@@ -155,6 +185,20 @@ export function getCollectedServiceMetrics(): CollectedServiceMetrics[] {
 
 export function getCollectedMetricsByServiceId(serviceId: string): CollectedServiceMetrics | undefined {
     return collectedMetrics.get(serviceId);
+}
+
+export function getCollectedMetricsHistory(): CollectedServiceMetrics[] {
+    return Array.from(collectedMetricsHistory.values()).flat();
+}
+
+export function getCollectionFailures(): ReadonlyMap<string, CollectionFailure> {
+    return collectionFailures;
+}
+
+export function resetCollectedMetricsForTesting(): void {
+    collectedMetrics.clear();
+    collectedMetricsHistory.clear();
+    collectionFailures.clear();
 }
 
 // Permite substituir a consulta de serviços durante testes.

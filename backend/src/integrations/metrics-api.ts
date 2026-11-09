@@ -18,7 +18,8 @@ export interface AggregatorService {
   metrics_path: string;
 }
 
-const aggregatorUrl = process.env.API_METRIC;
+const aggregatorUrl =
+  process.env.API_METRIC ?? process.env.METRICS_AGGREGATOR_URL;
 
 export async function fetchAvailableServices(): Promise<AggregatorService[]> {
   if (!aggregatorUrl) {
@@ -155,4 +156,3 @@ export async function fetchServiceMetrics(
         },
     };
 }
-

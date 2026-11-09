@@ -203,6 +203,11 @@ Consulta a série temporal histórica das coletas de hardware e cálculos de con
 ### `GET /dashboard/summary`
 Retorna a consolidação agregada dos indicadores operacionais e ambientais do ambiente monitorado `( RF08, RF09 )`.
 
+> **Validação do dashboard (Issue #101):** o frontend consome `GET /services` e `GET /metrics/:serviceId`, ambos sem o prefixo `/api`, para o mapa, estados e histórico da sessão. O resumo global e o ranking por período são consultados em `/api/dashboard/summary` e `/api/dashboard/ranking`; os contratos têm testes em `backend/tests/dashboard.contract.test.ts` e `backend/tests/dashboard.routes.test.ts`.
+> O ranking da API mantém até 7 dias de amostras coletadas desde a inicialização do processo. Serviços são considerados ativos quando possuem métrica válida coletada nos últimos 90 segundos; resultados sem atualização recente são indisponíveis. O resumo é global e não varia com os filtros regionais/de data do dashboard.
+>
+> **Evidências:** `cd backend && npm test` verifica payloads e timestamps das rotas consumidas pelo frontend, os cálculos de resumo com serviços ativos/indisponíveis/sem métricas, ordenação por kWh e CO₂e, períodos, valores padrão, parâmetros inválidos (400), ausência de fatores regionais e ranking vazio (200). Todos os 14 testes passaram no ambiente de desenvolvimento; frontend validado com `npm run typecheck`, `npm run lint` e `npm run build`.
+
 * **Método:** `GET`
 * **URL:** `/api/dashboard/summary`
 * **Códigos de Resposta:**
@@ -218,6 +223,7 @@ Retorna a consolidação agregada dos indicadores operacionais e ambientais do a
       "dataHoraUltimaAtualizacao": "2026-10-13T11:00:00Z"
     }
     ```
+  * `emissaoTotalCo2e` é `null` quando não há fator regional para todos os serviços ativos; o backend não estima emissões com fator ausente. `consumoTotalKwh` soma as amostras válidas dos serviços ativos. `dataHoraUltimaAtualizacao` pode ser `null` antes da primeira coleta.
 
 ---
 
@@ -253,6 +259,14 @@ Obtém a lista ordenada de serviços por maior consumo energético ou emissão d
           "emissaoCo2e": 132.5000
         }
       ]
+    }
+    ```
+    Uma lista sem amostras válidas para o período ou critério é retornada como `"ranking": []`.
+    No ranking por kWh, `emissaoCo2e` pode ser `null` se faltar fator regional; no ranking por CO₂e, serviços sem emissão completa são omitidos.
+  * **`400 Bad Request` — Parâmetro `ordenarPor` ou `periodo` inválido:**
+    ```json
+    {
+      "error": "O parâmetro periodo deve ser '1h', '24h' ou '7d'."
     }
     ```
 

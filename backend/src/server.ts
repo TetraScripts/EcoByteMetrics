@@ -3,6 +3,7 @@ import {
     refreshDiscoveredServices,
     refreshServiceMetrics,
 } from "./modules/Services/services.service.js";
+import { refreshCarbonRegionFactors } from "./integrations/carbon-api.js";
 
 const PORT = process.env.PORT || 3000;
 
@@ -12,6 +13,12 @@ const REFRESH_INTERVAL = 30_000;
 async function refreshAllData(): Promise<void> {
     // Primeiro atualiza a lista de serviços.
     await refreshDiscoveredServices();
+
+    try {
+        await refreshCarbonRegionFactors();
+    } catch (error: unknown) {
+        console.error("Falha ao atualizar fatores de carbono:", error);
+    }
 
     // Depois consulta as métricas da lista atualizada.
     await refreshServiceMetrics();
