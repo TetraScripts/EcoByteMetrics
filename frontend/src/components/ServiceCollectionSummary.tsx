@@ -34,6 +34,11 @@ export function ServiceCollectionSummary({ services }: { services: MonitoredServ
                         ? "Métricas parciais"
                         : serviceStatusLabels[service.status]}
                     </span>
+                    {service.statusMessage && (
+                      <small role={service.status === "unavailable" || service.status === "no-metrics" ? "status" : undefined}>
+                        {service.statusMessage}
+                      </small>
+                    )}
                   </th>
                   <td data-label="Localização">
                     {service.country || "País não informado"} · {service.region || "Região não informada"}
