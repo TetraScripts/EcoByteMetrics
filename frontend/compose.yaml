@@ -4,7 +4,6 @@ services:
       context: .
       args:
         VITE_BACKEND_URL: ${VITE_BACKEND_URL:-/backend}
-        VITE_CARBON_URL: ${VITE_CARBON_URL:-https://carbon.unilaunch.org}
     environment:
       BACKEND_PROXY_TARGET: ${BACKEND_PROXY_TARGET:-http://host.docker.internal:3000}
     extra_hosts:
