@@ -37,7 +37,15 @@ export async function getUserByIdController(req: Request, res: Response): Promis
 
 export async function updateUserController(req: Request, res: Response): Promise<void> {
     try {
-        const user = await updateUserService(Number(req.params.id_user), req.body);
+        const body = req.body ?? {};
+
+        const user = await updateUserService({
+            id_user: Number(req.params.id_user),
+            name_user: body.name_user,
+            email_user: body.email_user,
+            password_user: body.password_user
+        });
+
         res.status(200).json(user);
     } catch (error) {
         handleError(error, res);

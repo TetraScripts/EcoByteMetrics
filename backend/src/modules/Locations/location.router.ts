@@ -9,6 +9,8 @@ import{
     getLocationByIdController,
     listLocationController
 }from "./location.controller";
+import { authMiddleware } from "../Auth/auth.middleware";
+
 /* Criação do roteador de localizações usando o Router do Express.
    Define as rotas para criar, buscar por ID e listar todas as localizações.
    Também lida com métodos HTTP não permitidos, enviando respostas apropriadas.
@@ -16,7 +18,7 @@ import{
 const locationRouter = Router();
 // Rota para listar todas as localizações.
 locationRouter.get("/all", listLocationController);
-locationRouter.post("/", createLocationController);
+locationRouter.post("/", authMiddleware, createLocationController);
 locationRouter.get("/:id_location", getLocationByIdController);
 /* Rota para lidar com métodos HTTP não permitidos para a rota "/all".
    Envia uma resposta HTTP com o status 405 (Método não permitido) e uma mensagem de erro.

@@ -1,26 +1,47 @@
 import pool from "../../db/connection";
 
+// Dados completos armazenados no banco de dados.
 export type User = {
   id_user: number;
   email_user: string;
   name_user: string;
 };
 
+// Dados que podem ser retornados pela API.
+export type SafeUser = {
+  id_user: number;
+  email_user: string;
+  name_user: string;
+};
+
+// Dados necessários para cadastrar um usuário.
 export type CreateUserInput = {
   email_user: string;
   name_user: string;
   password_user: string;
 };
 
-export type UpdateUser = CreateUserInput & {
+// Atualizar o usuário.
+export type UpdateUserInput = {
   id_user: number;
+  email_user: string;
+  name_user: string;
+  password_user?: string;
 };
 
+export type UpdateUser = {
+  id_user: number;
+  email_user: string;
+  name_user: string;
+  password_user: string;
+};
+
+// Cadastrar usuário.
 export async function createUserRepository({
   email_user,
   name_user,
-  password_user,
-}: CreateUserInput): Promise<User> {
+  password_user
+}: CreateUserInput): Promise<SafeUser> {
   const result = await pool.query(
     `INSERT INTO users (email_user, name_user, password_user)
      VALUES ($1, $2, $3)
@@ -31,9 +52,10 @@ export async function createUserRepository({
   return result.rows[0];
 }
 
+// Buscar usuário por ID, sem retornar senha ou token.
 export async function getUserByIdRepository(
   id: number
-): Promise<User | null> {
+): Promise<SafeUser | null> {
   const result = await pool.query(
     `SELECT id_user, name_user, email_user
      FROM users
@@ -44,12 +66,28 @@ export async function getUserByIdRepository(
   return result.rows[0] || null;
 }
 
+// Buscar usuário internamente para consultar a senha criptografada.
+// Esta função não deve ser utilizada para responder diretamente à API.
+export async function getUserPasswordHashRepository(
+  id: number
+): Promise<{ id_user: number; password_user: string } | null> {
+  const result = await pool.query(
+    `SELECT id_user, password_user
+     FROM users
+     WHERE id_user = $1`,
+    [id]
+  );
+
+  return result.rows[0] || null;
+}
+
+// Atualizar usuário.
 export async function upadateUserRepository({
   id_user,
   email_user,
   name_user,
-  password_user,
-}: UpdateUser): Promise<User | null> {
+  password_user
+}: UpdateUser): Promise<SafeUser | null> {
   const result = await pool.query(
     `UPDATE users
      SET email_user = $2,
@@ -63,9 +101,10 @@ export async function upadateUserRepository({
   return result.rows[0] || null;
 }
 
+// Excluir usuário.
 export async function deleteUserRepository(
   id: number
-): Promise<User | null> {
+): Promise<SafeUser | null> {
   const result = await pool.query(
     `DELETE FROM users
      WHERE id_user = $1

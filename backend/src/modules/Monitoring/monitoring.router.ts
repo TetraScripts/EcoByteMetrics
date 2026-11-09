@@ -1,5 +1,34 @@
-import { Router } from "express";
+import { Router , Request, Response, NextFunction} from "express";
 import { readMonitoring, type HistoryQuery } from "./monitoring.repository";
+import { authMiddleware } from "../Auth/auth.middleware";
+
+const SESSION_COOKIE = "ecobyte_session";
+
+function requireHistoryAuth(
+  req: Request,
+  res: Response,
+  next: NextFunction
+): void {
+  // A visualização mais recente continua pública.
+  if (req.query.view === "latest") {
+    next();
+    return;
+  }
+
+  // Recupera o cookie de sessão criado durante o login.
+  const cookie = req.headers.cookie
+    ?.split(";")
+    .map(part => part.trim())
+    .find(part => part.startsWith(`${SESSION_COOKIE}=`));
+
+  // Converte o cookie em um cabeçalho Bearer.
+  if (!req.headers.authorization && cookie) {
+    req.headers.authorization = `Bearer ${cookie.slice(SESSION_COOKIE.length + 1)}`;
+  }
+
+  // Valida o JWT.
+  authMiddleware(req, res, next);
+}
 
 export function parseHistoryQuery(input: Record<string, unknown>, now = Date.now()): HistoryQuery {
   const period = input.period ?? "7d";
@@ -20,7 +49,7 @@ export function parseHistoryQuery(input: Record<string, unknown>, now = Date.now
 }
 
 const router = Router();
-router.get("/", async (req, res) => {
+router.get("/", requireHistoryAuth, async (req, res) => {
   let query: HistoryQuery;
   try { query = parseHistoryQuery(req.query); }
   catch (error) { res.status(400).json({ message: (error as Error).message }); return; }
