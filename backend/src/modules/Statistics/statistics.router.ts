@@ -12,11 +12,13 @@ router.get("/summary", statistics.summary);
 //http://localhost:3000/api/statistics/ranking?periodo=7d&ordenarPor=co2e
 router.get("/ranking", statistics.ranking);
 
-//http://localhost:3000/api/statistics/total-global
-//http://localhost:3000/api/statistics/total-global?periodo=1h
-//http://localhost:3000/api/statistics/total-global?periodo=24h
-//http://localhost:3000/api/statistics/total-global?periodo=7d
-//http://localhost:3000/api/statistics/total-global?periodo=30d
-router.get("/total-global", statistics.getGlobalStatistics);
+// GET - Cálculo energético geral
+// http://localhost:3000/api/statistics/energy
+router.get("/energy", statistics.calculationEnergy);
+
+// GET - Cálculo energético individual
+// http://localhost:3000/api/statistics/energy/billing-api
+router.get("/energy/:nome_service", statistics.calculationEnergyByUnit);
+
 
 export default router;

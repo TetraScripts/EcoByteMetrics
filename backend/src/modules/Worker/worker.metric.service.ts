@@ -3,11 +3,11 @@ import { ServiceMetrics } from "../../integrations/api.types.js";
 import { CarbonApiError } from "../../integrations/carbon-api.js";
 import {ServiceApiError,ServiceAPISevice} from "../../integrations/services-api.js";
 import { createLocationInput } from "../Locations/location.repository.js";
-import {createLocation,getLocationByName} from "../Locations/location.service.js";
+import {createLocation, getLocationByName} from "../Locations/location.service.js";
 import { CreateMetricInput } from "../Metrics/metric.repository.js";
 import { createMetricService } from "../Metrics/metric.service.js";
 import { createServiceInput } from "../Services/service.repository.js";
-import {createService, getServiceByExist, updateServiceStatus, recordCollectedServiceMetrics} from "../Services/services.service.js";
+import { createService, getServiceByExist, recordCollectedServiceMetrics, updateServiceStatus} from "../Services/services.service.js";
 
 export class WorkerService {
 
@@ -84,14 +84,13 @@ export class WorkerService {
   }
 
   private async atualizarService(service_names: string[]){
-    if(service_names.length!==0){ 
-      await updateServiceStatus(service_names);
-    }
+    await updateServiceStatus(service_names);
   }
 
-  private async cadastrarServiceLocation(service: createServiceInput,local: createLocationInput, metric: CreateMetricInput, externalServiceId: string
-  ): Promise<void> {
-    
+  private async cadastrarServiceLocation(service: createServiceInput,local: createLocationInput, metric: CreateMetricInput, externalServiceId: string): Promise<void> {
+
+
+
     let lugar = await getLocationByName(
       local.longitude_location,
       local.latitude_location

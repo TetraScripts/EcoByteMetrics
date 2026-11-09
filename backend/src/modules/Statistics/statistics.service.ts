@@ -37,4 +37,18 @@ export class StatisticService{
       .getCalculationEmissionQuery(selectedPeriod);
   }
 
+    async getEnergyCalculationUnitService(nome_service:string){
+        if(nome_service){
+            return await this.statisticRepository.getEnergyCalculationUnitService(nome_service);
+        }
+        return {"mesagem":"Nome esta invalido"};
+        
+    }
+
+    async getEnergyCalculationService(){
+        const result= await this.statisticRepository.getEnergyCalculation();
+        return result;
+        
+    }
+
 }

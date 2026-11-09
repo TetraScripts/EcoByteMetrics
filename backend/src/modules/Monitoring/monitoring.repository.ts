@@ -2,7 +2,7 @@ import pool from "../../db/connection";
 import type { AggregatorService } from "../../integrations/metrics-api";
 
 export interface HistoryQuery { period: "24h" | "7d"; until?: string; serviceIds: string[]; view?: "latest" | "history" }
-const energy = "((m.cpu_metric / 100.0 * 100) + m.ram_metric * 0.375 + m.hd_metric * 0.01 + m.network_metric * 0.02) * m.colletion_interval_metric / 3600000.0";
+const energy = "((m.cpu_metric / 100.0 * 120) + m.ram_metric * 0.375 + m.hd_metric * 0.01 + m.network_metric * 0.02) * m.colletion_interval_metric / 3600000.0";
 const iso = (date: Date | null) => date?.toISOString() ?? null;
 
 export async function readMonitoring(query: HistoryQuery) {

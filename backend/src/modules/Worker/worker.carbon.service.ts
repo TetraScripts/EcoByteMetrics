@@ -1,12 +1,11 @@
 import { CarbonRegion } from "../../integrations/api.types";
 import { CarbonApiError } from "../../integrations/carbon-api";
-import { CarbonRepository, CreateCarbonInput} from "../Carbons/carbon.repository";
-import { CarbonError } from "../Carbons/carbon.service";
+import { CreateCarbonInput } from "../Carbons/carbon.repository";
+import { CarbonError, CarbonService } from "../Carbons/carbon.service";
 import { createLocationInput } from "../Locations/location.repository";
 import { createLocation, getLocationByName } from "../Locations/location.service";
 
 export class WorkerCarbons{
-
     //metodo async que pegar uma lista de Carbons e cadastra a lista
     async listarCarbons(carbonsReg:CarbonRegion[]){
       try{
@@ -21,7 +20,6 @@ export class WorkerCarbons{
               renewable_percent_carbon:carbonsReg[i].renewable_share_percent,
               intesity_co2e_kwh_carbon:carbonsReg[i].carbon_intensity_gco2e_per_kwh
             }
-            //preenche dos dados da api para as interfaces que representa o banco de dados
             let local: createLocationInput={
               name_location:carbonsReg[i].code,
               country_location:carbonsReg[i].country,
@@ -32,10 +30,8 @@ export class WorkerCarbons{
               carbon:carbon,
               service:null
             }
-            //chama o função que cadastra cada item da lista
             await this.cadastrarCarbonLocation(carbon,local);
           }catch(error:unknown){
-            //verifica se o erro é do tipo CarbonApiError e exibe as informações do erro no console
             if(error instanceof CarbonApiError){
               console.error(
                 `${error.name}: ${error.message}\n` +
@@ -46,7 +42,6 @@ export class WorkerCarbons{
           }
            i++; 
         }
-      //verifica se o erro é do tipo CarbonError e exibe as informações do erro no console
       }catch(error){
         if(error instanceof CarbonError)
           console.error(
@@ -56,26 +51,26 @@ export class WorkerCarbons{
     }
     //metodo asyc que cadastrar cada item da lista
     private async cadastrarCarbonLocation(carbon:CreateCarbonInput, local:createLocationInput){
-        let cabon = new CarbonRepository();
+        const carbonService = new CarbonService();
         try{
-            //verifica se a localização já existe no banco de dados, caso não exista, cadastra a localização e retorna o id_location
-            const lugar= await getLocationByName(local.longitude_location, local.latitude_location)
-        if(!lugar){
-          //chama a função que cadastra a localização e retorna o id_location
+        const Lugar= await getLocationByName(local.longitude_location, local.latitude_location)
+        if(!Lugar){
           const l = await createLocation(local);
           carbon.id_location=l.id_location;
           console.log("Cadastrado Location");
           
         }else{
-          carbon.id_location=lugar.id_location
+          carbon.id_location=Lugar.id_location
         }
-        let reposta = await cabon.getCarbonByExist(carbon.renewable_percent_carbon, carbon.intesity_co2e_kwh_carbon)
-        if(!reposta){
-          //chama a função que cadastra o registro de carbono e retorna o id_carbon
-          await cabon.createCarbon(carbon);
+        // Cada localização e instante têm sua própria amostra, mesmo com valores iguais.
+        const result = await carbonService.getCarbonByExits(carbon.id_location, carbon.renewable_percent_carbon, carbon.intesity_co2e_kwh_carbon);
+        if (!result) {
+          await carbonService.createCarbon(carbon);
           console.log("Cadastrado Carbon");
+        }else{
+          await carbonService.updateCarbon(carbon);
+          console.log("Atualizado Carbon");
         }
-      //caso ocorra algum erro, exibe as informações do erro no console       
       }catch(error){
         if(error instanceof Error)
           console.error(error);

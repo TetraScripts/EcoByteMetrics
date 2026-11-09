@@ -19,6 +19,9 @@ import {
   getCollectedMetricsByServiceId,
 } from "./modules/Services/services.service.js";
 
+//Cria Um thead paralela para fazer a percistencia
+
+
 // Polling inicial e periódico é iniciado por server.ts.
 const app = express();
 
@@ -36,7 +39,15 @@ app.get("/services", (_req: Request, res: Response) => {
   });
 });
 
+// Retorna as métricas coletadas de todos os serviços.
+app.get("/metrics", (_req: Request, res: Response) => {
+  res.json({
+    metrics: getCollectedServiceMetrics(),
+  });
+});
+
 app.use("/api/users", userRouter);
+//Rota do monitor
 app.use("/api/monitoring", monitoringRouter);
 app.get("/api/monitoring-settings", authMiddleware, (_req, res) => {
   res.set("Cache-Control", "no-store").json({
@@ -45,6 +56,7 @@ app.get("/api/monitoring-settings", authMiddleware, (_req, res) => {
     editable: false,
   });
 });
+// Rotas do módulo de métricas.
 app.use("/api/metrics", metricRouter);
 app.use("/api/carbons", carbonRouter);
 app.use("/api/services", serviceRouter);

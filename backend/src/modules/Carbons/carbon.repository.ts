@@ -1,7 +1,7 @@
 import pool from "../../db/connection";
 
 export type Carbon = {
-  id_carbon:number,
+    id_carbon:number,
 	id_location:number,
 	date_houry: string,
 	intesity_co2e_kwh_carbon:number,
@@ -16,16 +16,30 @@ export class CarbonRepository {
         const result = await pool.query(
             `INSERT INTO carbons (id_location, intesity_co2e_kwh_carbon, renewable_percent_carbon, date_houry)
                VALUES ($1, $2, $3, $4)
-             ON CONFLICT (id_location, date_houry)
-             DO UPDATE SET
+               ON CONFLICT (id_location, date_houry) DO UPDATE SET
                  intesity_co2e_kwh_carbon = EXCLUDED.intesity_co2e_kwh_carbon,
                  renewable_percent_carbon = EXCLUDED.renewable_percent_carbon
-             RETURNING *`,  
+               RETURNING *`,  
             [
                 carbon.id_location,
                 carbon.intesity_co2e_kwh_carbon,
                 carbon.renewable_percent_carbon,
                 carbon.date_houry
+            ]
+        );
+        return result.rows[0];
+    }
+    async updateCarbon(carbon: CreateCarbonInput): Promise<Carbon> {
+        const result = await pool.query(
+            `UPDATE carbons
+             SET intesity_co2e_kwh_carbon = $1, renewable_percent_carbon = $2, date_houry = $3
+             WHERE id_location = $4 AND date_houry = $3
+             RETURNING *`,
+            [
+                carbon.intesity_co2e_kwh_carbon,
+                carbon.renewable_percent_carbon,
+                carbon.date_houry,
+                carbon.id_location
             ]
         );
         return result.rows[0];
@@ -42,9 +56,9 @@ export class CarbonRepository {
         return result.rows[0] || null;
     }
     /** busca um registro de carbono por existência */  
-    async getCarbonByExist(renewable_percent_carbon:number, intesity_co2e_kwh_carbon:number): Promise<Carbon | null> {
-        const result = await pool.query("SELECT * FROM carbons WHERE renewable_percent_carbon = $1 and intesity_co2e_kwh_carbon = $2", 
-            [renewable_percent_carbon, intesity_co2e_kwh_carbon]);
+    async getCarbonByExist(id_location: number, renewable_percent_carbon: number, intesity_co2e_kwh_carbon: number): Promise<Carbon | null> {
+        const result = await pool.query("SELECT * FROM carbons WHERE id_location = $1 AND renewable_percent_carbon = $2 AND intesity_co2e_kwh_carbon = $3", 
+            [id_location, renewable_percent_carbon, intesity_co2e_kwh_carbon]);
         return result.rows[0] ?? null;
     }
     /** lista todos os registros de carbono */   
@@ -54,6 +68,3 @@ export class CarbonRepository {
         return result.rows;
     }
 }
-
-
-

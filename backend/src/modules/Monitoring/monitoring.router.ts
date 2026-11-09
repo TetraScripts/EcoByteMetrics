@@ -1,13 +1,13 @@
-import { Router } from "express";
+import { Router , Request, Response, NextFunction} from "express";
 import { readMonitoring, type HistoryQuery } from "./monitoring.repository";
 import { authMiddleware } from "../Auth/auth.middleware";
 
 const SESSION_COOKIE = "ecobyte_session";
 
 function requireHistoryAuth(
-  req: import("express").Request,
-  res: import("express").Response,
-  next: import("express").NextFunction
+  req: Request,
+  res: Response,
+  next: NextFunction
 ): void {
   // A visualização mais recente continua pública.
   if (req.query.view === "latest") {

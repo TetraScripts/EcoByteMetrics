@@ -1,8 +1,4 @@
-import{
-    Carbon,
-    CarbonRepository,
-    CreateCarbonInput
-}   from "./carbon.repository";
+import{Carbon, CarbonRepository, CreateCarbonInput}from "./carbon.repository";
 //classe de erro personalizada para o módulo de carbono
 export class CarbonError extends Error {
     constructor(message: string, public readonly statusCode: number) {
@@ -14,13 +10,13 @@ export class CarbonError extends Error {
     //validação do ID de carbono
     static validateCarbonId(id: number) {
         if (!Number.isSafeInteger(id) || id <= 0) {
-            throw new CarbonError("ID do carbono inválido", 401);
+            throw new CarbonError("ID do carbono inválido", 400);
         }
     }
     //validação do ID da localização
     static  validateLocationId(id: number) {
         if (!Number.isSafeInteger(id) || id <= 0) {
-            throw new CarbonError("ID da localização inválido", 401);
+            throw new CarbonError("ID da localização inválido", 400);
         }
     }
     //validação dos dados de entrada para criar um novo registro de carbono
@@ -29,15 +25,15 @@ export class CarbonError extends Error {
         CarbonError.validateLocationId(carbonInput.id_location);
         //validação da data e hora
         if (!carbonInput.date_houry || isNaN(Date.parse(carbonInput.date_houry))) {
-            throw new CarbonError("Data e hora inválidas", 401);
+            throw new CarbonError("Data e hora inválidas", 400);
         }
         //validação da intensidade de carbono e da porcentagem de energia renovável
         if (carbonInput.intesity_co2e_kwh_carbon < 0) {
-            throw new CarbonError("Valor de intensidade de carbono inválido", 401);
+            throw new CarbonError("Valor de intensidade de carbono inválido", 400);
         }
         //validação da porcentagem de energia renovável
         if (carbonInput.renewable_percent_carbon < 0 || carbonInput.renewable_percent_carbon > 100) {
-            throw new CarbonError("Valor de porcentagem de energia renovável inválido", 401);
+            throw new CarbonError("Valor de porcentagem de energia renovável inválido", 400);
         }
         return carbonInput;
     }
@@ -79,6 +75,21 @@ export class CarbonService {
             carbon = await this.carbonRepository.createCarbon(data);
             if (!carbon) {
                 throw new CarbonError("Não foi possível criar o registro de carbono", 500);
+            }  
+            
+        } catch (error) {   
+             CarbonError.handleRepositoryError(error);
+        }
+        return carbon;
+    }
+    //função para atualizar um registro de carbono existente
+    async updateCarbon(carbonInput: CreateCarbonInput): Promise<Carbon | null> {
+        const data =  CarbonError.validateCarbonInput(carbonInput);
+        let carbon: Carbon | null = null;
+        try {   
+            carbon = await this.carbonRepository.updateCarbon(data);
+            if (!carbon) {
+                throw new CarbonError("Não foi possível atualizar o registro de carbono", 500);
             }  
             
         } catch (error) {   
@@ -128,13 +139,14 @@ export class CarbonService {
         }
         catch (error) {
             CarbonError.handleRepositoryError(error);
+
         }
         return carbons;
     }
     //função para verificar se um registro de carbono com os mesmos valores de intensidade e porcentagem de energia renovável já existe
-    async getCarbonByExits(renewable_percent_carbon:number, intesity_co2e_kwh_carbon:number): Promise<boolean> {
+    async getCarbonByExits(id_location: number, renewable_percent_carbon: number, intesity_co2e_kwh_carbon: number): Promise<boolean> {
         try {
-            let carbon = await this.carbonRepository.getCarbonByExist(renewable_percent_carbon, intesity_co2e_kwh_carbon);
+            let carbon = await this.carbonRepository.getCarbonByExist(id_location, renewable_percent_carbon, intesity_co2e_kwh_carbon);
             
             return carbon !== null;
             
@@ -146,5 +158,3 @@ export class CarbonService {
     }
 
 }
-
-
