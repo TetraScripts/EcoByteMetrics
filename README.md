@@ -1,3 +1,5 @@
+![EcoByteMetrics — Monitoramento energético e ambiental de software](docs/banner.png)
+
 # 🍃 EcoByteMetrics (GreenER)
 
 O **EcoByteMetrics** é uma plataforma web voltada para a análise e o monitoramento do consumo energético e das emissões de CO₂e em softwares.
@@ -8,6 +10,13 @@ O **EcoByteMetrics** é uma plataforma web voltada para a análise e o monitoram
 A plataforma resolve a falta de visibilidade sobre o impacto ambiental de arquiteturas em nuvem e microsserviços. O sistema conecta-se ao ambiente para listar e monitorar dinamicamente os microsserviços ativos, identificando indisponividades e falhas na exportação de métricas. 
 
 A utilização de recursos de hardware, como CPU, memória e rede, é convertida em consumo elétrico (kWh) e emissões de carbono (CO₂e) com base na localização geográfica e em fatores regionais de emissão. A aplicação disponibiliza painéis operacionais, rankings de impacto, mapeamento geográfico e comparadores de eficiência entre serviços.
+
+---
+
+### 💻 Tecnologias Utilizadas
+<p align="center">
+  <img src="https://skillicons.dev/icons?i=react,ts,js,nodejs,express,postgres,docker,vite,git,github&perline=10&theme=dark" alt="Tecnologias utilizadas" />
+</p>
 
 ---
 
@@ -232,7 +241,7 @@ graph LR
 |             Período              |            Documentação da Sprint            |                   Vídeo                   |
 | :------------------------------: | :------------------------------------------: | :---------------------------------------: |
 | **Sprint 1:** 28/09 a 19/10/2026 | [Sprint Review](./docs/sprints/sprint-1/sprint-1.md) | [▶ YouTube](https://youtu.be/7RxJdSmYO0c) |
-| **Sprint 2:** 20/10 a 09/11/2026 | [Sprint Review](./docs/sprints/sprint-2/sprint-2.md) | [▶ YouTube](https://youtu.be/) |
+| **Sprint 2:** 20/10 a 09/11/2026 | [Sprint Review](./docs/sprints/sprint-2/sprint-2.md) | [▶ YouTube](https://youtu.be/I2eUKGZDlMA) |
 | **Sprint 3:** 10/11 a 23/11/2026 | [Sprint Review](./docs/sprints/sprint-3/sprint-3.md) | [▶ YouTube](https://youtu.be/) |
 
 ---
@@ -265,29 +274,32 @@ O repositório está organizado de forma modular, contendo documentações espec
 
 ```bash
 greener/
-├── README.md                   # Manual principal e guia de execução
-├── .env.example                # Modelo de variáveis de ambiente
-├── compose.yaml                # Arquivo de orquestração do Docker Compose
-├── frontend/                   # Aplicação Web em React + TypeScript
-│   ├── README.md               # Guia de execução e telas do frontend
+├── README.md               # Manual principal e guia de execução
+├── .env.example            # Modelo de variáveis de ambiente
+├── compose.yaml            # Arquivo de orquestração do Docker Compose
+├── frontend/               # Aplicação Web em React + TypeScript
+│   ├── README.md           # Guia de execução e telas do frontend
 │   ├── Dockerfile
 │   └── src/
-├── backend/                    # API REST em Node.js + TypeScript
-│   ├── README.md               # Guia de módulos e integrações do backend
+├── backend/                # API REST em Node.js + TypeScript
+│   ├── README.md           # Guia de módulos e integrações do backend
 │   ├── Dockerfile
 │   └── src/
-├── database/                   # Persistência relacional sem ORM
-│   ├── README.md               # Instruções de restauração do PostgreSQL
-│   └── DDL.sql              # Script DDL oficial com a estrutura de tabelas
-└── docs/                       # Documentação técnica e planejamento
-    ├── plano-de-entregas.md    # Matriz oficial da Rubrica e rastreabilidade da equipe
-    ├── arquitetura.md          # Fluxo de dados e diagramas da solução
-    ├── calculos.md             # Memória de cálculo de consumo energético e CO₂e
-    ├── api.md                  # Especificação das rotas REST e autenticação JWT
+├── database/               # Persistência relacional sem ORM
+│   ├── README.md           # Instruções de restauração do PostgreSQL
+│   └── DDL.sql             # Script DDL oficial com a estrutura de tabelas
+└── docs/                   # Documentação técnica e planejamento
+    ├── plano-de-entregas.md # Matriz oficial da Rubrica e rastreabilidade da equipe
+    ├── arquitetura.md      # Fluxo de dados e diagramas da solução
+    ├── calculos.md         # Memória de cálculo de consumo energético e CO₂e
+    ├── api.md              # Especificação das rotas REST e autenticação JWT
     └── sprints/
-        ├── sprint-1.md         # Registro da Sprint Review 1 e evidências
-        ├── sprint-2.md
-        └── sprint-3.md
+        ├── sprint-1/
+        │   └── sprint-1.md # Registro da Sprint Review 1 e evidências
+        ├── sprint-2/
+        │   └── sprint-2.md # Registro da Sprint Review 2 e evidências
+        └── sprint-3/
+            └── sprint-3.md # Registro da Sprint Review 3 e evidências
 ```
 
 ---
@@ -339,4 +351,5 @@ Para detalhamento técnico completo e acompanhamento do projeto, consulte os arq
 * 🔌 **[Especificação da API REST](./docs/api.md):** Detalhamento dos endpoints, parâmetros, respostas JSON e segurança JWT.
 * 📐 **[Arquitetura do Sistema](./docs/arquitetura.md):** Responsabilidades dos módulos e fluxo de dados.
 * 🧮 **[Memória de Cálculo Ambiental](./docs/calculos.md):** Fórmulas e fatores de conversão em kWh e CO₂e.
-* 📄 **[Relatório da Sprint Review 1](./docs/sprints/sprint-1.md):** Resumo das entregas, autoavaliação e evidências da Sprint 1.
+* 📄 **[Relatório da Sprint Review 1](./docs/sprints/sprint-1/sprint-1.md):** Resumo das entregas, autoavaliação e evidências da Sprint 1.
+* 📄 **[Relatório da Sprint Review 2](./docs/sprints/sprint-2/sprint-2.md):** Resumo das entregas, autoavaliação e evidências da Sprint 2.

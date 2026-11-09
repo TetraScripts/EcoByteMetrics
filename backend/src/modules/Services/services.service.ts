@@ -1,8 +1,13 @@
-import { CarbonRegionFactor, fetchCarbonRegions } from "../../integrations/carbon-api.js";
+import {
+    CarbonRegionFactor,
+    fetchCarbonRegions,
+    setCarbonRegionFactors,
+} from "../../integrations/carbon-api.js";
 import type { Metric as ApiMetric, ServiceMetrics as DiscoveredService } from "../../integrations/api.types.js";
 import {
     fetchAvailableServices,
     fetchServiceMetrics,
+    MetricsApiError,
     type AggregatorService,
     type ServiceMetrics,
 } from "../../integrations/metrics-api.js";
@@ -130,6 +135,11 @@ export interface CollectedServiceMetrics {
     updatedAt: string;
 }
 
+export interface CollectionFailure {
+    reason: "missing" | "unavailable";
+    message: string;
+}
+
 type MetricsFetcher = (
     serviceId: string
 ) => Promise<ServiceMetrics>;
@@ -143,6 +153,9 @@ let discoveredServices: AggregatorService[] = [];
 let lastUpdatedAt: string | null = null;
 
 const collectedMetrics = new Map<string, CollectedServiceMetrics>();
+const collectedMetricsHistory = new Map<string, CollectedServiceMetrics[]>();
+const collectionFailures = new Map<string, CollectionFailure>();
+const METRICS_HISTORY_RETENTION_MS = 7 * 24 * 60 * 60 * 1000;
 
 /** Syncs aggregator discovery data into the dashboard cache. */
 export function recordDiscoveredServices(services: DiscoveredService[], at = new Date().toISOString()): void {
@@ -152,21 +165,86 @@ export function recordDiscoveredServices(services: DiscoveredService[], at = new
 
 /** Publishes only samples that have already been persisted successfully. */
 export function recordCollectedServiceMetrics(serviceId: string, sample: ApiMetric, at = new Date().toISOString()): void {
-    collectedMetrics.set(serviceId, {
+    const collected = {
         serviceId,
         metrics: {
             collection_interval_seconds: sample.collection_interval_seconds,
             metrics: { ...sample.metrics },
         },
         updatedAt: at,
-    });
+    };
+    collectedMetrics.set(serviceId, collected);
+    collectionFailures.delete(serviceId);
+    const history = collectedMetricsHistory.get(serviceId) ?? [];
+    history.push(collected);
+    collectedMetricsHistory.set(serviceId, history);
 }
 
-export function publishCollection(catalog: AggregatorService[], metrics: Map<string, ServiceMetrics>, at: string) {
+function failureFromError(error: unknown): CollectionFailure {
+    const isMissing =
+        (error instanceof MetricsApiError &&
+            (error.code === "metrics_missing" || error.code === "invalid_metrics")) ||
+        (error instanceof Error && /HTTP 404\b/.test(error.message));
+    const timedOut =
+        error instanceof Error &&
+        (error.name === "TimeoutError" ||
+            /\b(?:timed out|timeout exceeded|aborted due to timeout)\b/i.test(
+                error.message,
+            ));
+
+    return {
+        reason: isMissing ? "missing" : "unavailable",
+        message: isMissing
+            ? "O serviço respondeu, mas não forneceu métricas."
+            : timedOut
+              ? "Tempo limite excedido ao consultar o serviço."
+              : "Não foi possível consultar o serviço de métricas.",
+    };
+}
+
+function failureFromCode(code: string): CollectionFailure {
+    const missing = code === "metrics_missing" || code === "invalid_metrics";
+    return {
+        reason: missing ? "missing" : "unavailable",
+        message: missing
+            ? "O serviço respondeu, mas não forneceu métricas."
+            : "Não foi possível consultar o serviço de métricas.",
+    };
+}
+
+export function publishCollection(
+    catalog: AggregatorService[],
+    metrics: Map<string, ServiceMetrics>,
+    at: string,
+    errors: Record<string, string> = {},
+) {
     recordDiscoveredServices(catalog, at);
     for (const [serviceId, sample] of metrics) recordCollectedServiceMetrics(serviceId, sample, at);
     const ids = new Set(catalog.map(service => service.id));
-    for (const id of collectedMetrics.keys()) if (!ids.has(id)) collectedMetrics.delete(id);
+    for (const id of collectedMetrics.keys()) {
+        if (!ids.has(id)) {
+            collectedMetrics.delete(id);
+            collectionFailures.delete(id);
+        }
+    }
+    for (const id of collectionFailures.keys()) {
+        if (!ids.has(id)) collectionFailures.delete(id);
+    }
+    for (const [serviceId, code] of Object.entries(errors)) {
+        collectionFailures.set(serviceId, failureFromCode(code));
+    }
+    pruneMetricsHistory();
+}
+
+function pruneMetricsHistory(): void {
+    const minimumTimestamp = Date.now() - METRICS_HISTORY_RETENTION_MS;
+    for (const [serviceId, history] of collectedMetricsHistory) {
+        const retained = history.filter(
+            (sample) => Date.parse(sample.updatedAt) >= minimumTimestamp,
+        );
+        if (retained.length) collectedMetricsHistory.set(serviceId, retained);
+        else collectedMetricsHistory.delete(serviceId);
+    }
 }
 
 export async function refreshDiscoveredServices(): Promise<void> {
@@ -193,14 +271,8 @@ export function getServicesLastUpdatedAt(): string | null {
 // Consulta as métricas de todos os serviços descobertos.
 // Uma falha individual não interrompe as consultas seguintes.
 export async function refreshServiceMetrics(): Promise<void> {
-    let carbonFactors = new Map<string, number>();
     try {
-        carbonFactors = new Map(
-            (await fetchCarbonFactors()).map((factor) => [
-                factor.code,
-                factor.carbonIntensity,
-            ])
-        );
+        setCarbonRegionFactors(await fetchCarbonFactors());
     } catch (error: unknown) {
         console.error("Falha ao consultar fatores de carbono.", error);
     }
@@ -210,6 +282,7 @@ export async function refreshServiceMetrics(): Promise<void> {
         try {
             metrics = await fetchMetrics(service.id);
         } catch (error: unknown) {
+            collectionFailures.set(service.id, failureFromError(error));
             console.error(
                 `Falha ao consultar métricas do serviço "${service.id}".`,
                 error
@@ -217,13 +290,9 @@ export async function refreshServiceMetrics(): Promise<void> {
             continue;
         }
 
-        const collectedAt = new Date();
-        collectedMetrics.set(service.id, {
-            serviceId: service.id,
-            metrics,
-            updatedAt: collectedAt.toISOString(),
-        });
+        recordCollectedServiceMetrics(service.id, metrics);
     }
+    pruneMetricsHistory();
 }
 
 export function getCollectedServiceMetrics(): CollectedServiceMetrics[] {
@@ -234,6 +303,25 @@ export function getCollectedMetricsByServiceId(serviceId: string): CollectedServ
     return collectedMetrics.get(serviceId);
 }
 
+export function getCollectedMetricsHistory(): CollectedServiceMetrics[] {
+    return Array.from(collectedMetricsHistory.values()).flat();
+}
+
+export function getCollectionFailure(
+    serviceId: string,
+): CollectionFailure | undefined {
+    return collectionFailures.get(serviceId);
+}
+
+export function getCollectionFailures(): ReadonlyMap<string, CollectionFailure> {
+    return collectionFailures;
+}
+
+export function resetCollectedMetricsForTesting(): void {
+    collectedMetrics.clear();
+    collectedMetricsHistory.clear();
+    collectionFailures.clear();
+}
 // Permite substituir a consulta de serviços durante testes.
 export function setServicesFetcherForTesting(fetcher: ServicesFetcher): void {
     fetchServices = fetcher;
@@ -262,4 +350,3 @@ export function setCarbonRegionsFetcherForTesting(
 export function resetCarbonRegionsFetcher(): void {
     fetchCarbonFactors = fetchCarbonRegions;
 }
-

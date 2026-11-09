@@ -6,7 +6,6 @@ import { createLocationInput } from "../Locations/location.repository";
 import { LocationService } from "../Locations/location.service";
 
 export class WorkerCarbons{
-
     //metodo async que pegar uma lista de Carbons e cadastra a lista
     async listarCarbons(carbonsReg:CarbonRegion[]){
       try{
@@ -21,7 +20,6 @@ export class WorkerCarbons{
               renewable_percent_carbon:carbonsReg[i].renewable_share_percent,
               intesity_co2e_kwh_carbon:carbonsReg[i].carbon_intensity_gco2e_per_kwh
             }
-            //preenche dos dados da api para as interfaces que representa o banco de dados
             let local: createLocationInput={
               name_location:carbonsReg[i].code,
               country_location:carbonsReg[i].country,
@@ -32,10 +30,8 @@ export class WorkerCarbons{
               carbon:carbon,
               service:null
             }
-            //chama o função que cadastra cada item da lista
             await this.cadastrarCarbonLocation(carbon,local);
           }catch(error:unknown){
-            //verifica se o erro é do tipo CarbonApiError e exibe as informações do erro no console
             if(error instanceof CarbonApiError){
               console.error(
                 `${error.name}: ${error.message}\n` +
@@ -46,7 +42,6 @@ export class WorkerCarbons{
           }
            i++; 
         }
-      //verifica se o erro é do tipo CarbonError e exibe as informações do erro no console
       }catch(error){
         if(error instanceof CarbonError)
           console.error(
@@ -66,7 +61,7 @@ export class WorkerCarbons{
           console.log("Cadastrado Location");
           
         }else{
-          carbon.id_location=lugar.id_location
+          carbon.id_location=Lugar.id_location
         }
         // Upsert pela chave (id_location, date_houry): preserva todo o histórico.
         await carbonService.createCarbon(carbon);

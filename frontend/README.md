@@ -1,6 +1,6 @@
 # Frontend EcoByteMetrics
 
-Interface em React e TypeScript, compilada com Vite. Esta branch mantém o frontend separado da `develop` até a conclusão das melhorias e da integração com o backend atualizado.
+Interface em React e TypeScript, compilada com Vite, para consultar as aplicações monitoradas e suas estimativas de consumo de energia e emissões de carbono pelo backend do EcoByteMetrics.
 
 ## Executar
 
@@ -22,7 +22,7 @@ O proxy remove `/backend` antes de encaminhar a consulta. Reinicie o Vite após 
 
 A home, a página 404 e as telas de acesso podem ser abertas sem o backend. Monitoramento e comparação precisam de respostas da API para mostrar aplicações reais; não existe modo de demonstração automático.
 
-A aba Administração exige sessão em desenvolvimento e produção. Uma visita sem sessão vai ao login, preservando o destino e os filtros; a tela de login também oferece o caminho para cadastro. A administração contém a configuração de coleta, sem uma seção separada de Acesso. O intervalo é consultado em `GET /backend/api/monitoring-settings`, protegido por Bearer, usando a mesma constante do coletor. A tela é somente leitura e trata carregamento, falha e nova tentativa. Referências do layout em [ADMINISTRATION-DESIGN.md](src/features/monitoring/ADMINISTRATION-DESIGN.md).
+A aba Administração exige sessão em desenvolvimento e produção. Uma visita sem sessão vai ao login, preservando o destino e os filtros; a tela de login também oferece o caminho para cadastro. Após entrar, o painel apresenta o título Administração, o e-mail da conta e o botão Sair. A área de conteúdo permanece vazia por enquanto; não há consulta ou alteração de configurações de coleta nessa tela.
 
 ## Login e sessão
 
@@ -41,7 +41,7 @@ A implementação foi testada com respostas controladas e com o backend e Postgr
 
 ## Medir o peso
 
-Para medir o tamanho do build, execute `npm run measure:build`. O relatório distingue arquivos publicados, código inicial e estimativa de gzip. Medições, validação HTTP e próximos candidatos de otimização estão em [docs/BUILD-WEIGHT.md](docs/BUILD-WEIGHT.md).
+Para medir o tamanho do build, execute `npm run measure:build`. O relatório distingue arquivos publicados, código inicial e estimativa de gzip.
 
 ## Rotas
 
@@ -84,8 +84,6 @@ npm run preview
 ```
 
 Os testes cobrem contratos HTTP com respostas controladas, erros, cancelamento, preservação de dados, agrupamento geográfico, filtros, ranking, comparação, gráficos, câmera, rotação, transição e reprodução de vídeos. Os testes de telas usam renderização React no servidor; não executam o navegador ou o WebGL.
-
-Procedimentos e limites das verificações estão em [docs/VALIDATION.md](docs/VALIDATION.md). O andamento e as dependências estão em [FRONTEND-PLAN.md](FRONTEND-PLAN.md).
 
 ## Distribuir somente o frontend
 
