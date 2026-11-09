@@ -274,31 +274,32 @@ O repositório está organizado de forma modular, contendo documentações espec
 
 ```bash
 greener/
-├── README.md                   # Manual principal e guia de execução
-├── .env.example                # Modelo de variáveis de ambiente
-├── compose.yaml                # Arquivo de orquestração do Docker Compose
-├── frontend/                   # Aplicação Web em React + TypeScript
-│   ├── README.md               # Guia de execução e telas do frontend
+├── README.md               # Manual principal e guia de execução
+├── .env.example            # Modelo de variáveis de ambiente
+├── compose.yaml            # Arquivo de orquestração do Docker Compose
+├── frontend/               # Aplicação Web em React + TypeScript
+│   ├── README.md           # Guia de execução e telas do frontend
 │   ├── Dockerfile
 │   └── src/
-├── backend/                    # API REST em Node.js + TypeScript
-│   ├── README.md               # Guia de módulos e integrações do backend
+├── backend/                # API REST em Node.js + TypeScript
+│   ├── README.md           # Guia de módulos e integrações do backend
 │   ├── Dockerfile
 │   └── src/
-├── database/                   # Persistência relacional sem ORM
-│   ├── README.md               # Instruções de restauração do PostgreSQL
-│   └── DDL.sql              # Script DDL oficial com a estrutura de tabelas
-└── docs/                       # Documentação técnica e planejamento
-    ├── plano-de-entregas.md    # Matriz oficial da Rubrica e rastreabilidade da equipe
-    ├── arquitetura.md          # Fluxo de dados e diagramas da solução
-    ├── calculos.md             # Memória de cálculo de consumo energético e CO₂e
-    ├── api.md                  # Especificação das rotas REST e autenticação JWT
+├── database/               # Persistência relacional sem ORM
+│   ├── README.md           # Instruções de restauração do PostgreSQL
+│   └── DDL.sql             # Script DDL oficial com a estrutura de tabelas
+└── docs/                   # Documentação técnica e planejamento
+    ├── plano-de-entregas.md # Matriz oficial da Rubrica e rastreabilidade da equipe
+    ├── arquitetura.md      # Fluxo de dados e diagramas da solução
+    ├── calculos.md         # Memória de cálculo de consumo energético e CO₂e
+    ├── api.md              # Especificação das rotas REST e autenticação JWT
     └── sprints/
         ├── sprint-1/
-        │   └── sprint-1.md     # Registro da Sprint Review 1 e evidências
-        ├── sprint-2.md
-		│	└── sprint-2.md     # Registro da Sprint Review 2 e evidências
-        └── sprint-3.md
+        │   └── sprint-1.md # Registro da Sprint Review 1 e evidências
+        ├── sprint-2/
+        │   └── sprint-2.md # Registro da Sprint Review 2 e evidências
+        └── sprint-3/
+            └── sprint-3.md # Registro da Sprint Review 3 e evidências
 ```
 
 ---
