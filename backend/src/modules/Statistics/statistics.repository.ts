@@ -99,7 +99,7 @@ export class StatisticRepository {
                         SUM(i.consumption_kwh), 0
                     )::float8 AS "consumoKwh",
 
-                    SUM(i.emissions_co2e)::float8 AS "emissaoCo2e",
+                    SUM(i.emissions_co2e_kg)::float8 AS "emissaoCo2eKg",
                     COUNT(i.collected_at)::int AS "sampleCount",
                     COUNT(i.emissions_co2e_kg)::int AS "coveredEmissionSamples"
 
@@ -220,7 +220,7 @@ export class StatisticRepository {
 
     return {
       total_consumption_kwh: Number(row.total_consumption_kwh),
-      total_co2e_kg: Number(row.total_co2e_kg),
+      total_co2e_kg: row.total_co2e_kg == null ? null : Number(row.total_co2e_kg),
       active_services: Number(row.active_services),
       unavailable_services: Number(row.unavailable_services),
       total_services: Number(row.total_services)

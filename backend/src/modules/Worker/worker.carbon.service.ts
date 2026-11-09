@@ -61,7 +61,7 @@ export class WorkerCarbons{
           console.log("Cadastrado Location");
           
         }else{
-          carbon.id_location=Lugar.id_location
+          carbon.id_location=lugar.id_location
         }
         // Upsert pela chave (id_location, date_houry): preserva todo o histórico.
         await carbonService.createCarbon(carbon);
