@@ -59,7 +59,7 @@ Desenvolver e consolidar a inteligência de negócios, a persistência históric
 ## 📈 3.1. Gráfico de Burndown da Sprint 2
 
 <div align="center">
-  <img src="../sprint-2/burndown.png" alt="Gráfico de Burndown da Sprint 2" width="85%" />
+  <img src="../sprint-2/burndown-2.png" alt="Gráfico de Burndown da Sprint 2" width="85%" />
   <p><i>Acompanhamento da evolução diária dos 62 Story Points planejados e entregues na Sprint 2.</i></p>
 </div>
 
