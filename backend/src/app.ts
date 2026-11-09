@@ -17,7 +17,22 @@ import {
   getServicesLastUpdatedAt,
   getCollectedServiceMetrics,
   getCollectedMetricsByServiceId,
+  getCollectionFailure,
 } from "./modules/Services/services.service.js";
+import {
+  getDashboardRanking,
+  getDashboardSummary,
+  type DashboardPeriod,
+  type RankingMetric,
+} from "./modules/Dashboard/dashboard.service.js";
+
+function isRankingMetric(value: unknown): value is RankingMetric {
+  return value === "kwh" || value === "co2e";
+}
+
+function isDashboardPeriod(value: unknown): value is DashboardPeriod {
+  return value === "1h" || value === "24h" || value === "7d";
+}
 
 //Cria Um thead paralela para fazer a percistencia
 
@@ -63,6 +78,28 @@ app.use("/api/services", serviceRouter);
 app.use("/api/statistics", statisticRouter);
 app.use("/api/locations", locationRouter);
 
+app.get("/api/dashboard/summary", (_req: Request, res: Response) => {
+  res.status(200).json(getDashboardSummary());
+});
+
+app.get("/api/dashboard/ranking", (req: Request, res: Response) => {
+  const rawOrderBy = req.query.ordenarPor ?? "co2e";
+  const rawPeriod = req.query.periodo ?? "24h";
+  if (!isRankingMetric(rawOrderBy)) {
+    res.status(400).json({
+      error: "O parâmetro ordenarPor deve ser 'kwh' ou 'co2e'.",
+    });
+    return;
+  }
+  if (!isDashboardPeriod(rawPeriod)) {
+    res.status(400).json({
+      error: "O parâmetro periodo deve ser '1h', '24h' ou '7d'.",
+    });
+    return;
+  }
+  res.status(200).json(getDashboardRanking(rawPeriod, rawOrderBy));
+});
+
 app.get("/metrics", (_req: Request, res: Response) => {
   res.json({ metrics: getCollectedServiceMetrics() });
 });
@@ -74,9 +111,27 @@ app.get("/metrics/:serviceId", (req: Request, res: Response) => {
     return;
   }
   const serviceMetrics = getCollectedMetricsByServiceId(serviceId);
+  const failure = getCollectionFailure(serviceId);
+  if (failure?.reason === "missing") {
+    res.status(404).json({
+      error: "metrics_missing",
+      message: failure.message,
+      serviceId,
+    });
+    return;
+  }
+  if (failure?.reason === "unavailable") {
+    res.status(503).json({
+      error: "metrics_unavailable",
+      message: failure.message,
+      serviceId,
+    });
+    return;
+  }
   if (!serviceMetrics) {
     res.status(404).json({
-      error: "Métricas não encontradas para este serviço.",
+      error: "metrics_missing",
+      message: "O serviço ainda não forneceu métricas válidas.",
       serviceId,
     });
     return;

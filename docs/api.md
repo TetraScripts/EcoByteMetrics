@@ -203,6 +203,13 @@ Consulta a série temporal histórica das coletas de hardware e cálculos de con
 ### `GET /dashboard/summary`
 Retorna a consolidação agregada dos indicadores operacionais e ambientais do ambiente monitorado `( RF08, RF09 )`.
 
+> **Validação do dashboard (Issue #101):** o backend expõe `GET /api/dashboard/summary` e `GET /api/dashboard/ranking`; o frontend consome essas rotas para os indicadores globais e o ranking por período. Os contratos têm testes em `backend/tests/dashboard.contract.test.ts` e `backend/tests/dashboard.routes.test.ts`.
+> O ranking da API mantém até 7 dias de amostras coletadas desde a inicialização do processo. Serviços são considerados ativos quando possuem métrica válida coletada nos últimos 90 segundos; resultados sem atualização recente são indisponíveis. O resumo é global e não varia com os filtros regionais/de data do dashboard.
+>
+> **Evidências:** os testes de contrato cobrem payloads, timestamps, estados, cálculos, ordenação, períodos, parâmetros inválidos (400), ausência de fatores regionais e ranking vazio (200). `backend/tests/resilience.test.ts` verifica timeout, HTTP 5xx, ausência de métricas (404), isolamento entre serviços e recuperação. Frontend validado com `npm run typecheck`, lint dos componentes alterados e `npm run build`.
+>
+> **Resiliência (Issue #102):** timeout/HTTP 5xx da consulta de métricas retorna `503 metrics_unavailable`; HTTP 404 do agregador retorna `404 metrics_missing`. O último cache válido é preservado internamente, mas não mascara o estado de falha; após coleta bem-sucedida, o erro é removido e a rota volta a `200`. Falha de um serviço não interrompe a consulta aos seguintes. A falha ao atualizar fatores de carbono preserva os últimos fatores válidos e não derruba o backend. Na tabela do dashboard, indisponibilidade e ausência de métricas são rótulos separados com mensagens operacionais.
+
 * **Método:** `GET`
 * **URL:** `/api/dashboard/summary`
 * **Códigos de Resposta:**
@@ -218,6 +225,7 @@ Retorna a consolidação agregada dos indicadores operacionais e ambientais do a
       "dataHoraUltimaAtualizacao": "2026-10-13T11:00:00Z"
     }
     ```
+  * `emissaoTotalCo2e` é `null` quando não há fator regional para todos os serviços ativos; o backend não estima emissões com fator ausente. `consumoTotalKwh` soma as amostras válidas dos serviços ativos. `dataHoraUltimaAtualizacao` pode ser `null` antes da primeira coleta.
 
 ---
 
@@ -253,6 +261,14 @@ Obtém a lista ordenada de serviços por maior consumo energético ou emissão d
           "emissaoCo2e": 132.5000
         }
       ]
+    }
+    ```
+    Uma lista sem amostras válidas para o período ou critério é retornada como `"ranking": []`.
+    No ranking por kWh, `emissaoCo2e` pode ser `null` se faltar fator regional; no ranking por CO₂e, serviços sem emissão completa são omitidos.
+  * **`400 Bad Request` — Parâmetro `ordenarPor` ou `periodo` inválido:**
+    ```json
+    {
+      "error": "O parâmetro periodo deve ser '1h', '24h' ou '7d'."
     }
     ```
 

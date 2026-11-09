@@ -123,6 +123,10 @@ FRONT_PORT=8080
 PGPORT=80
 ```
 
+O backend consulta `GET {CARBON_INTENSITY_URL}/regions`; a resposta deve conter `regions` com `code` e `carbon_intensity_gco2e_per_kwh`. A ausência de fator mantém consumo e ranking por kWh disponíveis, mas emissões ficam `null`/fora do ranking por CO₂e. O ranking da API mantém amostras em memória por até 7 dias e começa a acumular dados após a inicialização.
+
+Para o agregador de métricas, `METRICS_AGGREGATOR_URL` é o nome documentado; `API_METRIC` permanece aceito por compatibilidade.
+
 ---
 
 ### Cadastro, login e proteção das contas

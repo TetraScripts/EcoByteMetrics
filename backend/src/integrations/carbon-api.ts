@@ -256,6 +256,8 @@ export interface CarbonRegionFactor {
   carbonIntensity: number;
 }
 
+type CarbonFactorFetcher = () => Promise<CarbonRegionFactor[]>;
+
 const carbonApiUrl = process.env.API_CARBON;
 
 export async function fetchCarbonRegions(): Promise<CarbonRegionFactor[]> {
@@ -300,4 +302,32 @@ export async function fetchCarbonRegions(): Promise<CarbonRegionFactor[]> {
       carbonIntensity: value.carbon_intensity_gco2e_per_kwh,
     }];
   });
+}
+
+let carbonFactors = new Map<string, number>();
+let fetchFactors: CarbonFactorFetcher = fetchCarbonRegions;
+
+export async function refreshCarbonRegionFactors(): Promise<void> {
+  setCarbonRegionFactors(await fetchFactors());
+}
+
+export function setCarbonRegionFactors(factors: CarbonRegionFactor[]): void {
+  carbonFactors = new Map(
+    factors.map((factor) => [factor.code, factor.carbonIntensity]),
+  );
+}
+
+export function getCarbonIntensity(regionCode: string): number | undefined {
+  return carbonFactors.get(regionCode);
+}
+
+export function setCarbonFactorsFetcherForTesting(
+  fetcher: CarbonFactorFetcher,
+): void {
+  fetchFactors = fetcher;
+}
+
+export function resetCarbonFactorsForTesting(): void {
+  fetchFactors = fetchCarbonRegions;
+  carbonFactors.clear();
 }
