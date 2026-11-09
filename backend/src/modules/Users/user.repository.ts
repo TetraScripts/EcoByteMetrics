@@ -48,10 +48,8 @@ export class UserRepository{
       return result.rows[0];
   }
 
-export async function getUserByIdRepository(
-  id: number
-): Promise<User | null> {
-  const result = await pool.query(
+  async getUserByIdRepository(id_user:number):Promise<SafeUser | null>{
+    const result = await pool.query(
     `SELECT id_user, name_user, email_user
      FROM users
      WHERE id_user = $1`,
@@ -60,13 +58,8 @@ export async function getUserByIdRepository(
     return result.rows[0] || null;
   }
 
-export async function upadateUserRepository({
-  id_user,
-  email_user,
-  name_user,
-  password_user,
-}: UpdateUser): Promise<User | null> {
-  const result = await pool.query(
+  async upadateUserRepository(user:UpdateUser): Promise<User|null>{
+    const result = await pool.query(
     `UPDATE users
      SET email_user = $2,
          name_user = $3,
