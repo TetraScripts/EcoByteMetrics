@@ -11,6 +11,13 @@ A utilização de recursos de hardware, como CPU, memória e rede, é convertida
 
 ---
 
+### 💻 Tecnologias Utilizadas
+<p align="center">
+  <img src="https://skillicons.dev/icons?i=react,ts,js,nodejs,express,postgres,docker,vite,git,github&perline=10&theme=dark" alt="Tecnologias utilizadas" />
+</p>
+
+---
+
 ### 🏗️ Arquitetura e Tecnologias
 A solução foi estruturada para ser executada em ambiente containerizado, garantindo isolamento e reprodutibilidade.
 
@@ -232,7 +239,7 @@ graph LR
 |             Período              |            Documentação da Sprint            |                   Vídeo                   |
 | :------------------------------: | :------------------------------------------: | :---------------------------------------: |
 | **Sprint 1:** 28/09 a 19/10/2026 | [Sprint Review](./docs/sprints/sprint-1/sprint-1.md) | [▶ YouTube](https://youtu.be/7RxJdSmYO0c) |
-| **Sprint 2:** 20/10 a 09/11/2026 | [Sprint Review](./docs/sprints/sprint-2/sprint-2.md) | [▶ YouTube](https://youtu.be/) |
+| **Sprint 2:** 20/10 a 09/11/2026 | [Sprint Review](./docs/sprints/sprint-2/sprint-2.md) | [▶ YouTube](https://youtu.be/I2eUKGZDlMA) |
 | **Sprint 3:** 10/11 a 23/11/2026 | [Sprint Review](./docs/sprints/sprint-3/sprint-3.md) | [▶ YouTube](https://youtu.be/) |
 
 ---
@@ -285,8 +292,10 @@ greener/
     ├── calculos.md             # Memória de cálculo de consumo energético e CO₂e
     ├── api.md                  # Especificação das rotas REST e autenticação JWT
     └── sprints/
-        ├── sprint-1.md         # Registro da Sprint Review 1 e evidências
+        ├── sprint-1/
+        │   └── sprint-1.md     # Registro da Sprint Review 1 e evidências
         ├── sprint-2.md
+		│	└── sprint-2.md     # Registro da Sprint Review 2 e evidências
         └── sprint-3.md
 ```
 
@@ -339,4 +348,5 @@ Para detalhamento técnico completo e acompanhamento do projeto, consulte os arq
 * 🔌 **[Especificação da API REST](./docs/api.md):** Detalhamento dos endpoints, parâmetros, respostas JSON e segurança JWT.
 * 📐 **[Arquitetura do Sistema](./docs/arquitetura.md):** Responsabilidades dos módulos e fluxo de dados.
 * 🧮 **[Memória de Cálculo Ambiental](./docs/calculos.md):** Fórmulas e fatores de conversão em kWh e CO₂e.
-* 📄 **[Relatório da Sprint Review 1](./docs/sprints/sprint-1.md):** Resumo das entregas, autoavaliação e evidências da Sprint 1.
+* 📄 **[Relatório da Sprint Review 1](./docs/sprints/sprint-1/sprint-1.md):** Resumo das entregas, autoavaliação e evidências da Sprint 1.
+* 📄 **[Relatório da Sprint Review 2](./docs/sprints/sprint-2/sprint-2.md):** Resumo das entregas, autoavaliação e evidências da Sprint 2.
