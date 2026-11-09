@@ -1,3 +1,5 @@
+![EcoByteMetrics — Monitoramento energético e ambiental de software](docs/banner.png)
+
 # 🍃 EcoByteMetrics (GreenER)
 
 O **EcoByteMetrics** é uma plataforma web voltada para a análise e o monitoramento do consumo energético e das emissões de CO₂e em softwares.
