@@ -2,7 +2,6 @@
 
 import app from "./app";
 import { migrateMonitoring } from "./db/migrate";
-import { refreshAllData, start as startMonitoringWorker } from "./modules/Worker/worker.job";
 
 import {
   start
@@ -30,10 +29,6 @@ async function main() {
     // Agenda as próximas coletas a cada 30 segundos.
     start();
   });
-  void refreshAllData().catch(error => {
-    console.error("Falha na coleta inicial de monitoramento.", error);
-  });
-  startMonitoringWorker();
 }
 
 void main().catch((error: unknown) => {
