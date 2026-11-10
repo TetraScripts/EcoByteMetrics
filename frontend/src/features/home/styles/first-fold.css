@@ -1,0 +1,141 @@
+/* First chapter: a quiet interface over a living landscape. */
+html:has(.ecobyte-home) { scrollbar-width: none; }
+html:has(.ecobyte-home)::-webkit-scrollbar { display: none; }
+
+.ecobyte-home .site-header {
+  width: min(1720px, 100%); height: 112px; padding: 0 clamp(24px, 4.5vw, 80px);
+  grid-template-columns: 1fr auto 1fr; gap: 36px; background: transparent;
+  animation: homeFade 800ms ease 100ms backwards;
+}
+.ecobyte-home .brand { gap: 12px; }
+.ecobyte-home .brand > .brand__mark { width: 44px; height: 44px; }
+.ecobyte-home .brand > .brand__wordmark,
+.ecobyte-home .brand > .brand__wordmark > span { color: #f6faed; font-size: 23px; font-weight: 550; letter-spacing: -.9px; }
+.ecobyte-home .home-navigation { display: flex; gap: 30px; color: #e9f1e6; font-size: 14px; }
+.ecobyte-home .home-navigation a { padding: 10px 0; position: relative; }
+.ecobyte-home .home-navigation a::after { content: ''; position: absolute; left: 0; right: 0; bottom: 3px; height: 1px; background: currentColor; transform: scaleX(0); transform-origin: left; transition: transform 250ms; }
+.ecobyte-home .home-navigation a:hover::after,
+.ecobyte-home .home-navigation a:focus-visible::after { transform: scaleX(1); }
+.ecobyte-home .platform-link {
+  min-height: 46px; padding: 0 21px; gap: 25px; border: 1px solid #f1f7e570;
+  background: transparent; border-radius: 40px; color: #f6faed; font-size: 14px; font-weight: 500;
+}
+.ecobyte-home .platform-link:hover { background: #f5f9ee; color: #164b3c; border-color: #f5f9ee; }
+.ecobyte-home .hero {
+  height: 100svh; min-height: 740px; background: #143d39; --hero-position: 50% 50%;
+  display: flex; flex-direction: column; color: #f5f8ee;
+}
+.ecobyte-home .hero::after {
+  background: linear-gradient(90deg, #062e2de8 0%, #082e2bcc 33%, #123b325c 66%, #153d3a26 100%),
+    linear-gradient(180deg, #052b345c 0%, transparent 28%, transparent 65%, #062c30b8 100%);
+}
+.ecobyte-home .hero__light {
+  position: absolute; inset: 0; z-index: 0; pointer-events: none;
+  background: linear-gradient(118deg, transparent 40%, #e2efaf0d 52%, transparent 67%);
+}
+.ecobyte-home .hero__content {
+  width: min(1720px, 100%); flex: 1; min-height: 0; padding: 145px clamp(24px, 4.5vw, 80px) 50px;
+  grid-template-columns: minmax(0, 1fr) 32%; gap: clamp(24px, 5vw, 90px); align-items: center;
+}
+.ecobyte-home .hero-copy { max-width: 100%; }
+.ecobyte-home .hero-copy h1 {
+  margin: 0; font-family: var(--eb-font-heading); font-size: clamp(56px, 5.9vw, 108px);
+  font-weight: 450; line-height: 1.045; letter-spacing: -.065em; color: #f6f9ee;
+}
+.ecobyte-home .hero-line { overflow: hidden; padding-bottom: .09em; margin-bottom: -.04em; }
+.ecobyte-home .hero-line > span { display: block; animation: homeTitle 1000ms cubic-bezier(.16, 1, .3, 1) backwards; }
+.ecobyte-home .hero-copy > .hero-description {
+  max-width: 455px; margin-top: 30px; font-size: 16px; line-height: 1.75; color: #e1eadd;
+  letter-spacing: 0; animation: homeFade 900ms ease 550ms backwards;
+}
+.ecobyte-home .hero-copy__actions { margin-top: 32px; gap: 30px; animation: homeFade 900ms ease 670ms backwards; }
+.ecobyte-home .hero-border-button { position: relative; display: inline-flex; align-items: center; justify-content: center; width: 290px; max-width: 100%; min-height: 60px; padding: 15px 24px; border-radius: 30px; background: transparent; color: #f5f8ee; font-size: 18px; font-weight: 450; transition: background 1s ease-in-out; }
+.ecobyte-home .hero-border-button > svg { position: absolute; inset: 0; width: 100%; height: 100%; fill: none; pointer-events: none; stroke-width: 1; }
+.ecobyte-home .hero-border-button__base { stroke: #d4e7c770; }
+.ecobyte-home .hero-border-button__highlight { stroke: #f5f8ee; stroke-dasharray: 24 100; stroke-dashoffset: 24; transition: stroke-dashoffset 1s ease-in-out; }
+.ecobyte-home .hero-border-button:is(:hover, :focus-visible) { background: #b8d29618; }
+.ecobyte-home .hero-border-button:is(:hover, :focus-visible) .hero-border-button__highlight { stroke-dashoffset: -100; }
+.ecobyte-home .home-explore {
+  position: relative; overflow: hidden; display: inline-flex; align-items: center; justify-content: space-between;
+  min-height: 60px; gap: 30px; padding: 7px 8px 7px 25px; border: 1px solid #edf5dd; border-radius: 40px;
+  color: #153e32; background: #edf5dd; font-size: 14px; font-weight: 550; isolation: isolate;
+  transition: color 300ms;
+}
+.ecobyte-home .home-explore::before { content: ''; position: absolute; inset: 0; z-index: -1; background: #1b654f; transform: translateX(-101%); transition: transform 400ms cubic-bezier(.16, 1, .3, 1); }
+.ecobyte-home .home-explore:hover::before { transform: translateX(0); }
+.ecobyte-home .home-explore:hover { color: #f5f9eb; }
+.ecobyte-home .home-explore__arrow { display: grid; place-items: center; width: 43px; height: 43px; border-radius: 50%; background: #174e3f; color: #eff6df; }
+.ecobyte-home .home-explore__arrow svg { transition: transform 300ms; }
+.ecobyte-home .home-explore:hover svg { transform: rotate(45deg); }
+.ecobyte-home .hero-discover { display: inline-flex; align-items: center; gap: 13px; padding: 13px 0; font-size: 14px; color: #edf4e4; }
+.ecobyte-home .hero-discover svg { transition: transform 250ms; }
+.ecobyte-home .hero-discover:hover svg { transform: translateY(4px); }
+.ecobyte-home .hero-bottom__note { font-size: 12px; line-height: 1.7; color: #e1ebdb; }
+.ecobyte-home .hero-bottom__note span { color: #bfd0c1; }
+.ecobyte-home .hero-scenes { display: flex; align-items: center; gap: 14px; }
+.ecobyte-home .hero-scene { display: flex; align-items: center; gap: 9px; min-width: 34px; min-height: 44px; color: #d2e0cf; font-size: 11px; background: transparent; border: 0; cursor: pointer; }
+.ecobyte-home .hero-scene i { display: block; width: 0; height: 1px; background: #f0f6de; transition: width 400ms; }
+.ecobyte-home .hero-scene[aria-pressed="true"] { color: #f6faeb; }
+.ecobyte-home .hero-scene[aria-pressed="true"] i { width: 32px; }
+.ecobyte-home .hero-pause { display: grid; place-items: center; width: 44px; height: 44px; border: 1px solid #dce8d65c; border-radius: 50%; color: #f6faeb; background: transparent; cursor: pointer; }
+.ecobyte-home .hero-pause:hover { background: #ffffff1a; }
+.ecobyte-home .site-header a:focus-visible,
+.ecobyte-home .hero a:focus-visible,
+.ecobyte-home .hero button:focus-visible { outline: 2px solid #ecf4d5; outline-offset: 5px; }
+@keyframes homeTitle { from { transform: translateY(115%); } to { transform: translateY(0); } }
+@keyframes homeFade { from { opacity: 0; } to { opacity: 1; } }
+@media (max-width: 1150px) {
+  .ecobyte-home .site-header { gap: 24px; }
+  .ecobyte-home .home-navigation { gap: 20px; font-size: 13px; }
+  .ecobyte-home .brand > .brand__wordmark,
+  .ecobyte-home .brand > .brand__wordmark > span { font-size: 20px; }
+  .ecobyte-home .hero-copy h1 { font-size: clamp(58px, 6.2vw, 74px); }
+  .ecobyte-home .hero-copy__actions { gap: 20px; }
+}
+@media (max-width: 900px) {
+  .ecobyte-home .hero { height: auto; min-height: 100svh; }
+  .ecobyte-home .site-header { height: 96px; grid-template-columns: 1fr auto; }
+  .ecobyte-home .home-navigation { display: none; }
+  .ecobyte-home .hero__content { grid-template-columns: minmax(0, 1fr); min-height: 100svh; padding-top: 145px; padding-bottom: 48px; }
+  .ecobyte-home .hero-copy { position: relative; z-index: 2; max-width: 650px; }
+  .ecobyte-home .hero-copy h1 { font-size: clamp(58px, 8.5vw, 78px); }
+  .ecobyte-home .hero-bottom__note { display: none; }
+}
+@media (max-width: 600px) {
+  .ecobyte-home .site-header { height: 90px; gap: 12px; }
+  .ecobyte-home .brand { gap: 7px; }
+  .ecobyte-home .brand > .brand__mark { width: 34px; height: 34px; }
+  .ecobyte-home .brand > .brand__wordmark,
+  .ecobyte-home .brand > .brand__wordmark > span { font-size: 17px; letter-spacing: -.7px; }
+  .ecobyte-home .platform-link { min-height: 42px; padding: 0 13px; font-size: 12px; gap: 10px; }
+  .ecobyte-home .platform-link svg { width: 15px; }
+  .ecobyte-home .hero { min-height: 100svh; }
+  .ecobyte-home .hero__content { padding: 125px 24px 36px; }
+  .ecobyte-home .hero-copy h1 { font-size: clamp(42px, 10.3vw, 60px); letter-spacing: -.06em; }
+  .ecobyte-home .hero-copy > .hero-description { font-size: 14px; margin-top: 25px; max-width: 350px; line-height: 1.75; }
+  .ecobyte-home .hero-copy__actions { align-items: flex-start; flex-direction: column; gap: 10px; margin-top: 25px; }
+  .ecobyte-home .home-explore { min-height: 55px; font-size: 13px; padding-left: 20px; }
+  .ecobyte-home .home-explore__arrow { width: 38px; height: 38px; }
+  .ecobyte-home .hero-discover { font-size: 13px; }
+  .ecobyte-home .hero-scenes { gap: 6px; }
+  .ecobyte-home .hero-scene { gap: 4px; min-width: 23px; }
+  .ecobyte-home .hero-scene[aria-pressed="true"] i { width: 15px; }
+  .ecobyte-home .hero-pause { width: 36px; height: 36px; }
+}
+@media (min-width: 901px) and (max-height: 800px) {
+  .ecobyte-home .hero { min-height: 650px; }
+  .ecobyte-home .hero__content { padding-top: 115px; padding-bottom: 25px; }
+  .ecobyte-home .hero-copy h1 { font-size: clamp(56px, 5.3vw, 82px); }
+  .ecobyte-home .hero-copy > .hero-description { margin-top: 20px; }
+  .ecobyte-home .hero-copy__actions { margin-top: 22px; }
+}
+@media (max-width: 380px) {
+  .ecobyte-home .brand > .brand__wordmark,
+  .ecobyte-home .brand > .brand__wordmark > span { font-size: 14px; }
+  .ecobyte-home .platform-link { font-size: 10px; padding: 0 8px; gap: 8px; }
+}
+@media (prefers-reduced-motion: reduce) {
+  .ecobyte-home .site-header, .ecobyte-home .hero-line > span, .ecobyte-home .hero-copy > .hero-description, .ecobyte-home .hero-copy__actions { animation: none; }
+  .ecobyte-home .hero *, .ecobyte-home .hero *::before,
+  .ecobyte-home .site-header *::after { transition: none; }
+}

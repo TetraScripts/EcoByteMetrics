@@ -1,34 +1,19 @@
 import {Router} from "express";
-import {
-    createUserController,
-    deleteUserController,
-    getUserByIdController,
-    updateUserController}
-    from "./user.controller";
+import {UserController}from "./user.controller";
+import { authMiddleware } from "../Auth/auth.middleware";
+import { userAccessMiddleware } from "../Auth/userAccess.middleware";
+import { methodNotAllowed } from "../../app";
 
+let userController = new UserController();
 const userRouter = Router();
 
-userRouter.post("/", createUserController);
-userRouter.get("/:id", getUserByIdController);
-userRouter.put("/:id", updateUserController);
-userRouter.delete("/:id", deleteUserController);
+userRouter.post("/", userController.createUserController);
+userRouter.get("/:id_user", authMiddleware, userAccessMiddleware, userController.getUserByIdController);
+userRouter.put("/:id_user", authMiddleware, userAccessMiddleware, userController.updateUserController);
+userRouter.delete("/:id_user", authMiddleware, userAccessMiddleware, userController.deleteUserController);
 
-userRouter.get("/", (req, res) => {
-    res.set("Allow", "GET, HEAD, POST, OPTIONS").status(204).end();
-});
+userRouter.all("/", methodNotAllowed(["POST", "OPTIONS"]));
 
-userRouter.post("/:id", (req, res) => {
-    res.set("Allow", "GET, HEAD, PUT, DELETE, OPTIONS").status(204).end();
-});
-
-userRouter.all("/:id", (req, res) => {
-    res.set("Allow", "GET, HEAD, PUT, DELETE, OPTIONS")
-    .status(405).json({ error: "Método não permitido" });
-})
-
-userRouter.all("/", (req, res) => {
-    res.set("Allow", "GET, HEAD, POST, OPTIONS")
-    .status(405).json({ error: "Método não permitido" });
-});
+userRouter.all("/:id_user", methodNotAllowed(["GET","HEAD","PUT","DELETE", "OPTIONS"]));
 
 export default userRouter;

@@ -1,0 +1,262 @@
+.ecobyte-home .home-purpose, .ecobyte-home .home-questions { display: grid; grid-template-columns: 1.1fr 1fr; gap: 12%; padding: 110px max(24px, calc((100vw - 1400px) / 2)); color: #184333; background: #f3f6ef; }
+.ecobyte-home .purpose-heading h2, .ecobyte-home .home-questions h2 { font-family: var(--eb-font-heading); font-size: clamp(36px, 3.7vw, 60px); line-height: 1.15; letter-spacing: -.055em; font-weight: 450; margin: 0; }
+.ecobyte-home .purpose-copy { padding-top: 46px; }
+.ecobyte-home .purpose-copy p { font-size: 16px; line-height: 1.85; color: #52695a; max-width: 455px; margin: 0 0 22px; }
+.ecobyte-home .purpose-copy a { display: inline-flex; align-items: center; gap: 20px; font-size: 13px; min-height: 44px; border-bottom: 1px solid #7d9e7c; }
+.ecobyte-home .home-questions { padding-top: 0; }
+.ecobyte-home .questions-list details { border-top: 1px solid #c7d5c3; }
+.ecobyte-home .questions-list details:last-child { border-bottom: 1px solid #c7d5c3; }
+.ecobyte-home .questions-list summary { list-style: none; display: flex; align-items: center; justify-content: space-between; gap: 20px; min-height: 80px; padding: 20px 0; cursor: pointer; font-size: 15px; line-height: 1.6; }
+.ecobyte-home .questions-list summary::-webkit-details-marker { display: none; }
+.ecobyte-home .questions-list summary svg { flex-shrink: 0; transition: transform 250ms; }
+.ecobyte-home .questions-list details[open] summary svg { transform: rotate(45deg); }
+.ecobyte-home .questions-list p { margin: 0; padding: 0 32px 28px 0; color: #52695a; font-size: 14px; line-height: 1.85; }
+.ecobyte-home .home-invitation { position: relative; overflow: hidden; isolation: isolate; padding: 110px max(24px, calc((100vw - 1400px) / 2)); min-height: 540px; display: flex; align-items: center; background: #dae9d5; color: #163f32; }
+.ecobyte-home .home-invitation::before { content: ''; position: absolute; inset: 0; z-index: -1; background: linear-gradient(90deg, #e8efdfed 8%, #dcebd8d9 58%, #d7e9d070), url('../../../shared/assets/videos/mountain-dawn.jpg') center 60% / cover; }
+.ecobyte-home .invitation-copy { position: relative; z-index: 1; max-width: 900px; }
+.ecobyte-home .invitation-copy > p { font-size: 14px; margin: 0 0 26px; color: #3d6753; }
+.ecobyte-home .invitation-copy h2 { font-family: var(--eb-font-heading); font-size: clamp(42px, 5vw, 80px); line-height: 1.1; letter-spacing: -.06em; font-weight: 450; margin: 0 0 40px; }
+.ecobyte-home .hero-border-button--dark {
+  color: #163f32;
+}
+.ecobyte-home .hero-border-button--dark .hero-border-button__base {
+  stroke: #163f324d;
+}
+.ecobyte-home .hero-border-button--dark .hero-border-button__highlight {
+  stroke: #163f32;
+}
+.ecobyte-home .hero-border-button--dark:is(:hover, :focus-visible) {
+  background: #163f3214;
+}
+.ecobyte-home .invitation-leaf { position: absolute; width: 335px; height: auto; right: 8%; bottom: -100px; transform: rotate(19deg); opacity: .3; z-index: -1; }
+
+/* Polished Footer */
+.ecobyte-home .home-footer {
+  padding: 68px max(24px, calc((100vw - 1400px) / 2)) 40px;
+  background: #f3f6ef;
+  color: #3f6150;
+  border-top: 1px solid rgba(199, 213, 195, 0.5);
+}
+
+.ecobyte-home .footer-top {
+  display: grid;
+  grid-template-columns: 1fr auto;
+  gap: 30px;
+  align-items: center;
+  padding-bottom: 38px;
+}
+
+.ecobyte-home .home-footer .brand > .brand__wordmark,
+.ecobyte-home .home-footer .brand > .brand__wordmark > span {
+  color: #174632;
+  transition: opacity 0.2s ease;
+}
+
+.ecobyte-home .home-footer .brand:hover > .brand__wordmark {
+  opacity: 0.85;
+}
+
+.ecobyte-home .footer-top > p {
+  font-size: 13.5px;
+  line-height: 1.75;
+  margin: 0;
+  color: #4a6858;
+}
+
+.ecobyte-home .footer-back {
+  display: inline-flex;
+  align-items: center;
+  gap: 10px;
+  font-size: 13px;
+  font-weight: 500;
+  padding: 9px 16px;
+  color: #1d4735;
+  border-radius: 999px;
+  background: rgba(255, 255, 255, 0.45);
+  border: 1px solid #c7d5c3;
+  text-decoration: none;
+  transition: all 0.22s ease;
+}
+
+.ecobyte-home .footer-back:hover {
+  background: #ffffff;
+  border-color: #9cbca0;
+  color: #0d2e20;
+  box-shadow: 0 2px 8px rgba(23, 70, 50, 0.07);
+}
+
+.ecobyte-home .footer-back svg {
+  transition: transform 0.22s ease;
+}
+
+.ecobyte-home .footer-back:hover svg {
+  transform: translate(2px, -2px);
+}
+
+.ecobyte-home .footer-links {
+  display: flex;
+  justify-content: space-between;
+  gap: 24px;
+  align-items: center;
+  padding: 16px 0;
+  border-block: 1px solid #c7d5c3;
+}
+
+.ecobyte-home .footer-links nav {
+  display: flex;
+  gap: 28px;
+  flex-wrap: wrap;
+  font-size: 13.5px;
+}
+
+.ecobyte-home .footer-links nav a {
+  padding: 8px 0;
+  color: #3b5e4c;
+  text-decoration: none;
+  position: relative;
+  transition: color 0.2s ease;
+}
+
+.ecobyte-home .footer-links nav a::after {
+  content: '';
+  position: absolute;
+  left: 0;
+  bottom: 4px;
+  width: 0;
+  height: 1px;
+  background-color: #174632;
+  transition: width 0.22s ease;
+}
+
+.ecobyte-home .footer-links nav a:hover {
+  color: #174632;
+}
+
+.ecobyte-home .footer-links nav a:hover::after {
+  width: 100%;
+}
+
+/* GitHub interactive button & pill */
+.ecobyte-home .footer-github-link {
+  display: inline-flex;
+  align-items: center;
+  gap: 10px;
+  text-decoration: none;
+  color: inherit;
+  transition: opacity 0.2s ease;
+}
+
+.ecobyte-home .footer-github-label {
+  font-size: 13px;
+  font-weight: 600;
+  color: #3b5b4a;
+  letter-spacing: -0.01em;
+}
+
+.ecobyte-home .footer-github-pill {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  padding: 6px 14px;
+  border-radius: 999px;
+  background: rgba(255, 255, 255, 0.55);
+  border: 1px solid #c2d2be;
+  font-size: 13px;
+  font-weight: 500;
+  color: #174632;
+  box-shadow: 0 1px 3px rgba(23, 70, 50, 0.04);
+  backdrop-filter: blur(8px);
+  transition: all 0.25s cubic-bezier(0.16, 1, 0.3, 1);
+}
+
+.ecobyte-home .footer-github-link:hover .footer-github-pill {
+  background: #ffffff;
+  border-color: #9cbca0;
+  color: #0d2e20;
+  box-shadow: 0 3px 12px rgba(23, 70, 50, 0.09);
+  transform: translateY(-1px);
+}
+
+.ecobyte-home .footer-github-pill .github-logo {
+  flex-shrink: 0;
+  color: #174632;
+  transition: transform 0.25s ease;
+}
+
+.ecobyte-home .footer-github-link:hover .github-logo {
+  transform: scale(1.1);
+}
+
+.ecobyte-home .footer-github-pill .footer-github-text {
+  line-height: 1.2;
+  letter-spacing: -0.01em;
+}
+
+.ecobyte-home .footer-github-pill .github-arrow {
+  flex-shrink: 0;
+  color: #526f60;
+  transition: transform 0.25s ease, color 0.2s ease;
+}
+
+.ecobyte-home .footer-github-link:hover .github-arrow {
+  transform: translate(2px, -2px);
+  color: #174632;
+}
+
+.ecobyte-home .footer-bottom {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 24px;
+  padding: 24px 0 16px;
+  font-size: 12px;
+  line-height: 1.7;
+  color: #617b6d;
+}
+
+.ecobyte-home .footer-bottom details { max-width: 430px; }
+.ecobyte-home .footer-bottom summary { cursor: pointer; }
+.ecobyte-home .footer-bottom details p { margin: 14px 0 0; }
+.ecobyte-home .footer-bottom details a { text-decoration: underline; text-underline-offset: 3px; }
+
+@media (max-width: 1500px) {
+  .ecobyte-home .home-purpose, .ecobyte-home .home-questions, .ecobyte-home .home-invitation, .ecobyte-home .home-footer { padding-inline: 6vw; }
+}
+
+@media (max-width: 900px) {
+  .ecobyte-home .home-purpose, .ecobyte-home .home-questions { gap: 8%; padding-block: 80px; }
+  .ecobyte-home .home-questions { padding-top: 0; }
+  .ecobyte-home .purpose-copy { padding-top: 40px; }
+  .ecobyte-home .purpose-copy p { font-size: 14px; }
+  .ecobyte-home .home-invitation { padding-block: 80px; min-height: 470px; }
+  .ecobyte-home .footer-top { grid-template-columns: 1fr auto; }
+  .ecobyte-home .footer-top > p { display: none; }
+}
+
+@media (max-width: 650px) {
+  .ecobyte-home .home-purpose, .ecobyte-home .home-questions { grid-template-columns: 1fr; padding: 65px 24px; gap: 30px; }
+  .ecobyte-home .home-questions { padding-top: 10px; }
+  .ecobyte-home .purpose-copy { padding-top: 0; }
+  .ecobyte-home .purpose-heading h2, .ecobyte-home .home-questions h2 { font-size: clamp(33px, 8.4vw, 45px); }
+  .ecobyte-home .home-invitation { padding: 75px 24px; min-height: 410px; }
+  .ecobyte-home .invitation-copy h2 { font-size: clamp(37px, 9.5vw, 52px); }
+  .ecobyte-home .invitation-copy > p { max-width: 230px; font-size: 12px; line-height: 1.7; }
+  .ecobyte-home .invitation-leaf { right: -55px; width: 230px; bottom: -70px; opacity: .2; }
+  .ecobyte-home .home-footer { padding: 40px 24px 60px; }
+  .ecobyte-home .footer-top { display: flex; flex-wrap: wrap; justify-content: space-between; gap: 15px; padding-bottom: 25px; }
+  .ecobyte-home .footer-back { font-size: 11.5px; padding: 8px 12px; gap: 6px; }
+  .ecobyte-home .footer-links { align-items: start; flex-direction: column; gap: 14px; padding: 16px 0; }
+  .ecobyte-home .footer-links nav { gap: 20px; }
+  .ecobyte-home .footer-github-link { width: 100%; justify-content: flex-start; }
+  .ecobyte-home .footer-github-label { flex-shrink: 0; }
+  .ecobyte-home .footer-github-pill { min-width: 0; }
+  .ecobyte-home .footer-github-text { min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+  .ecobyte-home .footer-bottom { flex-direction: column; align-items: flex-start; gap: 12px; }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .ecobyte-home .questions-list summary svg,
+  .ecobyte-home .footer-back svg,
+  .ecobyte-home .footer-github-pill .github-arrow,
+  .ecobyte-home .footer-github-pill .github-logo { transition: none; }
+}

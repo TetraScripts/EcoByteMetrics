@@ -1,0 +1,23 @@
+test-results/
+playwright-report/
+artifacts/
+
+# Material local para montagem do prototipo no Figma
+/prototipo-mobile/
+/prototipo-mobile.zip
+
+# Registros locais e documentacao de versoes anteriores
+/docs/backend-origin.json
+/docs/backend-authorized-changes.json
+/docs/escopo-frontend.md
+/docs/integracao-frontend.md
+/docs/task-52.md
+/docs/revisao-frontend.md
+/docs/tour-do-site.md
+/docs/refatoracao-frontend.md
+
+# Ferramentas auxiliares de captura e auditoria local
+/scripts/audit-ui-accessibility.mjs
+/scripts/capture-ui-review.mjs
+/scripts/capture-mobile-prototype.mjs
+/scripts/package-mobile-prototype.mjs

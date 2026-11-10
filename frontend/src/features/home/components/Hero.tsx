@@ -1,20 +1,22 @@
-import type { CSSProperties } from "react";
-import { ArrowRight } from "lucide-react";
-import { Link } from "react-router-dom";
-import luganoMobile from "@/shared/assets/landscapes/hero-lugano.mobile.jpg";
-import luganoImage from "@/shared/assets/landscapes/hero-lugano.optimized.jpg";
-import lakesMobile from "@/shared/assets/landscapes/hero-lakes.mobile.jpg";
-import lakesImage from "@/shared/assets/landscapes/hero-lakes.optimized.jpg";
-import mountainsMobile from "@/shared/assets/landscapes/hero-mountains.mobile.jpg";
-import mountainsImage from "@/shared/assets/landscapes/hero-mountains.optimized.jpg";
-import lagoonMobile from "@/shared/assets/landscapes/hero-lagoon.mobile.jpg";
-import lagoonImage from "@/shared/assets/landscapes/hero-lagoon.optimized.jpg";
+import { ArrowDown } from "lucide-react";
+import { DashboardLink } from "./DashboardLink";
+import dawnVideo from "@/shared/assets/videos/mountain-dawn.mp4";
+import dawnMobile from "@/shared/assets/videos/mountain-dawn-mobile.mp4";
+import dawnPoster from "@/shared/assets/videos/mountain-dawn.jpg";
+import mountainVideo from "@/shared/assets/videos/green-mountain.mp4";
+import mountainMobile from "@/shared/assets/videos/green-mountain-mobile.mp4";
+import mountainPoster from "@/shared/assets/videos/green-mountain.jpg";
+import thirdVideo from "@/shared/assets/videos/landscape-12258848.mp4";
+import thirdMobile from "@/shared/assets/videos/landscape-12258848-mobile.mp4";
+import thirdPoster from "@/shared/assets/videos/landscape-12258848.jpg";
+import fourthVideo from "@/shared/assets/videos/landscape-12097119.mp4";
+import fourthMobile from "@/shared/assets/videos/landscape-12097119-mobile.mp4";
+import fourthPoster from "@/shared/assets/videos/landscape-12097119.jpg";
+import { HeroVideo } from "./HeroVideo";
 import { useCarousel } from "@/features/home/hooks/useCarousel";
-import { ImpactOverview } from "@/features/home/components/ImpactOverview";
 
 interface HeroProps {
   copy: {
-    eyebrow: string;
     line1: string;
     line2: string;
     line3: string;
@@ -24,63 +26,41 @@ interface HeroProps {
 }
 
 const slides = [
-  [luganoImage, luganoMobile],
-  [lakesImage, lakesMobile],
-  [mountainsImage, mountainsMobile],
-  [lagoonImage, lagoonMobile],
+  [dawnVideo, dawnMobile, dawnPoster],
+  [mountainVideo, mountainMobile, mountainPoster],
+  [thirdVideo, thirdMobile, thirdPoster],
+  [fourthVideo, fourthMobile, fourthPoster],
 ] as const;
 
 export function Hero({ copy }: HeroProps) {
-  const { index } = useCarousel(slides.length);
+  const { index, next, reducedMotion } = useCarousel(slides.length);
 
   return (
     <section className="hero" id="inicio">
-      {slides.map(([image, mobileImage], slideIndex) => (
-        <div
-          key={image}
-          className={`hero__background${slideIndex === index ? " active" : ""}`}
-          style={
-            {
-              "--hero-image":
-                slideIndex <= index + 1 ||
-                slideIndex === (index + slides.length - 1) % slides.length
-                  ? "url(" + image + ")"
-                  : undefined,
-              "--hero-mobile":
-                slideIndex <= index + 1 ||
-                slideIndex === (index + slides.length - 1) % slides.length
-                  ? "url(" + mobileImage + ")"
-                  : undefined,
-            } as CSSProperties
-          }
-          aria-hidden="true"
-        />
+      {slides.map(([video, mobile, poster], slideIndex) => (
+        <HeroVideo key={video} src={video} mobileSrc={mobile} poster={poster}
+          active={slideIndex === index} reducedMotion={reducedMotion} onEnded={next} />
       ))}
-      <div className="hero__wash" aria-hidden="true">
-        <svg viewBox="0 0 1040 445" preserveAspectRatio="none">
-          <path d="M0 0H640C632 77 605 159 566 237C528 314 478 388 425 445H0Z" />
-        </svg>
-      </div>
-      <div className="hero__right-shade" aria-hidden="true" />
-
+      <div className="hero__light" aria-hidden="true" />
       <div className="hero__content">
         <div className="hero-copy">
-          <div className="hero-copy__eyebrow">{copy.eyebrow}</div>
-          <h1>
-            <span>{copy.line1}</span>
-            <span>{copy.line2}</span>
-            <span className="accent">{copy.line3}</span>
+          <h1 aria-label={[copy.line1, copy.line2, copy.line3].join(" ")}>
+            {[copy.line1, copy.line2, copy.line3].map((line, i) => (
+              <span className="hero-line" key={line} aria-hidden="true"><span style={{ animationDelay: `${160 + i * 120}ms` }}>{line}</span></span>
+            ))}
           </h1>
-          <p>{copy.description}</p>
+          <p className="hero-description">{copy.description}</p>
           <div className="hero-copy__actions">
-            <Link className="primary-cta" to="/login">
+            <DashboardLink className="hero-border-button">
+              <svg viewBox="0 0 290 60" preserveAspectRatio="none" aria-hidden="true" focusable="false">
+                <rect x="1" y="1" width="288" height="58" rx="29" className="hero-border-button__base" vectorEffect="non-scaling-stroke" />
+                <rect x="1" y="1" width="288" height="58" rx="29" className="hero-border-button__highlight" pathLength="100" vectorEffect="non-scaling-stroke" />
+              </svg>
               <span>{copy.primary}</span>
-              <ArrowRight size={22} strokeWidth={1.65} aria-hidden="true" />
-            </Link>
+            </DashboardLink>
+            <a className="hero-discover" href="#solucoes">Como funciona<ArrowDown size={17} aria-hidden="true" /></a>
           </div>
         </div>
-
-        <ImpactOverview />
       </div>
     </section>
   );

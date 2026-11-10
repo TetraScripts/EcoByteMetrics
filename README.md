@@ -1,3 +1,5 @@
+![EcoByteMetrics — Monitoramento energético e ambiental de software](docs/banner.png)
+
 # 🍃 EcoByteMetrics (GreenER)
 
 O **EcoByteMetrics** é uma plataforma web voltada para a análise e o monitoramento do consumo energético e das emissões de CO₂e em softwares.
@@ -8,6 +10,13 @@ O **EcoByteMetrics** é uma plataforma web voltada para a análise e o monitoram
 A plataforma resolve a falta de visibilidade sobre o impacto ambiental de arquiteturas em nuvem e microsserviços. O sistema conecta-se ao ambiente para listar e monitorar dinamicamente os microsserviços ativos, identificando indisponividades e falhas na exportação de métricas. 
 
 A utilização de recursos de hardware, como CPU, memória e rede, é convertida em consumo elétrico (kWh) e emissões de carbono (CO₂e) com base na localização geográfica e em fatores regionais de emissão. A aplicação disponibiliza painéis operacionais, rankings de impacto, mapeamento geográfico e comparadores de eficiência entre serviços.
+
+---
+
+### 💻 Tecnologias Utilizadas
+<p align="center">
+  <img src="https://skillicons.dev/icons?i=react,ts,js,nodejs,express,postgres,docker,vite,git,github&perline=10&theme=dark" alt="Tecnologias utilizadas" />
+</p>
 
 ---
 
@@ -63,7 +72,7 @@ O sistema consome duas APIs externas para realizar a coleta de métricas e o cá
 ---
 
 ### 🗄️ Estrutura do Banco de Dados
-A modelagem do banco relacional utiliza SQL nativo e explícito no PostgreSQL.
+A modelagem do banco de dados relacional utiliza SQL nativo no PostgreSQL, sem o uso de ORM. O script oficial database/DDL.sql define cinco tabelas responsáveis pelo armazenamento dos usuários, localizações, serviços, métricas e informações de intensidade de carbono.
 
 <details>
 <summary><b>🗃️ Clique para expandir o Script SQL DDL (DDL.sql)</b></summary>
@@ -74,58 +83,82 @@ A modelagem do banco relacional utiliza SQL nativo e explícito no PostgreSQL.
 create table Users(
 	id_user int GENERATED ALWAYS AS IDENTITY PRIMARY KEY,
 	name_user varchar(50) not null,
-	email_user varchar(50) not null,
-	password_user varchar(25) not null,
-	token_user varchar(255) not null
+	email_user varchar(254) not null unique,
+	password_user varchar(255)not null
 );
-
 create table Locations(
 	id_location int GENERATED ALWAYS AS IDENTITY PRIMARY KEY,
-	name_location varchar(50) not null,
-	county_location varchar(50),
+	name_location varchar(50)not null unique,
+	country_location varchar(50),
 	region_location varchar(50),
 	city_location varchar(50),
-	latitude_location double precision not null,
-	logitude_location double precision not null
+	latitude_location double precision not null
+	CHECK (latitude_location BETWEEN -90 AND 90),
+	longitude_location double precision not null
+	CHECK (longitude_location BETWEEN -180 AND 180)
 );
 
 create table Services(
 	id_service int GENERATED ALWAYS AS IDENTITY PRIMARY KEY,
-	id_location int,
-	name_service varchar(50),
+	id_location int ,
+	name_service varchar(50)not null unique,
+	path_metric varchar(50) not null,
+	active_service BOOLEAN NOT NULL DEFAULT TRUE,
+	date_houry TIMESTAMP DEFAULT NOW(),
 	constraint fk_service 
 		foreign key (id_location)
 		references locations(id_location)
 );
 
 create table Metrics (
-	id_metric int GENERATED ALWAYS AS IDENTITY PRIMARY KEY,
+	id_metric bigint GENERATED ALWAYS AS IDENTITY PRIMARY KEY,
 	id_service int,
+	cpu_metric numeric not null
+	CHECK (cpu_metric BETWEEN 0 AND 100),
+	ram_metric numeric not null check(ram_metric>=0),
+	hd_metric numeric not null check(hd_metric>=0),
+	network_metric numeric not null check(hd_metric>=0),
 	date_houry TIMESTAMP NOT NULL,
-	path_metric varchar(50) not null,
-	colletion_interval_metric int not null,
-	cpu_metric numeric not null,
-	ram_metric numeric not null,
-	hd_metric numeric not null,
-	network_metric numeric not null,
+	colletion_interval_metric numeric not null,
 	constraint fk_service
 		foreign key (id_service)
-		references services(id_service)
+		references services(id_service),
+	CONSTRAINT uq_metrics_service_date
+        UNIQUE (id_service, date_houry)
 );
 
-create table Cabons(
+create table Carbons(
 	id_carbon int GENERATED ALWAYS AS IDENTITY PRIMARY KEY,
 	id_location int,
 	date_houry TIMESTAMP not null,
-	intesity_co2e_kwh_carbon int not null,
-	renewable_percent_carbon int not null,
+	intesity_co2e_kwh_carbon int not null check(intesity_co2e_kwh_carbon>0),
+	renewable_percent_carbon int not null
+	CHECK (renewable_percent_carbon BETWEEN 0 AND 100),
 	constraint fk_service
-		foreign key (id_location)
-		references locations(id_location)
+		foreign key(id_location)
+		references locations(id_location),
+	CONSTRAINT uq_metrics_Carbon_date
+        UNIQUE (id_location, date_houry)
 );
+
+
 ```
 
 </details>
+
+Relacionamentos entre as tabelas:
+
+Users: armazena os dados de cadastro dos usuários, incluindo e-mail único e senha armazenada em formato de hash.
+
+Locations: armazena informações geográficas, como país, região, cidade e coordenadas.
+
+Services: registra os serviços e permite relacioná-los às localizações por meio de uma chave estrangeira.
+
+Metrics: armazena amostras de métricas de hardware associadas aos serviços.
+
+Carbons: armazena informações de intensidade de carbono e percentual de energia renovável associadas às localizações.
+
+As chaves estrangeiras conectam Services a Locations, Metrics a Services e Carbons a Locations.
 
 ---
 
@@ -208,7 +241,7 @@ graph LR
 |             Período              |            Documentação da Sprint            |                   Vídeo                   |
 | :------------------------------: | :------------------------------------------: | :---------------------------------------: |
 | **Sprint 1:** 28/09 a 19/10/2026 | [Sprint Review](./docs/sprints/sprint-1/sprint-1.md) | [▶ YouTube](https://youtu.be/7RxJdSmYO0c) |
-| **Sprint 2:** 20/10 a 09/11/2026 | [Sprint Review](./docs/sprints/sprint-2/sprint-2.md) | [▶ YouTube](https://youtu.be/) |
+| **Sprint 2:** 20/10 a 09/11/2026 | [Sprint Review](./docs/sprints/sprint-2/sprint-2.md) | [▶ YouTube](https://youtu.be/I2eUKGZDlMA) |
 | **Sprint 3:** 10/11 a 23/11/2026 | [Sprint Review](./docs/sprints/sprint-3/sprint-3.md) | [▶ YouTube](https://youtu.be/) |
 
 ---
@@ -231,14 +264,7 @@ Toda a infraestrutura do sistema é orquestrada através de containers Docker pa
    ```bash
    docker compose up --build -d
    ```
-
-3. **Inicializar o Banco de Dados:**
-   Execute o script DDL nativo para criar a estrutura das tabelas no container do PostgreSQL:
-   ```bash
-   docker exec -i greener_postgres psql -U greener_user -d greener_db < database/DDL.sql
-   ```
-
-4. **Acessos Locais:**
+3. **Acessos Locais:**
    Após a inicialização, o painel web fica disponível em `http://localhost:5173` e a API REST em `http://localhost:3000`.
 
 ---
@@ -248,29 +274,32 @@ O repositório está organizado de forma modular, contendo documentações espec
 
 ```bash
 greener/
-├── README.md                   # Manual principal e guia de execução
-├── .env.example                # Modelo de variáveis de ambiente
-├── compose.yaml                # Arquivo de orquestração do Docker Compose
-├── frontend/                   # Aplicação Web em React + TypeScript
-│   ├── README.md               # Guia de execução e telas do frontend
+├── README.md               # Manual principal e guia de execução
+├── .env.example            # Modelo de variáveis de ambiente
+├── compose.yaml            # Arquivo de orquestração do Docker Compose
+├── frontend/               # Aplicação Web em React + TypeScript
+│   ├── README.md           # Guia de execução e telas do frontend
 │   ├── Dockerfile
 │   └── src/
-├── backend/                    # API REST em Node.js + TypeScript
-│   ├── README.md               # Guia de módulos e integrações do backend
+├── backend/                # API REST em Node.js + TypeScript
+│   ├── README.md           # Guia de módulos e integrações do backend
 │   ├── Dockerfile
 │   └── src/
-├── database/                   # Persistência relacional sem ORM
-│   ├── README.md               # Instruções de restauração do PostgreSQL
-│   └── DDL.sql              # Script DDL oficial com a estrutura de tabelas
-└── docs/                       # Documentação técnica e planejamento
-    ├── plano-de-entregas.md    # Matriz oficial da Rubrica e rastreabilidade da equipe
-    ├── arquitetura.md          # Fluxo de dados e diagramas da solução
-    ├── calculos.md             # Memória de cálculo de consumo energético e CO₂e
-    ├── api.md                  # Especificação das rotas REST e autenticação JWT
+├── database/               # Persistência relacional sem ORM
+│   ├── README.md           # Instruções de restauração do PostgreSQL
+│   └── DDL.sql             # Script DDL oficial com a estrutura de tabelas
+└── docs/                   # Documentação técnica e planejamento
+    ├── plano-de-entregas.md # Matriz oficial da Rubrica e rastreabilidade da equipe
+    ├── arquitetura.md      # Fluxo de dados e diagramas da solução
+    ├── calculos.md         # Memória de cálculo de consumo energético e CO₂e
+    ├── api.md              # Especificação das rotas REST e autenticação JWT
     └── sprints/
-        ├── sprint-1.md         # Registro da Sprint Review 1 e evidências
-        ├── sprint-2.md
-        └── sprint-3.md
+        ├── sprint-1/
+        │   └── sprint-1.md # Registro da Sprint Review 1 e evidências
+        ├── sprint-2/
+        │   └── sprint-2.md # Registro da Sprint Review 2 e evidências
+        └── sprint-3/
+            └── sprint-3.md # Registro da Sprint Review 3 e evidências
 ```
 
 ---
@@ -299,7 +328,7 @@ greener/
 <th><a href="Link do Linkedin"><img src="https://img.shields.io/badge/LinkedIn-0077B5?style=flat&logo=linkedin&logoColor=white"></a></th>
 <th><a href="Link do Linkedin"><img src="https://img.shields.io/badge/LinkedIn-0077B5?style=flat&logo=linkedin&logoColor=white"></a></th>
 <th><a href="Link do Linkedin"><img src="https://img.shields.io/badge/LinkedIn-0077B5?style=flat&logo=linkedin&logoColor=white"></a></th>
-<th><a href="Link do Linkedin"><img src="https://img.shields.io/badge/LinkedIn-0077B5?style=flat&logo=linkedin&logoColor=white"></a></th>
+<th><a href="https://www.linkedin.com/in/enzo-suzuki-1756b7435/"><img src="https://img.shields.io/badge/LinkedIn-0077B5?style=flat&logo=linkedin&logoColor=white"></a></th>
 </tr>
 </tbody>
 </table>
@@ -322,4 +351,5 @@ Para detalhamento técnico completo e acompanhamento do projeto, consulte os arq
 * 🔌 **[Especificação da API REST](./docs/api.md):** Detalhamento dos endpoints, parâmetros, respostas JSON e segurança JWT.
 * 📐 **[Arquitetura do Sistema](./docs/arquitetura.md):** Responsabilidades dos módulos e fluxo de dados.
 * 🧮 **[Memória de Cálculo Ambiental](./docs/calculos.md):** Fórmulas e fatores de conversão em kWh e CO₂e.
-* 📄 **[Relatório da Sprint Review 1](./docs/sprints/sprint-1.md):** Resumo das entregas, autoavaliação e evidências da Sprint 1.
+* 📄 **[Relatório da Sprint Review 1](./docs/sprints/sprint-1/sprint-1.md):** Resumo das entregas, autoavaliação e evidências da Sprint 1.
+* 📄 **[Relatório da Sprint Review 2](./docs/sprints/sprint-2/sprint-2.md):** Resumo das entregas, autoavaliação e evidências da Sprint 2.

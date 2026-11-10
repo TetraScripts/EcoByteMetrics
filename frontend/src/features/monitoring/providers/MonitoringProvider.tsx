@@ -1,160 +1,286 @@
-import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import {
+  useCallback,
+  useEffect,
+  useMemo,
+  useRef,
+  useState
+} from "react";
+
 import type { ReactNode } from "react";
+
 import { MonitoringContext } from "@/features/monitoring/contexts/MonitoringContext";
 import { useSettings } from "@/shared/preferences/useSettings";
 import { useLocation } from "react-router-dom";
-import type { MonitoringSnapshot } from "@/features/monitoring/types";
-import type { Period } from "@/shared/lib/period";
-import { mergeCollectionHistory, summarizeCollections } from "@/features/monitoring/domain/history";
-import { isPeriod } from "@/shared/lib/period";
-import { DiscoveryError } from "@/features/monitoring/api/discoveryError";
-import { isCollectionStale, STALE_METRICS_MESSAGE } from "@/features/monitoring/domain/freshness";
 
-export function MonitoringProvider({ children }: { children: ReactNode }) {
+import type { MonitoringSnapshot } from "@/features/monitoring/types";
+
+import { isPeriod } from "@/shared/lib/period";
+
+import { DiscoveryError } from "@/features/monitoring/api/discoveryError";
+
+import {
+  mergeMonitoringSnapshot,
+  markStaleServices,
+  isMonitoringPath,
+  needsMonitoringHistory,
+  REFRESH_INTERVAL_MS
+} from "../domain/snapshot";
+
+import {
+  appendCollectionEvents,
+  createCollectionPauseTracker
+} from "../domain/collectionEvents";
+
+import { parseLocalDate } from "@/shared/lib/localDate";
+
+export function MonitoringProvider({
+  children
+}: {
+  children: ReactNode
+}) {
   const { settings } = useSettings();
-  const [selectedPeriod, setPeriod] = useState<Period>(settings.defaultPeriod);
-  const [liveSnapshot, setLiveSnapshot] = useState<MonitoringSnapshot>({
-    regions: [],
-    services: [],
-    history: [],
-    totalEnergyKwh: null,
-    totalEmissionsG: null,
-    lastCollectionAt: null,
-  });
+
+  const [liveSnapshot, setLiveSnapshot] =
+    useState<MonitoringSnapshot>({
+      regions: [],
+      services: [],
+      history: [],
+      totalEnergyKwh: null,
+      totalEmissionsG: null,
+      lastCollectionAt: null
+    });
+
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [historyOpen, setHistoryOpen] = useState(false);
+
   const pending = useRef<AbortController | null>(null);
+  const trackPause = useRef(createCollectionPauseTracker());
+
   const { pathname, search } = useLocation();
-  const queryPeriod = new URLSearchParams(search).get("periodo");
-  const period = isPeriod(queryPeriod) ? queryPeriod : selectedPeriod;
-  const monitoringActive = ["/pesquisa", "/dashboard"].includes(pathname);
+
+  const filterParams = new URLSearchParams(search);
+
+  const queryPeriod = filterParams.get("periodo");
+
+  const period = isPeriod(queryPeriod)
+    ? queryPeriod
+    : settings.defaultPeriod;
+
+  const monitoringActive =
+    isMonitoringPath(pathname) &&
+    filterParams.get("aba") !== "administracao";
+
+  const includeHistory = needsMonitoringHistory(
+    filterParams,
+    historyOpen
+  );
+
+  const dateFilter = filterParams.get("ate");
+
+  const untilTimestamp = dateFilter
+    ? parseLocalDate(dateFilter)
+    : Date.parse(filterParams.get("instante") ?? "");
+
+  const invalidCutoff = Boolean(
+    (dateFilter || filterParams.get("instante")) &&
+    !Number.isFinite(untilTimestamp)
+  );
+
+  const until =
+    Number.isFinite(untilTimestamp) && !invalidCutoff
+      ? new Date(untilTimestamp).toISOString()
+      : undefined;
 
   const refresh = useCallback(async () => {
+    if (
+      invalidCutoff ||
+      (until && Date.parse(until) > Date.now())
+    ) {
+      setLoading(false);
+      setError(null);
+      return null;
+    }
+
     if (pending.current) return null;
+
     const controller = new AbortController();
+
+    const requestedAt = new Date().toISOString();
+
     pending.current = controller;
+
     setLoading(true);
     setError(null);
+
     try {
-      const { getMonitoringSnapshot } = await import("@/features/monitoring/api/monitoring");
-      const next = await getMonitoringSnapshot(controller.signal);
+      const { getMonitoringSnapshot } =
+        await import("@/features/monitoring/api/monitoring");
+
+      controller.signal.throwIfAborted();
+
+      const next = await getMonitoringSnapshot(
+        controller.signal,
+        {
+          period,
+          until,
+          includeHistory,
+
+          // Somente o painel de histórico detalhado
+          // utiliza a consulta protegida por JWT.
+          protectedHistory: historyOpen
+        }
+      );
+
       if (controller.signal.aborted) return null;
-      setLiveSnapshot((previous) => {
-        const previousServices = new Map(
-          previous.services.map((service) => [service.id, service]),
-        );
-        const currentIds = new Set(next.services.map((service) => service.id));
-        const lastCollectionAt =
-          next.lastCollectionAt &&
-          (!previous.lastCollectionAt ||
-            Date.parse(next.lastCollectionAt) > Date.parse(previous.lastCollectionAt))
-            ? next.lastCollectionAt
-            : previous.lastCollectionAt;
-        return {
-          ...next,
-          lastCollectionAt,
-          services: [
-            ...next.services.map((service) => ({
-              ...service,
-              lastCollectionAt:
-                service.lastCollectionAt ??
-                previousServices.get(service.id)?.lastCollectionAt ??
-                null,
-            })),
-            ...previous.services
-              .filter((service) => !currentIds.has(service.id))
-              .map((service) =>
-                next.discoveryComplete === false
-                  ? service
-                  : {
-                      ...service,
-                      status: "removed" as const,
-                      cpuPercent: null,
-                      memoryGb: null,
-                      diskGb: null,
-                      networkGb: null,
-                      energyKwh: null,
-                      emissionsG: null,
-                      collectionIntervalSeconds: null,
-                      carbonIntensity: null,
-                      renewablePercent: null,
-                      statusMessage: "Serviço ausente do registro atual.",
-                    },
-              ),
-          ],
-          // Totais de estimativas por amostra.
-          history: mergeCollectionHistory(
-            previous.history,
-            next.history,
-            Date.parse(lastCollectionAt ?? next.discoveryUpdatedAt!) - 30 * 86400_000,
-          ),
-        };
-      });
+
+      const observedAt = new Date().toISOString();
+
+      setLiveSnapshot(previous =>
+        mergeMonitoringSnapshot(
+          previous,
+          next,
+          observedAt,
+          requestedAt
+        )
+      );
+
       return next;
+
     } catch (cause) {
       if (!controller.signal.aborted) {
-        const discovery = cause instanceof DiscoveryError ? cause : null;
-        setLiveSnapshot((previous) => ({
+        const discovery =
+          cause instanceof DiscoveryError
+            ? cause
+            : null;
+
+        const failedAt = new Date().toISOString();
+
+        setLiveSnapshot(previous => ({
           ...previous,
+
           regions: discovery?.regions ?? previous.regions,
-          warning: discovery ? discovery.catalogWarning : previous.warning,
-          services: previous.services.map((service) =>
-            service.status === "available" && service.lastCollectionAt &&
-            isCollectionStale(service.lastCollectionAt, service.collectionIntervalSeconds ?? 0)
-              ? {
-                  ...service,
-                  status: "stale" as const,
-                  statusMessage: [STALE_METRICS_MESSAGE, service.statusMessage].filter(Boolean).join(" "),
-                }
-              : service,
-          ),
+
+          warning: discovery
+            ? discovery.catalogWarning
+            : previous.warning,
+
+          services: markStaleServices(previous.services),
+
+          collectionEvents:
+            previous.source === "database"
+              ? previous.collectionEvents
+              : appendCollectionEvents(
+                  previous.collectionEvents,
+                  [{
+                    from: requestedAt,
+                    to: failedAt,
+                    kind: "request-failed"
+                  }]
+                )
         }));
+
         setError(
-          "Não foi possível consultar o agregador pelo backend. Os últimos dados recebidos foram preservados. Verifique a conexão e tente atualizar novamente. " +
-            (cause instanceof Error ? cause.message : ""),
+          "Não foi possível consultar o histórico no banco pelo backend. " +
+          "Os últimos dados recebidos foram preservados. " +
+          "Verifique a conexão e tente atualizar novamente. " +
+          (cause instanceof Error ? cause.message : "")
         );
       }
+
       return null;
+
     } finally {
-      if (pending.current === controller) pending.current = null;
-      if (!pending.current) setLoading(false);
+      if (pending.current === controller) {
+        pending.current = null;
+        setLoading(false);
+      }
     }
-  }, []);
+  }, [
+    period,
+    until,
+    invalidCutoff,
+    includeHistory,
+    historyOpen
+  ]);
 
   useEffect(() => {
-    if (!monitoringActive) return;
     const updateIfVisible = () => {
-      if (!document.hidden) void refresh();
+      const events = trackPause.current(
+        !monitoringActive
+          ? "monitoring-inactive"
+          : document.hidden
+            ? "tab-hidden"
+            : null,
+        new Date().toISOString()
+      );
+
+      if (events.length) {
+        setLiveSnapshot(previous =>
+          previous.source === "database"
+            ? previous
+            : {
+                ...previous,
+                collectionEvents: appendCollectionEvents(
+                  previous.collectionEvents,
+                  events
+                )
+              }
+        );
+      }
+
+      if (monitoringActive && !document.hidden) {
+        void refresh();
+      }
     };
-    const initial = window.setTimeout(updateIfVisible, 0);
-    const timer = window.setInterval(updateIfVisible, 30_000);
-    document.addEventListener("visibilitychange", updateIfVisible);
+
+    const initial = window.setTimeout(
+      updateIfVisible,
+      0
+    );
+
+    const timer = monitoringActive
+      ? window.setInterval(
+          updateIfVisible,
+          REFRESH_INTERVAL_MS
+        )
+      : undefined;
+
+    document.addEventListener(
+      "visibilitychange",
+      updateIfVisible
+    );
+
     return () => {
       window.clearTimeout(initial);
       window.clearInterval(timer);
-      document.removeEventListener("visibilitychange", updateIfVisible);
+
+      document.removeEventListener(
+        "visibilitychange",
+        updateIfVisible
+      );
+
       pending.current?.abort();
       pending.current = null;
     };
   }, [monitoringActive, refresh]);
 
-  const totals = useMemo(
-    () => summarizeCollections(liveSnapshot.history),
-    [liveSnapshot.history],
-  );
-  const snapshot = useMemo(() => {
-    const history = liveSnapshot.history;
-    return {
-      ...liveSnapshot,
-      history,
-      totalEnergyKwh: totals.energyKwh,
-      totalEmissionsG: totals.emissionsG,
-    };
-  }, [liveSnapshot, totals]);
-
   const monitoring = useMemo(
-    () => ({ snapshot, period, setPeriod, refresh, loading, error }),
-    [snapshot, period, refresh, loading, error],
+    () => ({
+      snapshot: liveSnapshot,
+      period,
+      refresh,
+      loading,
+      error,
+      setHistoryOpen
+    }),
+    [
+      liveSnapshot,
+      period,
+      refresh,
+      loading,
+      error
+    ]
   );
 
   return (

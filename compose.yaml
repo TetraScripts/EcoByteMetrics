@@ -1,9 +1,10 @@
 services:
-
   postgres:
-    build: ./database
+    build:
+      context: ./database
+      dockerfile: Dockerfile
     
-    container_name: database_EcoByteMetrics
+    container_name: ${POSTGRES_CONTAINER_NAME:-database_EcoByteMetrics}
     restart: unless-stopped
 
     environment:
@@ -12,27 +13,26 @@ services:
       POSTGRES_PASSWORD: ${POSTGRES_PASSWORD}
 
     ports:
-      - "5433:${POSTGRES_PORT}"
+      - "${POSTGRES_PORT_CONTEINER}:${POSTGRES_PORT}"
 
     volumes:
       - postgres_data:/var/lib/postgresql
       - ./database:/docker-entrypoint-initdb.d
 
     healthcheck:
-      test: ["CMD-SHELL", "pg_isready -U \"$$POSTGRES_USER\" -d \"$$POSTGRES_DATABASE\""]
+      test: ["CMD-SHELL", "pg_isready -U \"$$POSTGRES_USER\" -d \"$$POSTGRES_DB\""]
       interval: 5s
       timeout: 5s
       retries: 10
       start_period: 10s
-
-
+      
   backend:
     build:
-      context: ./backend
-      dockerfile: Dockerfile
+      context: .
+      dockerfile: backend/Dockerfile
     env_file: .env
 
-    container_name: ecobytemetrics-backend
+    container_name: ${BACKEND_CONTAINER_NAME:-ecobytemetrics-backend}
     restart: unless-stopped
 
     environment:
@@ -43,32 +43,35 @@ services:
       POSTGRES_DATABASE: ${POSTGRES_DATABASE}
       POSTGRES_USER: ${POSTGRES_USER}
       POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:?Defina POSTGRES_PASSWORD no .env}
-
+      
+      JWT_SECRET: ${JWT_SECRET:?Defina JWT_SECRET no .env}
+      JWT_EXPIRES_IN: ${JWT_EXPIRES_IN:-1h}
     ports:
-      - "${PORT}:${PORT}"
+      - "${PORT_CONTEINER}:${PORT}"
 
     depends_on:
       postgres:
         condition: service_healthy
 
     healthcheck:
-      test: ["CMD", "node", "-e", "fetch('http://127.0.0.1:' + process.env.PORT + '/health').then(res => process.exit(res.ok ? 0 : 1)).catch(() => process.exit(1))"]
-      interval: 5s
+      test: ["CMD", "node", "-e", "require('http').get('http://localhost:3000/health', (r) => process.exit(r.statusCode === 200 ? 0 : 1)).on('error', () => process.exit(1))"]
+      interval: 10s
       timeout: 5s
       retries: 10
-      start_period: 10s
-
+      start_period: 30s
 
   frontend:
     build:
       context: ./frontend
       dockerfile: Dockerfile
 
-    container_name: ecobytemetrics-frontend
+    container_name: ${FRONTEND_CONTAINER_NAME:-ecobytemetrics-frontend}
     restart: unless-stopped
+    environment:
+      BACKEND_PROXY_TARGET: http://backend:${PORT:-3000}
 
     ports:
-      - "${FRONT_PORT}:80"
+      - "${FRONT_PORT}:${PGPORT}"
 
     depends_on:
       backend:

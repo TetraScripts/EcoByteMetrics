@@ -1,403 +1,429 @@
-import { estimateEnergy } from "../domain/energy";
-import { isCollectionStale, STALE_METRICS_MESSAGE } from "../domain/freshness";
 import type {
-  CarbonRegion,
   MonitoringSnapshot,
   MonitoredService,
-} from "@/features/monitoring/types";
-import { findCountry, localizeCity } from "@/shared/geography/geography";
-import { summarizeCollections } from "@/features/monitoring/domain/history";
-import { DiscoveryError } from "@/features/monitoring/api/discoveryError";
+  CollectionPoint,
+  CarbonRegion
+} from "../types";
 
-const BACKEND_API = (import.meta.env?.VITE_BACKEND_URL ?? "/backend").replace(
-  /\/+$/,
-  "",
-);
-const CARBON_API = "https://carbon.unilaunch.org";
-const object = (value: unknown): Record<string, unknown> =>
-  typeof value === "object" && value !== null
-    ? (value as Record<string, unknown>)
-    : {};
-const number = (value: unknown, max = Infinity): number | null =>
-  typeof value === "number" &&
-  Number.isFinite(value) &&
-  value >= 0 &&
-  value <= max
-    ? value
-    : null;
-const text = (value: unknown): string =>
-  typeof value === "string" ? value.trim() : "";
+import {
+  findCountry,
+  localizeCity
+} from "@/shared/geography/geography";
 
-async function request(
-  url: string,
-  signal: AbortSignal,
-) {
-  return fetch(url, {
-    signal: AbortSignal.any([signal, AbortSignal.timeout(10_000)]),
-    cache: "no-store",
-  });
-}
+import {
+  summarizeCollections
+} from "../domain/history";
 
-function location(value: unknown) {
-  const data = object(value);
-  const country = text(data.country);
-  const latitude =
-    typeof data.latitude === "number" &&
-    Number.isFinite(data.latitude) &&
-    Math.abs(data.latitude) <= 90
-      ? data.latitude
-      : undefined;
-  const longitude =
-    typeof data.longitude === "number" &&
-    Number.isFinite(data.longitude) &&
-    Math.abs(data.longitude) <= 180
-      ? data.longitude
-      : undefined;
-  const positioned = latitude !== undefined && longitude !== undefined;
+import {
+  requestJson,
+  RequestError
+} from "@/shared/lib/http";
+
+import {
+  object,
+  number,
+  text
+} from "./contracts";
+
+const backend = (
+  import.meta.env?.VITE_BACKEND_URL ?? "/backend"
+).replace(/\/+$/, "");
+
+const timestamp = (value: unknown): value is string =>
+  typeof value === "string" &&
+  /T.*(?:Z|[+-]\d{2}:\d{2})$/.test(value) &&
+  Number.isFinite(Date.parse(value));
+
+const invalid = () =>
+  new RequestError(
+    "format",
+    "O backend retornou um histórico inválido. Os últimos dados foram preservados."
+  );
+
+function place(data: Record<string, unknown>) {
+  const raw = text(data.country);
+
   return {
-    country: (findCountry(country)?.properties.name ?? country) || null,
+    country: (findCountry(raw)?.properties.name ?? raw) || null,
     region: text(data.region) || null,
-    city: localizeCity(country, text(data.city) || null),
-    latitude: positioned ? latitude : undefined,
-    longitude: positioned ? longitude : undefined,
-  };
-}
+    city: localizeCity(raw, text(data.city) || null),
 
-function parseRegions(value: unknown) {
-  const data = object(value);
-  if (!Array.isArray(data.regions))
-    throw new Error("Catálogo de regiões inválido.");
-  const regions: CarbonRegion[] = [];
-  let invalidCount = 0;
-  for (const entry of data.regions) {
-    try {
-      const region = object(entry);
-      const carbonIntensity = number(region.carbon_intensity_gco2e_per_kwh);
-      const renewablePercent = number(region.renewable_share_percent, 100);
-      const code = text(region.code);
-      const place = location(region);
-      if (
-        !code ||
-        !place.country ||
-        !place.region ||
-        carbonIntensity === null ||
-        renewablePercent === null ||
-        regions.some((item) => item.code === code)
-      )
-        throw new Error("Fator de carbono inválido.");
-      regions.push({
-        code,
-        ...place,
-        country: place.country,
-        region: place.region,
-        carbonIntensity,
-        renewablePercent,
-      });
-    } catch {
-      invalidCount++;
-    }
-  }
-  return { regions, invalidCount };
+    latitude:
+      typeof data.latitude === "number" &&
+      Number.isFinite(data.latitude) &&
+      Math.abs(data.latitude) <= 90
+        ? data.latitude
+        : undefined,
+
+    longitude:
+      typeof data.longitude === "number" &&
+      Number.isFinite(data.longitude) &&
+      Math.abs(data.longitude) <= 180
+        ? data.longitude
+        : undefined
+  };
 }
 
 export async function getMonitoringSnapshot(
   signal = new AbortController().signal,
+  options: {
+    period?: "24h" | "7d";
+    until?: string;
+    includeHistory?: boolean;
+    protectedHistory?: boolean;
+  } = {}
 ): Promise<MonitoringSnapshot> {
-  const [servicesResult, regionsResult] = await Promise.allSettled([
-    request(BACKEND_API + "/services", signal),
-    request(CARBON_API + "/regions", signal),
-  ]);
-  signal.throwIfAborted();
-  const warnings: string[] = [];
-  let regions: CarbonRegion[] = [];
-  let catalogLoaded = false;
-  try {
-    const regionsResponse =
-      regionsResult.status === "fulfilled" ? regionsResult.value : null;
-    if (!regionsResponse?.ok) throw new Error("API de carbono indisponível.");
-    const parsed = parseRegions(await regionsResponse.json());
-    regions = parsed.regions;
-    catalogLoaded = true;
-    if (parsed.invalidCount)
-      warnings.push(
-        parsed.invalidCount +
-          " região(ões) inválida(s) ignorada(s). Os fatores válidos foram preservados.",
-      );
-  } catch {
-    warnings.push(
-      "Não foi possível obter os fatores de carbono. As métricas disponíveis continuam visíveis; emissões sem fator são exibidas como —.",
-    );
+
+  const params = new URLSearchParams({
+    period: options.period ?? "7d"
+  });
+
+  if (options.until) {
+    params.set("until", options.until);
   }
 
-  let discovery: Record<string, unknown>;
-  let discoveryUpdatedAt: string;
-  try {
-    if (servicesResult.status === "rejected")
-      throw new Error(
-        "O serviço de monitoramento não respondeu. Verifique se o backend está em execução.",
-      );
-    const servicesResponse = servicesResult.value;
-    if (!servicesResponse.ok)
-      throw new Error(
-        "Backend indisponível (HTTP " + servicesResponse.status + ").",
-      );
-    const contentType = servicesResponse.headers.get("content-type") ?? "";
-    if (contentType.includes("text/html"))
-      throw new Error(
-        "O endereço do backend respondeu com HTML em vez de dados. Confira o proxy /backend.",
-      );
-    discovery = object(await servicesResponse.json());
-    if (!Array.isArray(discovery.services))
-      throw new Error(
-        "Resposta inválida do backend: esperados services e lastUpdatedAt.",
-      );
-    if (discovery.lastUpdatedAt === null)
-      throw new Error(
-        "O backend ainda não concluiu a descoberta de serviços. Aguarde a atualização automática; se persistir, confira a configuração API_METRIC do processo.",
-      );
-    if (
-      typeof discovery.lastUpdatedAt !== "string" ||
-      !Number.isFinite(Date.parse(discovery.lastUpdatedAt))
+  // Define explicitamente o tipo de consulta.
+  if (options.includeHistory === false) {
+    params.set("view", "latest");
+  } else if (options.protectedHistory === true) {
+    params.set("view", "history");
+  } else {
+    params.set("view", "analysis");
+  }
+
+  const raw = object(
+    await requestJson(
+      backend + "/api/monitoring?" + params,
+      { signal }
     )
-      throw new Error("Data de descoberta inválida no backend.");
-    discoveryUpdatedAt = discovery.lastUpdatedAt;
-  } catch (cause) {
-    throw new DiscoveryError(
-      cause instanceof Error
-        ? cause.message
-        : "Falha na descoberta de serviços.",
-      catalogLoaded ? regions : null,
-      warnings.join(" ") || undefined,
-    );
-  }
-  const summaries = discovery.services as unknown[];
-  if (Date.now() - Date.parse(discoveryUpdatedAt) > 90_000)
-    warnings.push(
-      "A descoberta do backend está desatualizada. A lista pode não refletir mudanças recentes.",
-    );
+  );
 
-  let discoveryComplete = true;
-  const seenIds = new Set<string>();
-  const services: MonitoredService[] = [];
-  const valid: MonitoredService[] = [];
-  let incompleteLocations = 0;
-  for (const entry of summaries) {
-    const summary = object(entry),
-      place = object(summary.location);
-    const id = text(summary.id);
-    if (!id || seenIds.has(id)) {
-      discoveryComplete = false;
-      warnings.push(
-        "Cadastro de serviço sem identificador válido ou duplicado ignorado. Remoções não serão inferidas nesta consulta.",
-      );
-      continue;
+  if (
+    raw.source !== "database" ||
+    !Array.isArray(raw.services) ||
+    !Array.isArray(raw.history) ||
+    !Array.isArray(raw.regions) ||
+    !Array.isArray(raw.observations) ||
+    raw.history.length > 20000 ||
+    !["24h", "7d"].includes(text(raw.historyPeriod))
+  ) {
+    throw invalid();
+  }
+
+  const seen = new Set<string>();
+
+  const services: MonitoredService[] = raw.services.map(value => {
+    const data = object(value);
+    const id = text(data.id);
+
+    if (
+      !id ||
+      seen.has(id) ||
+      ![
+        "available",
+        "stale",
+        "unavailable",
+        "no-metrics",
+        "removed"
+      ].includes(text(data.status))
+    ) {
+      throw invalid();
     }
-    seenIds.add(id);
-    const factor = regions.find(
-      (region) => region.code === text(place.region_code),
-    );
-    const service: MonitoredService = {
-      id,
-      name: text(summary.name) || id,
-      country: null,
-      region: null,
-      city: null,
-      regionCode: text(place.region_code),
-      status: "no-metrics",
-      cpuPercent: null,
-      memoryGb: null,
-      diskGb: null,
-      networkGb: null,
-      energyKwh: null,
-      emissionsG: null,
-      collectionIntervalSeconds: null,
-      carbonIntensity: factor?.carbonIntensity ?? null,
-      renewablePercent: factor?.renewablePercent ?? null,
+
+    seen.add(id);
+
+    const numeric = (key: string, max = Infinity) => {
+      if (data[key] === null) return null;
+
+      const result = number(data[key], max);
+
+      if (result === null) throw invalid();
+
+      return result;
     };
-    services.push(service);
-    Object.assign(service, location(place));
-    valid.push(service);
-    if (!service.country || !service.region || !service.regionCode ||
-      service.latitude === undefined || service.longitude === undefined)
-      incompleteLocations++;
-  }
-  if (incompleteLocations)
-    warnings.push(`Localização incompleta em ${incompleteLocations} serviço(s). As métricas válidas continuam disponíveis; pontos sem coordenadas não aparecem no mapa.`);
 
-  async function collect(service: MonitoredService) {
-    service.status = "unavailable";
-    try {
-      const response = await request(
-        BACKEND_API + "/metrics/" + encodeURIComponent(service.id),
-        signal,
-      );
-      const data = object(await response.json().catch(() => null));
-      if (!response.ok) {
-        service.status =
-          response.status === 404
-            ? text(data.error) === "service_not_found"
-              ? "removed"
-              : "no-metrics"
-            : ["metrics_missing", "invalid_metrics"].includes(text(data.error))
-              ? "no-metrics"
-              : "unavailable";
-        service.statusMessage =
-          (text(data.message) || text(data.error) || "Falha ao consultar métricas") +
-          " (HTTP " +
-          response.status +
-          ").";
-        return;
-      }
-      // Formatos aceitos: cache por serviço e resposta direta do agregador.
-      const cached = "serviceId" in data || "updatedAt" in data;
-      if (cached && text(data.serviceId) !== service.id) {
-        service.status = "no-metrics";
-        service.statusMessage = "As métricas recebidas pertencem a outro serviço ou não têm identificador válido.";
-        return;
-      }
-      const sample = cached ? object(data.metrics) : data;
-      const collectedAt = text(cached ? data.updatedAt : data.collectedAt);
-      if (
-        !/T.*(?:Z|[+-]\d{2}:\d{2})$/.test(collectedAt) ||
-        !Number.isFinite(Date.parse(collectedAt))
-      ) {
-        service.status = "no-metrics";
-        service.statusMessage =
-          "O backend não informou um horário de coleta válido.";
-        return;
-      }
-      const metrics = object(sample.metrics);
-      service.cpuPercent = number(metrics.cpu_percent, 100);
-      service.memoryGb = number(metrics.memory_gb);
-      service.diskGb = number(metrics.disk_gb);
-      service.networkGb = number(metrics.network_gb);
-      const interval = number(sample.collection_interval_seconds);
-      service.collectionIntervalSeconds =
-        interval !== null && Number.isSafeInteger(interval) ? interval : null;
-      if (
-        [
-          service.cpuPercent,
-          service.memoryGb,
-          service.diskGb,
-          service.networkGb,
-          service.collectionIntervalSeconds,
-        ].some((value) => value === null)
-      ) {
-        service.status = "no-metrics";
-        const missing = [
-          ["CPU", service.cpuPercent],
-          ["memória RAM", service.memoryGb],
-          ["disco", service.diskGb],
-          ["rede", service.networkGb],
-          ["intervalo de coleta", service.collectionIntervalSeconds],
-        ]
-          .filter(([, value]) => value === null)
-          .map(([label]) => label);
-        service.statusMessage =
-          "Métricas ausentes ou inválidas: " + missing.join(", ") + ".";
-        return;
-      }
-      service.energyKwh = number(
-        estimateEnergy(
-          service.cpuPercent!,
-          service.memoryGb!,
-          service.diskGb!,
-          service.networkGb!,
-          service.collectionIntervalSeconds!,
-        ),
-      );
-      service.emissionsG =
-        service.energyKwh !== null && service.carbonIntensity != null
-          ? number(service.energyKwh * service.carbonIntensity)
-          : null;
-      service.status = service.energyKwh === null ? "no-metrics" : "available";
-      if (service.energyKwh === null)
-        service.statusMessage = "Resultado energético inválido.";
-      else {
-        service.lastCollectionAt = collectedAt;
-        if (isCollectionStale(collectedAt, service.collectionIntervalSeconds!, Date.now())) {
-          service.status = "stale";
-          service.statusMessage = STALE_METRICS_MESSAGE;
-        }
-      }
-      if (service.energyKwh !== null && service.emissionsG === null)
-        service.statusMessage =
-          (service.statusMessage ? service.statusMessage + " " : "") +
-          "Fator de carbono ou resultado de emissão não disponível para " +
-          (service.regionCode || "este serviço") +
-          ".";
-    } catch {
-      if (signal.aborted)
-        throw new DOMException("Coleta cancelada", "AbortError");
-      service.statusMessage =
-        "Não foi possível consultar as métricas deste serviço.";
+    if (
+      data.lastCollectionAt !== null &&
+      !timestamp(data.lastCollectionAt)
+    ) {
+      throw invalid();
     }
+
+    return {
+      id,
+      name: text(data.name) || id,
+      ...place(data),
+      status: data.status as MonitoredService["status"],
+      regionCode: text(data.regionCode),
+
+      cpuPercent: numeric("cpuPercent", 100),
+      memoryGb: numeric("memoryGb"),
+      diskGb: numeric("diskGb"),
+      networkGb: numeric("networkGb"),
+
+      energyKwh: numeric("energyKwh"),
+      emissionsG: numeric("emissionsG"),
+
+      carbonIntensity: numeric("carbonIntensity"),
+      renewablePercent: numeric("renewablePercent", 100),
+
+      collectionIntervalSeconds:
+        numeric("collectionIntervalSeconds"),
+
+      lastCollectionAt: data.lastCollectionAt,
+      statusMessage: text(data.statusMessage) || undefined
+    };
+  });
+
+  const sampleKeys = new Set<string>();
+
+  const history: CollectionPoint[] = raw.history.map(value => {
+    const data = object(value);
+
+    const energy = number(data.energyKwh);
+
+    const emissions =
+      data.emissionsG === null
+        ? null
+        : number(data.emissionsG);
+
+    const sampleCount = number(data.sampleCount);
+    const emissionCount = number(data.emissionCount);
+    const seconds = number(data.intervalSeconds);
+    const bucketSeconds = number(data.bucketSeconds);
+
+    if (
+      !seen.has(text(data.serviceId)) ||
+      !timestamp(data.collectedAt) ||
+      energy === null ||
+      (data.emissionsG !== null && emissions === null) ||
+      !sampleCount ||
+      !Number.isSafeInteger(sampleCount) ||
+      emissionCount === null ||
+      !Number.isSafeInteger(emissionCount) ||
+      emissionCount > sampleCount ||
+      (emissionCount === 0 ? emissions !== null : emissions === null) ||
+      !seconds ||
+      !bucketSeconds
+    ) {
+      throw invalid();
+    }
+
+    let resources: CollectionPoint["resources"] = null;
+
+    if (data.resources !== undefined && data.resources !== null) {
+      const rawResources = object(data.resources);
+
+      const cpuPercent = number(rawResources.cpuPercent, 100);
+      const memoryGb = number(rawResources.memoryGb);
+      const diskGb = number(rawResources.diskGb);
+      const networkGb = number(rawResources.networkGb);
+
+      const durationSeconds = number(
+        rawResources.durationSeconds,
+        seconds
+      );
+
+      if (
+        cpuPercent === null ||
+        memoryGb === null ||
+        diskGb === null ||
+        networkGb === null ||
+        !durationSeconds
+      ) {
+        throw invalid();
+      }
+
+      resources = {
+        cpuPercent,
+        memoryGb,
+        diskGb,
+        networkGb,
+        durationSeconds
+      };
+    }
+
+    const key = JSON.stringify([
+      data.serviceId,
+      data.collectedAt
+    ]);
+
+    if (sampleKeys.has(key)) {
+      throw invalid();
+    }
+
+    sampleKeys.add(key);
+
+    return {
+      serviceId: text(data.serviceId),
+      ...place(data),
+      regionCode: text(data.regionCode),
+
+      collectedAt: data.collectedAt,
+      cycleAt: data.collectedAt,
+      cycleId: data.collectedAt,
+
+      firstCollectedAt:
+        timestamp(data.firstCollectedAt)
+          ? data.firstCollectedAt
+          : data.collectedAt,
+
+      energyKwh: energy,
+      emissionsG: emissions,
+
+      intervalSeconds: seconds,
+      sampleCount,
+      emissionCount,
+      bucketSeconds,
+      resources
+    };
+  });
+
+  const regions: CarbonRegion[] = raw.regions.map(value => {
+    const data = object(value);
+    const located = place(data);
+
+    const intensity = number(data.carbonIntensity);
+    const renewable = number(data.renewablePercent, 100);
+
+    if (
+      !text(data.code) ||
+      !located.country ||
+      !located.region ||
+      intensity === null ||
+      renewable === null
+    ) {
+      throw invalid();
+    }
+
+    return {
+      code: text(data.code),
+      ...located,
+      country: located.country,
+      region: located.region,
+      carbonIntensity: intensity,
+      renewablePercent: renewable
+    };
+  });
+
+  if (
+    raw.lastCollectionAt !== null &&
+    !timestamp(raw.lastCollectionAt)
+  ) {
+    throw invalid();
   }
-  for (let start = 0; start < valid.length; start += 6) {
-    signal.throwIfAborted();
-    await Promise.all(valid.slice(start, start + 6).map(collect));
+
+  if (
+    raw.discoveryUpdatedAt !== null &&
+    !timestamp(raw.discoveryUpdatedAt)
+  ) {
+    throw invalid();
   }
-  signal.throwIfAborted();
-  const collectedAt = services.reduce<string | null>(
-    (latest, service) =>
-      service.lastCollectionAt &&
-      (!latest || Date.parse(service.lastCollectionAt) > Date.parse(latest))
-        ? service.lastCollectionAt
-        : latest,
-    null,
-  );
-  const cycleId = crypto.getRandomValues(new Uint32Array(4)).join("-");
-  const history = services.flatMap((service) =>
-    service.energyKwh !== null
-      ? [
-          {
-            serviceId: service.id,
-            regionCode: service.regionCode,
-            country: service.country,
-            city: service.city,
-            collectedAt: service.lastCollectionAt!,
-            cycleAt: collectedAt!,
-            cycleId,
-            energyKwh: service.energyKwh,
-            emissionsG: service.emissionsG,
-            intervalSeconds: service.collectionIntervalSeconds ?? 0,
-          },
-        ]
-      : [],
-  );
-  if (valid.length && !collectedAt)
-    warnings.push(
-      "Nenhuma métrica válida foi recebida nesta consulta. O horário da última coleta válida foi preservado.",
-    );
-  const staleCount = services.filter((service) => service.status === "stale").length;
-  if (staleCount)
-    warnings.push(
-      `Amostras desatualizadas em ${staleCount} serviço(s). Os valores foram preservados; confira o horário da última coleta válida.`,
-    );
+
+  if (!timestamp(raw.historyUntil)) {
+    throw invalid();
+  }
+
+  const observations = raw.observations.map(value => {
+    const data = object(value);
+
+    const collectionCount =
+      data.collectionCount === undefined
+        ? 1
+        : number(data.collectionCount);
+
+    if (
+      !timestamp(data.observedAt) ||
+      !collectionCount ||
+      !Number.isSafeInteger(collectionCount)
+    ) {
+      throw invalid();
+    }
+
+    return {
+      observedAt: data.observedAt,
+      collectionCount,
+      services: [],
+      samples: []
+    };
+  });
+
   const totals = summarizeCollections(history);
-  const covered = services.filter(
-    (service) => service.status !== "removed" && service.emissionsG !== null,
-  ).length;
-  const expected = services.filter(
-    (service) => service.status !== "removed",
-  ).length;
-  if (expected && covered < expected)
-    warnings.push(
-      "Emissões parciais: calculadas para " +
-        covered +
-        " de " +
-        expected +
-        " serviços nesta consulta.",
-    );
+
+  if (
+    raw.collectionWarning !== undefined &&
+    raw.collectionWarning !== null &&
+    typeof raw.collectionWarning !== "string"
+  ) {
+    throw invalid();
+  }
+
+  const collectionEvents = Array.isArray(raw.collectionEvents)
+    ? raw.collectionEvents.map(value => {
+        const data = object(value);
+
+        if (
+          ![
+            "service-unavailable",
+            "metrics-missing"
+          ].includes(text(data.kind)) ||
+          !timestamp(data.from) ||
+          !timestamp(data.to) ||
+          !Array.isArray(data.serviceIds) ||
+          data.serviceIds.some(id => typeof id !== "string")
+        ) {
+          throw invalid();
+        }
+
+        return {
+          from: data.from,
+          to: data.to,
+          kind: data.kind as
+            | "service-unavailable"
+            | "metrics-missing",
+          serviceIds: data.serviceIds as string[]
+        };
+      })
+    : [];
+
+  if (
+    raw.historyIncluded !== undefined &&
+    typeof raw.historyIncluded !== "boolean"
+  ) {
+    throw invalid();
+  }
+
   return {
-    regions,
+    source: "database",
     services,
     history,
+    regions,
+    observations,
+    collectionEvents,
+
+    historyIncluded: raw.historyIncluded !== false,
+
+    historyPeriod: raw.historyPeriod as "24h" | "7d",
+    selectedAt:
+      typeof raw.selectedAt === "string"
+        ? raw.selectedAt
+        : null,
+
+    historyUntil: raw.historyUntil,
+
+    lastCollectionAt: raw.lastCollectionAt as string | null,
+    discoveryUpdatedAt: raw.discoveryUpdatedAt as string | null,
+
+    discoveryComplete: true,
+
     totalEnergyKwh: totals.energyKwh,
     totalEmissionsG: totals.emissionsG,
-    lastCollectionAt: collectedAt,
-    discoveryUpdatedAt,
-    discoveryComplete,
-    warning: warnings.length ? warnings.join(" ") : undefined,
+
+    warning:
+      text(
+        raw.collectionWarning === undefined
+          ? raw.warning
+          : raw.collectionWarning
+      ) || undefined
   };
 }

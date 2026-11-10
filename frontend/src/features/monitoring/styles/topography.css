@@ -1,0 +1,27 @@
+/* Inside the main stacking context: above the globe canvas, below all page content. */
+.monitoring-topography {
+  position: fixed;
+  inset: 0;
+  z-index: -1;
+  overflow: hidden;
+  pointer-events: none;
+  user-select: none;
+}
+.monitoring-topography img {
+  pointer-events: auto;
+  position: absolute;
+  top: 0;
+  width: clamp(48px, calc((100vw - 1464px) / 2), 250px);
+  height: 100dvh;
+  max-width: none;
+  object-fit: cover;
+  opacity: .96;
+}
+.monitoring-topography-left { left: 0; object-position: left center; }
+.monitoring-topography-right { right: 0; object-position: right center; }
+@media (max-width: 1200px) {
+  .monitoring-topography img { width: 28px; opacity: .48; }
+}
+@media (max-width: 780px) {
+  .monitoring-topography { display: none; }
+}

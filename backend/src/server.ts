@@ -1,54 +1,42 @@
-import app from "./app.js";
+
+
+import app from "./app";
+import { migrateMonitoring } from "./db/migrate";
+
 import {
-    refreshDiscoveredServices,
-    refreshServiceMetrics,
-} from "./modules/Services/services.service.js";
+  refreshAllData,
+  start
+} from "./modules/Worker/worker.job";
 
-const PORT = process.env.PORT || 3000;
+async function main() {
+  // Prepara o banco antes de iniciar o servidor.
+  await migrateMonitoring();
 
-// Intervalo de atualização: 30 segundos.
-const REFRESH_INTERVAL = 30_000;
+  const port = process.env.PORT || 3000;
 
-async function refreshAllData(): Promise<void> {
-    // Primeiro atualiza a lista de serviços.
-    await refreshDiscoveredServices();
-
-    // Depois consulta as métricas da lista atualizada.
-    await refreshServiceMetrics();
-}
-
-app.listen(PORT, () => {
+  app.listen(port, () => {
     console.log(
-        `Servidor BackEnd está rodando http://localhost:${PORT}`
+      `Servidor BackEnd está rodando http://localhost:${port}`
     );
 
-    // Primeira coleta ao iniciar o servidor.
-    void refreshAllData()
-        .then(() => {
-            console.log(
-                "Serviços e métricas carregados com sucesso."
-            );
-        })
-        .catch((error: unknown) => {
-            console.error(
-                "Falha ao atualizar a lista de serviços:",
-                error
-            );
-        });
+    // Executa a primeira coleta imediatamente.
+    void refreshAllData().catch((error: unknown) => {
+      console.error(
+        "Falha na coleta inicial de dados:",
+        error
+      );
+    });
 
-    // Atualiza a lista e as métricas a cada 30 segundos.
-    setInterval(() => {
-        void refreshAllData()
-            .then(() => {
-                console.log(
-                    "Lista de serviços e métricas atualizada."
-                );
-            })
-            .catch((error: unknown) => {
-                console.error(
-                    "Falha ao atualizar os dados do Agregador:",
-                    error
-                );
-            });
-    }, REFRESH_INTERVAL);
+    // Agenda as próximas coletas a cada 30 segundos.
+    start();
+  });
+}
+
+void main().catch((error: unknown) => {
+  console.error(
+    "Não foi possível preparar o banco de monitoramento. Verifique a conexão e as migrações.",
+    error
+  );
+
+  process.exitCode = 1;
 });

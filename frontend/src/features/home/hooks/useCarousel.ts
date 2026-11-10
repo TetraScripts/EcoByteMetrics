@@ -1,9 +1,9 @@
-import { useEffect, useState } from "react";
+import { useCallback, useEffect, useState } from "react";
 
-export function useCarousel(length: number, intervalMs = 6000) {
+export function useCarousel(length: number) {
   const [index, setIndex] = useState(0);
   const [reducedMotion, setReducedMotion] = useState(
-    () => matchMedia("(prefers-reduced-motion: reduce)").matches,
+    () => typeof matchMedia !== "undefined" && matchMedia("(prefers-reduced-motion: reduce)").matches,
   );
 
   useEffect(() => {
@@ -13,17 +13,9 @@ export function useCarousel(length: number, intervalMs = 6000) {
     return () => preference.removeEventListener("change", update);
   }, []);
 
-  useEffect(() => {
-    if (length <= 1 || reducedMotion) return;
+  const next = useCallback(() => {
+    if (!reducedMotion && length > 1) setIndex(current => (current + 1) % length);
+  }, [length, reducedMotion]);
 
-    const motionPreference = matchMedia("(prefers-reduced-motion: reduce)");
-    const timer = window.setInterval(() => {
-      if (!document.hidden && !motionPreference.matches)
-        setIndex((current) => (current + 1) % length);
-    }, intervalMs);
-
-    return () => window.clearInterval(timer);
-  }, [length, intervalMs, reducedMotion]);
-
-  return { index };
+  return { index, next, reducedMotion, select: setIndex };
 }

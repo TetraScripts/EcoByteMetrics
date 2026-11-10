@@ -1,65 +1,121 @@
-import { useMemo, useState } from "react";
+import { useEffect, useState } from "react";
 import { Leaf, Zap } from "lucide-react";
-import type { CollectionPoint, MonitoredService } from "@/features/monitoring/types";
-import { rankServiceImpact } from "@/features/monitoring/domain/serviceImpact";
-import type { ImpactMetric } from "@/features/monitoring/domain/serviceImpact";
+import type { Period } from "@/shared/lib/period";
+import {
+  getDashboardRanking,
+  type DashboardRanking,
+  type DashboardRankingMetric,
+} from "@/features/monitoring/api/dashboard";
 import { formatNumber } from "@/shared/lib/format";
-import { EmptyState } from "@/shared/ui/EmptyState";
-import { Panel } from "@/shared/ui/Panel";
+import { EmptyState, Panel } from "@/components/UI";
 
-export function ServiceImpactRanking({ history, services }: {
-  history: CollectionPoint[];
-  services: MonitoredService[];
-}) {
-  const [metric, setMetric] = useState<ImpactMetric>("energy");
-  const { entries, omittedCount } = useMemo(
-    () => rankServiceImpact(history, services, metric),
-    [history, services, metric],
-  );
+export function ServiceImpactRanking({ period }: { period: Period }) {
+  const [metric, setMetric] = useState<DashboardRankingMetric>("kwh");
+  const [result, setResult] = useState<{
+    key: string;
+    ranking: DashboardRanking | null;
+    error: string | null;
+  }>({ key: "", ranking: null, error: null });
+  const requestKey = `${period}:${metric}`;
+
+  useEffect(() => {
+    let pending: AbortController | null = null;
+    const loadRanking = () => {
+      pending?.abort();
+      const controller = new AbortController();
+      pending = controller;
+      void getDashboardRanking(period, metric, controller.signal)
+        .then((result) => {
+          if (result.periodo !== period || result.ordenadoPor !== metric ||
+            !Array.isArray(result.ranking) ||
+            result.ranking.some((entry, index) =>
+              !Number.isSafeInteger(entry.posicao) ||
+              entry.posicao !== index + 1 ||
+              typeof entry.id_servico !== "string" ||
+              !entry.id_servico ||
+              typeof entry.nome !== "string" ||
+              !Number.isFinite(entry.consumoKwh) ||
+              entry.consumoKwh < 0 ||
+              (entry.emissaoCo2e !== null &&
+                (!Number.isFinite(entry.emissaoCo2e) || entry.emissaoCo2e < 0))
+            )) {
+            throw new Error("A resposta do ranking do backend está fora do contrato.");
+          }
+          if (!controller.signal.aborted)
+            setResult({ key: requestKey, ranking: result, error: null });
+        })
+        .catch((cause: unknown) => {
+          if (!controller.signal.aborted) {
+            setResult({
+              key: requestKey,
+              ranking: null,
+              error: cause instanceof Error ? cause.message : "Falha ao carregar o ranking.",
+            });
+          }
+        });
+    };
+    loadRanking();
+    const timer = window.setInterval(loadRanking, 30_000);
+    return () => {
+      window.clearInterval(timer);
+      pending?.abort();
+    };
+  }, [period, metric, requestKey]);
+
+  const loading = result.key !== requestKey;
+  const ranking = loading ? null : result.ranking;
+  const error = loading ? null : result.error;
+  const entries = ranking?.ranking ?? [];
   const visible = entries.slice(0, 5);
-  const max = visible[0]?.value || 1;
-  const unit = metric === "energy" ? "kWh" : "gCO₂e";
+  const max = Math.max(visible[0]?.[metric === "kwh" ? "consumoKwh" : "emissaoCo2e"] ?? 0, 1);
+  const unit = metric === "kwh" ? "kWh" : "gCO₂e";
   return (
     <Panel title="Impacto por serviço" eyebrow="PERÍODO SELECIONADO" className="service-impact-ranking">
       <div className="service-impact-controls">
-        <p>Coletas disponíveis nesta sessão</p>
+        <p>Dados agregados pelo backend · {period}</p>
         <label>
           <span className="sr-only">Ordenar ranking por</span>
           <select value={metric} onChange={event => {
-            if (event.target.value === "energy" || event.target.value === "emissions") setMetric(event.target.value);
+            if (event.target.value === "kwh" || event.target.value === "co2e") setMetric(event.target.value);
           }}>
-            <option value="energy">Energia estimada</option>
-            <option value="emissions">Emissões estimadas</option>
+            <option value="kwh">Energia estimada</option>
+            <option value="co2e">Emissões estimadas</option>
           </select>
         </label>
       </div>
+      {error && <p className="form-message error-message" role="alert">{error}</p>}
+      {loading && <p className="globe-fallback" role="status">Carregando ranking…</p>}
       {visible.length ? (
         <ol className="collection-ranking service-impact-list">
-          {visible.map((entry, index) => (
-            <li key={entry.id}>
-              <span>{index + 1}</span>
-              <div className="service-impact-label">
-                <strong>{entry.name}</strong>
-                <small>
-                  {entries.some(other => other.id !== entry.id && other.name === entry.name) && `${entry.id} · `}
-                  {entry.count} {entry.count === 1 ? "coleta" : "coletas"} · {formatNumber(entry.seconds)} s de amostras
-                </small>
-              </div>
-              <meter min={0} max={max} value={entry.value}
-                aria-label={`${metric === "energy" ? "Energia" : "Emissões"} de ${entry.name}`} />
-              <strong className="service-impact-value">{formatNumber(entry.value)} {unit}</strong>
-            </li>
-          ))}
+          {visible.map((entry) => {
+            const value = metric === "kwh" ? entry.consumoKwh : entry.emissaoCo2e;
+            if (value === null) return null;
+            return (
+              <li key={entry.id_servico}>
+                <span>{entry.posicao}</span>
+                <div className="service-impact-label">
+                  <strong>{entry.nome}</strong>
+                  <small>{entry.id_servico}</small>
+                </div>
+                <meter
+                  min={0}
+                  max={max}
+                  value={value}
+                  aria-label={`${metric === "kwh" ? "Energia" : "Emissões"} de ${entry.nome}`}
+                />
+                <strong className="service-impact-value">
+                  {formatNumber(value)} {unit}
+                </strong>
+              </li>
+            );
+          })}
         </ol>
-      ) : (
-        <EmptyState compact icon={metric === "energy" ? Zap : Leaf}
-          title={metric === "energy" ? "Sem coletas válidas neste período." : "Emissões indisponíveis neste período."}
-          description="O ranking aparecerá quando houver estimativas disponíveis nas coletas selecionadas." />
-      )}
+      ) : !loading && !error ? (
+        <EmptyState compact icon={metric === "kwh" ? Zap : Leaf}
+          title={metric === "kwh" ? "Sem dados válidos neste período." : "Emissões indisponíveis neste período."}
+          description="O ranking aparecerá após o backend acumular estimativas válidas para o período." />
+      ) : null}
       {entries.length > 5 && <p className="service-impact-note">5 primeiros de {entries.length} serviços com estimativas.</p>}
-      {omittedCount > 0 && <p className="service-impact-note">
-        {omittedCount} {omittedCount === 1 ? "serviço sem" : "serviços sem"} {metric === "emissions" ? "emissões completas" : "energia válida"} nas coletas do período.
-      </p>}
     </Panel>
   );
 }

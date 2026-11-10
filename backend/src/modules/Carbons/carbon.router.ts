@@ -1,54 +1,31 @@
-import {Router} from "express";
-import {
-    createCarbonController,
-    getCarbonByIdController,
-    listCarbonsByLocationIdController,
-    listCarbonsController
-} from "./carbon.controller";
+import { Router, Request, Response } from "express";
+import { CarbonController } from "./carbon.controller";
+import { methodNotAllowed } from "../../app";
+import { authMiddleware } from "../Auth/auth.middleware";
+import { adminMiddleware } from "../Auth/admin.middleware";
 
 const router = Router();
+const carbonController = new CarbonController();
 
-// define rotas para lidar com os métodos permitidos
-router.get("/all", listCarbonsController);
-router.get("/loc/:id", listCarbonsByLocationIdController);
-router.post("/", createCarbonController);
-router.get("/:id", getCarbonByIdController);
+// Criar registro de carbono
+router.post("/", authMiddleware, adminMiddleware, carbonController.createCarbon);
 
-// define rotas para lidar com métodos não permitidos
-router.get("/all/", (req, res) => {
-    res.set("Allow", "GET, HEAD, OPTIONS").status(204)
-    .json({ Mensagem: "Não existe um registro." }).end();
-});
-router.get("/", (req, res) => {
-    res.set("Allow", "GET, HEAD, POST, OPTIONS").status(204).end();
-});
-router.post("/:id", (req, res) => {
-    res.set("Allow", "GET, HEAD, PUT, DELETE, OPTIONS").status(204)
-    .json({ Mensagem: "Não existe um registro." }).end();
-}); 
+// Métodos não permitidos na raiz
+router.all("/", methodNotAllowed(["POST", "OPTIONS"]));
 
-router.get("/loc/:id", (req, res) => {
-    res.set("Allow", "GET, HEAD, OPTIONS").status(204)
-    .json({ Mensagem: "Não existe um registro." }).end();
-});
+// Listar todos os registros
+router.get("/all", carbonController.listCarbons);
 
+// Listar registros por localização
+router.get("/loc/:id_location", carbonController.listCarbonsByLocationId);
 
-// define rotas para lidar com métodos não permitidos
-router.all("/", (req, res) => {
-    res.set("Allow", "GET, HEAD, POST, OPTIONS")
-    .status(405).json({ error: "Método não permitido" });
-});
-router.all("/:id", (req, res) => {
-    res.set("Allow", "GET, HEAD, PUT, DELETE, OPTIONS")
-    .status(405).json({ error: "Método não permitido" });
-}); 
-router.all("/loc/:id", (req, res) => {
-    res.set("Allow", "GET, HEAD, OPTIONS")
-    .status(405).json({ error: "Método não permitido" });
-});
-router.all("/all/", (req, res) => {
-    res.set("Allow", "GET, HEAD, OPTIONS")
-    .status(405).json({ error: "Método não permitido" });
-}); 
+// Buscar registro pelo ID
+router.get("/:id_carbon",  carbonController.getCarbonById);
+
+// Métodos não permitidos em /:id_carbon
+router.all(
+    "/:id_carbon",
+    methodNotAllowed(["GET", "HEAD", "OPTIONS"])
+);
 
 export default router;

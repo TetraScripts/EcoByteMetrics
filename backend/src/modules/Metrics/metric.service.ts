@@ -1,85 +1,108 @@
 import { ServicesError } from "../Services/services.service";
-import {
-    Metric,
-    createMetricRepository,
-    getMetricByIdRepository,
-    listMetricsByServiceIdRepository,
-    CreateMetricInput
-}   from "./metric.repository";
+import {Metric, CreateMetricInput, MetricRepository} from "./metric.repository";
 
 export class MetricError extends Error {
     constructor(message: string, public readonly statusCode: number) {
         super(message);
+        this.statusCode = statusCode;
+        this.message = message;
         this.name = "MetricError";
     }
-}
+    static validateMetricId(id_metric: number): void {
+        if (!Number.isSafeInteger(id_metric) || id_metric <= 0) {
+            throw new MetricError("ID da métrica inválido", 400);
+        }
+    }
 
-function validateMetricId(id: number): void {
-    if (!Number.isSafeInteger(id) || id <= 0) {
-        throw new MetricError("ID da métrica inválido", 400);
+    static validateServiceId(id_service: number): void {
+        if (!Number.isSafeInteger(id_service) || id_service <= 0) {
+            throw new MetricError("ID do serviço inválido", 400);
+        }
     }
-}
-function validateServiceId(id: number): void {
-    if (!Number.isSafeInteger(id) || id <= 0) {
-        throw new ServicesError("ID do serviço inválido", 400);
-    }
-}
+    static validateMetricInput(metricInput: CreateMetricInput): CreateMetricInput {
+        this.validateServiceId(metricInput.id_service);
+        const cpu = metricInput.cpu_metric;
+        
+        if (!Number.isFinite(cpu) || cpu < 0 || cpu > 100) {
+            throw new MetricError("Valor de CPU inválido (esperado entre 0 e 100)", 400);
+        }
 
-function validateMetricInput(metricInput: CreateMetricInput): CreateMetricInput  {
-    if (!metricInput.id_service || !Number.isSafeInteger(metricInput.id_service) || metricInput.id_service <= 0) {
-        throw new MetricError("ID do serviço inválido", 400);
-    }
-    if (metricInput.cpu_metric < 0 || metricInput.cpu_metric > 100) {
-        throw new MetricError("Valor de CPU inválido", 400);
-    }
-    if (metricInput.memory_metric < 0 || metricInput.memory_metric > 100) {
-        throw new MetricError("Valor de memória inválido", 400);
-    }   
-    if (metricInput.disk_metric < 0 || metricInput.disk_metric > 100) {
-        throw new MetricError("Valor de disco inválido", 400);
-    }
-    if (metricInput.collected_interval_metric <= 0) {
-        throw new MetricError("Intervalo de coleta inválido", 400);
-    }
-    if (!metricInput.timestamp_metric || isNaN(new Date(metricInput.timestamp_metric).getTime())) {
-        throw new MetricError("Timestamp inválido", 400);
-    }
-    return metricInput;
-}
+        const otherMetrics = [metricInput.ram_metric, metricInput.hd_metric, metricInput.network_metric];
+        if (otherMetrics.some((value) => !Number.isFinite(value) || value < 0)) {
+            throw new MetricError("Memória, disco e rede devem ser finitos e não negativos", 400);
+        }
 
-function handleRepositoryError(error: unknown): never {
-    if (typeof error === "object" && error !== null && "code" in error && error.code === "23505") {
-        throw new MetricError("Já existe uma métrica com esse ID.", 409);
+        if (!Number.isFinite(metricInput.colletion_interval_metric) || metricInput.colletion_interval_metric <= 0) {
+            throw new MetricError("Intervalo de coleta inválido", 400);
+        }
+        if (!metricInput.date_houry || Number.isNaN(new Date(metricInput.date_houry).getTime())) {
+            throw new MetricError("Timestamp inválido", 400);
+        }
+        return metricInput;
     }
-    throw error;
-}
+    static handleRepositoryError(error: unknown): Promise<never> {
+        if (error instanceof MetricError) {
+            throw error;
+        }
+        if (typeof error === "object" && error !== null &&"code" in error &&typeof error.code === "string") {
+            switch (error.code) {
+                case "23505":
+                    throw new MetricError("Registro duplicado.", 409);
 
-export async function  createMetricService(metricInput: CreateMetricInput): Promise<Metric> {
-    const data = validateMetricInput(metricInput);  
-    try{
-        const metric = await createMetricRepository(data);
+                case "23503":
+                    throw new MetricError("Localização não encontrada.", 400);
+
+                case "23502":
+                    throw new MetricError("Campo obrigatório não informado.", 400);
+
+                case "23514":
+                    throw new MetricError("Valor fora das restrições permitidas.", 400);
+            }
+        }
+        throw error;
+    }
+}
+export class MetricService{
+    private metricRepository= new MetricRepository();
+
+    async createMetricService(metricInput: CreateMetricInput): Promise<Metric | null> {
+        const data = MetricError.validateMetricInput(metricInput);
+        let metric: Metric | null = null
+        try {
+            metric= await this.metricRepository.createMetricRepository(data);
+            if(!metric){
+                throw new MetricError("Não foi possivel cadastrado",500)
+            }  
+        } catch (error: unknown) {
+            MetricError.handleRepositoryError(error);
+        }
         return metric;
     }
-    catch (error) {
-        handleRepositoryError(error);
+    async getMetricByIdService(id_metric: number): Promise<Metric | null> {
+        MetricError.validateMetricId(id_metric);
+        let metric:Metric| null = null
+        try{
+            metric = await this.metricRepository.getMetricByIdRepository(id_metric);
+            if (!metric) {
+                throw new MetricError("Métrica não encontrada", 404);
+            }
+        }catch(error){
+            MetricError.handleRepositoryError(error);
+        }
+        return metric;
     }
-}
 
-export async function getMetricByIdService(id_metric: number): Promise<Metric | null> {
-    validateMetricId(id_metric);
-    const metric = await getMetricByIdRepository(id_metric);
-    if(!metric) {
-        throw new MetricError("Métrica não encontrada", 404);
+    async listMetricsByServiceIdService(id_service: number): Promise<Metric[]> {
+        MetricError.validateServiceId(id_service);
+        let metrics:Metric[]=[]
+        try{
+            metrics = await this.metricRepository.listMetricsByServiceIdRepository(id_service);
+            if (metrics.length === 0) {
+                throw new ServicesError("Nenhuma métrica encontrada para o serviço especificado", 404);
+            }
+        }catch(error){
+            MetricError.handleRepositoryError(error);
+        }
+        return metrics;
     }
-    return metric;
 }
-
-export async function listMetricsByServiceIdService(id_service: number): Promise<Metric[]> {
-    validateServiceId(id_service);
-    const metrics = await listMetricsByServiceIdRepository(id_service);
-    if (metrics.length === 0) {
-        throw new ServicesError("Nenhuma métrica encontrada para o serviço especificado", 404);
-    }
-    return metrics;
-}
-    

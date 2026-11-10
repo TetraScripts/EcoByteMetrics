@@ -1,0 +1,18 @@
+html[data-route-transition="dashboard"]::view-transition-old(root) {
+  animation: pageDepart 280ms ease both;
+}
+html[data-route-transition="dashboard"]::view-transition-new(root) {
+  animation: pageArrive 440ms cubic-bezier(.2, .7, .3, 1) both;
+}
+html[data-route-transition="dashboard"]::view-transition-group(root) { animation-duration: 440ms; }
+.monitoring-shell[data-entry="fade"] { animation: dashboardArrive 380ms ease-out; }
+.monitoring-shell[data-entry="crossfade"] :is(.monitoring-header, .monitoring-heading, .monitoring-tabs, .monitoring-applications) { animation: none; }
+@keyframes pageDepart { to { opacity: 0; } }
+@keyframes pageArrive { from { opacity: 0; transform: translateY(8px); } to { opacity: 1; transform: none; } }
+@keyframes dashboardArrive { from { opacity: 0; } to { opacity: 1; } }
+@media (prefers-reduced-motion: reduce) {
+  .monitoring-shell[data-entry="fade"] { animation: none; }
+  html[data-route-transition="dashboard"]::view-transition-old(root),
+  html[data-route-transition="dashboard"]::view-transition-new(root),
+  html[data-route-transition="dashboard"]::view-transition-group(root) { animation: none; }
+}

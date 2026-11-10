@@ -14,10 +14,10 @@ Esta documentação especifica os contratos técnicos de todas as rotas HTTP exp
 ## 🔑 1. Autenticação & Acesso `( RP06 )`
 
 ### `POST /auth/login`
-Autentica o usuário administrativo no backend e gera o Token JWT para acesso a recursos protegidos `( RP06 )`.
+Autentica um usuário `ADMIN` ou `USER` e gera um JWT com o perfil no claim `role`. O token é utilizado nas rotas protegidas; as rotas de escrita administrativa exigem perfil `ADMIN`.
 
 * **Método:** `POST`
-* **URL:** `/api/auth/login`
+* **URL:** `/auth/login`
 * **Headers:**
   ```http
   Content-Type: application/json
@@ -25,34 +25,33 @@ Autentica o usuário administrativo no backend e gera o Token JWT para acesso a 
 * **Corpo da Requisição (Body):**
   ```json
   {
-    "email": "admin@greener.com",
-    "senha": "senhaSegura123"
+    "email": "admin@exemplo.com",
+    "password": "<senha definida no provisionamento>"
   }
   ```
 * **Códigos de Resposta:**
   * **`200 OK` — Autenticação realizada com sucesso:**
     ```json
     {
-      "token": "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpZCI6MSwiZW1haWwiOiJhZG1pbkBncmVlbmVyLmNvbSIsImlhdCI6MTY3MjUxODQwMCwiZXhwIjoxNjcyNjA0ODAwfQ...",
-      "usuario": {
-        "id": 1,
-        "nome": "Administrador GreenER",
-        "email": "admin@greener.com"
-      }
+      "token": "<JWT>",
+      "tokenType": "Bearer",
+      "expiresIn": "1h"
     }
     ```
   * **`400 Bad Request` — Campos obrigatórios ausentes:**
     ```json
     {
-      "error": "Os campos e-mail e senha são obrigatórios."
+      "message": "Informe o e-mail e a senha."
     }
     ```
   * **`401 Unauthorized` — Credenciais incorretas:**
     ```json
     {
-      "error": "E-mail ou senha inválidos."
+      "message": "E-mail ou senha inválidos."
     }
     ```
+
+O login também define o cookie de sessão `ecobyte_session` como `HttpOnly` e `SameSite=Strict`. O JWT contém `sub`, `email` e `role` (`ADMIN` ou `USER`). Para chamadas com Bearer, envie `Authorization: Bearer <token>`. O endpoint é montado em `/auth`, sem o prefixo `/api`.
 
 ---
 
@@ -147,7 +146,7 @@ Obtém o detalhamento de um serviço específico, incluindo seus dados geográfi
         "cpuUsage": 45.2,
         "memoryUsage": 512.0,
         "consumoKwh": 0.1240,
-        "emissaoCo2e": 12.8500
+        "emissaoCo2eG": 12850.0000
       },
       "ultimaLeitura": "2026-10-13T11:00:00Z"
     }
@@ -164,7 +163,7 @@ Obtém o detalhamento de um serviço específico, incluindo seus dados geográfi
 ## 📊 3. Métricas, Histórico & Indicadores `( RF03, RF07, RF08, RF09, RF10 )`
 
 ### `GET /services/:id/metrics`
-Consulta a série temporal histórica das coletas de hardware e cálculos de consumo energético (kWh) e carbono (CO₂e) de um determinado serviço `( RF03, RF07, RF10 )`.
+Consulta a série temporal histórica das coletas de hardware e cálculos de consumo energético (kWh) e carbono (gCO₂e) de um determinado serviço `( RF03, RF07, RF10 )`.
 
 * **Método:** `GET`
 * **URL:** `/api/services/:id/metrics`
@@ -185,14 +184,14 @@ Consulta a série temporal histórica das coletas de hardware e cálculos de con
           "cpuUsage": 40.0,
           "memoryUsage": 500.0,
           "consumoKwh": 0.1100,
-          "emissaoCo2e": 11.4000
+          "emissaoCo2eG": 11400.0000
         },
         {
           "dataHoraColeta": "2026-10-13T11:00:00Z",
           "cpuUsage": 45.2,
           "memoryUsage": 512.0,
           "consumoKwh": 0.1240,
-          "emissaoCo2e": 12.8500
+          "emissaoCo2eG": 12850.0000
         }
       ]
     }
@@ -202,6 +201,13 @@ Consulta a série temporal histórica das coletas de hardware e cálculos de con
 
 ### `GET /dashboard/summary`
 Retorna a consolidação agregada dos indicadores operacionais e ambientais do ambiente monitorado `( RF08, RF09 )`.
+
+> **Validação do dashboard (Issue #101):** o backend expõe `GET /api/dashboard/summary` e `GET /api/dashboard/ranking`; o frontend consome essas rotas para os indicadores globais e o ranking por período. Os contratos têm testes em `backend/tests/dashboard.contract.test.ts` e `backend/tests/dashboard.routes.test.ts`.
+> O ranking da API mantém até 7 dias de amostras coletadas desde a inicialização do processo. Serviços são considerados ativos quando possuem métrica válida coletada nos últimos 90 segundos; resultados sem atualização recente são indisponíveis. O resumo é global e não varia com os filtros regionais/de data do dashboard.
+>
+> **Evidências:** os testes de contrato cobrem payloads, timestamps, estados, cálculos, ordenação, períodos, parâmetros inválidos (400), ausência de fatores regionais e ranking vazio (200). `backend/tests/resilience.test.ts` verifica timeout, HTTP 5xx, ausência de métricas (404), isolamento entre serviços e recuperação. Frontend validado com `npm run typecheck`, lint dos componentes alterados e `npm run build`.
+>
+> **Resiliência (Issue #102):** timeout/HTTP 5xx da consulta de métricas retorna `503 metrics_unavailable`; HTTP 404 do agregador retorna `404 metrics_missing`. O último cache válido é preservado internamente, mas não mascara o estado de falha; após coleta bem-sucedida, o erro é removido e a rota volta a `200`. Falha de um serviço não interrompe a consulta aos seguintes. A falha ao atualizar fatores de carbono preserva os últimos fatores válidos e não derruba o backend. Na tabela do dashboard, indisponibilidade e ausência de métricas são rótulos separados com mensagens operacionais.
 
 * **Método:** `GET`
 * **URL:** `/api/dashboard/summary`
@@ -214,17 +220,18 @@ Retorna a consolidação agregada dos indicadores operacionais e ambientais do a
       "servicosIndisponiveis": 1,
       "servicosSemMetricas": 1,
       "consumoTotalKwh": 145.2800,
-      "emissaoTotalCo2e": 1420.5000,
+      "emissaoTotalCo2eG": 1420500.0000,
       "dataHoraUltimaAtualizacao": "2026-10-13T11:00:00Z"
     }
     ```
+  * `emissaoTotalCo2e` é `null` quando não há fator regional para todos os serviços ativos; o backend não estima emissões com fator ausente. `consumoTotalKwh` soma as amostras válidas dos serviços ativos. `dataHoraUltimaAtualizacao` pode ser `null` antes da primeira coleta.
 
 ---
 
 ## 🏆 4. Ranking & Comparador `( RF14, RF15 )`
 
 ### `GET /dashboard/ranking`
-Obtém a lista ordenada de serviços por maior consumo energético ou emissão de CO₂e no período especificado `( RF14 )`.
+Obtém a lista ordenada de serviços por maior consumo energético ou emissão de CO₂e (g) no período especificado `( RF14 )`.
 
 * **Método:** `GET`
 * **URL:** `/api/dashboard/ranking`
@@ -243,16 +250,24 @@ Obtém a lista ordenada de serviços por maior consumo energético ou emissão d
           "id_servico": "data-processing-service",
           "nome": "Serviço de Processamento de Dados",
           "consumoKwh": 45.1200,
-          "emissaoCo2e": 480.2000
+          "emissaoCo2eG": 480200.0000
         },
         {
           "posicao": 2,
           "id_servico": "payment-service",
           "nome": "Serviço de Pagamentos",
           "consumoKwh": 12.8000,
-          "emissaoCo2e": 132.5000
+          "emissaoCo2eG": 132500.0000
         }
       ]
+    }
+    ```
+    Uma lista sem amostras válidas para o período ou critério é retornada como `"ranking": []`.
+    No ranking por kWh, `emissaoCo2e` pode ser `null` se faltar fator regional; no ranking por CO₂e, serviços sem emissão completa são omitidos.
+  * **`400 Bad Request` — Parâmetro `ordenarPor` ou `periodo` inválido:**
+    ```json
+    {
+      "error": "O parâmetro periodo deve ser '1h', '24h' ou '7d'."
     }
     ```
 
@@ -275,14 +290,14 @@ Permite a comparação direta de métricas de uso e indicadores ambientais entre
         {
           "id_servico": "payment-service",
           "consumoKwh": 12.8000,
-          "emissaoCo2e": 132.5000,
+          "emissaoCo2eG": 132500.0000,
           "mediaCpu": 48.5,
           "status": "ACTIVE"
         },
         {
           "id_servico": "auth-service",
           "consumoKwh": 2.1000,
-          "emissaoCo2e": 21.8000,
+          "emissaoCo2eG": 21800.0000,
           "mediaCpu": 12.2,
           "status": "NO_METRICS"
         }

@@ -1,3 +1,5 @@
+> **Modelo atual de histórico:** o servidor executa `migrations/001_persisted_monitoring.sql` antes de iniciar. Serviços usam identificador externo; métricas guardam fator e localização da rodada; datas são `TIMESTAMPTZ`. O histórico é consultado em `/api/monitoring`. O DDL autoritativo está em [DDL.sql](DDL.sql), e a migração, a premissa UTC para dados legados e o contrato estão em [backend/docs/HISTORY.md](../backend/docs/HISTORY.md). Faça backup antes de migrar dados de outro ambiente.
+
 # 🗄️ Camada de Persistência — PostgreSQL Nativo
 
 Este repositório contém a modelagem de dados relacional, os scripts DDL de criação de tabelas e as orientações de gerenciamento do banco PostgreSQL da plataforma **EcoByteMetrics**.
@@ -16,10 +18,10 @@ Este repositório contém a modelagem de dados relacional, os scripts DDL de cri
 ```bash
 database/
 ├── README.md       # Orientações para restauração, DML e volume Docker
-└── DDL.sql      # Script DDL oficial de criação das tabelas e chaves
+├── Dockerfile      # Arquivo de configuração do conteiner database 
+└── DDL.sql         # Estrutura principal do banco
 ```
 
----
 
 ### 🛠️ Restaurando o Banco de Dados em um Ambiente Limpo
 
@@ -33,61 +35,86 @@ docker exec -i greener_postgres psql -U greener_user -d greener_db < database/DD
 
 ### 🗃️ Modelo DDL Oficial (`database/schema.sql`)
 
-O script `database/schema.sql` define a estrutura física relacional do sistema:
+O script `database/DDL.sql` define a estrutura física relacional do sistema:
 
 ```sql
-CREATE TABLE Users (
-	id_user INT GENERATED ALWAYS AS IDENTITY PRIMARY KEY,
-	name_user VARCHAR(50) NOT NULL,
-	email_user VARCHAR(50) NOT NULL,
-	password_user VARCHAR(25) NOT NULL,
-	token_user VARCHAR(255) NOT NULL
+create table Users(
+	id_user int GENERATED ALWAYS AS IDENTITY PRIMARY KEY,
+	name_user varchar(50) not null,
+	email_user varchar(254) not null unique,
+	password_user varchar(255)not null
+);
+create table Locations(
+	id_location int GENERATED ALWAYS AS IDENTITY PRIMARY KEY,
+	name_location varchar(50)not null unique,
+	country_location varchar(50),
+	region_location varchar(50),
+	city_location varchar(50),
+	latitude_location double precision not null
+	CHECK (latitude_location BETWEEN -90 AND 90),
+	longitude_location double precision not null
+	CHECK (longitude_location BETWEEN -180 AND 180)
 );
 
-CREATE TABLE Locations (
-	id_location INT GENERATED ALWAYS AS IDENTITY PRIMARY KEY,
-	name_location VARCHAR(50) NOT NULL,
-	county_location VARCHAR(50),
-	region_location VARCHAR(50),
-	city_location VARCHAR(50),
-	latitude_location DOUBLE PRECISION NOT NULL,
-	logitude_location DOUBLE PRECISION NOT NULL
+create table Services(
+	id_service int GENERATED ALWAYS AS IDENTITY PRIMARY KEY,
+	id_location int ,
+	name_service varchar(50)not null unique,
+	path_metric varchar(50) not null,
+	external_id text,
+	location_metadata jsonb NOT NULL DEFAULT '{}',
+	active_service BOOLEAN NOT NULL DEFAULT TRUE,
+	date_houry TIMESTAMPTZ DEFAULT NOW(),
+	constraint fk_service 
+		foreign key (id_location)
+		references locations(id_location)
 );
 
-CREATE TABLE Services (
-	id_service INT GENERATED ALWAYS AS IDENTITY PRIMARY KEY,
-	id_location INT,
-	name_service VARCHAR(50),
-	CONSTRAINT fk_service_location 
-		FOREIGN KEY (id_location)
-		REFERENCES Locations(id_location)
+create table Metrics (
+	id_metric bigint GENERATED ALWAYS AS IDENTITY PRIMARY KEY,
+	id_service int,
+	cpu_metric numeric not null
+	CHECK (cpu_metric BETWEEN 0 AND 100),
+	ram_metric numeric not null check(ram_metric>=0),
+	hd_metric numeric not null check(hd_metric>=0),
+	network_metric numeric not null check(network_metric>=0),
+	date_houry TIMESTAMPTZ NOT NULL,
+	colletion_interval_metric numeric not null,
+	carbon_intensity numeric,
+	renewable_percent numeric,
+	location_metadata jsonb,
+	constraint fk_service
+		foreign key (id_service)
+		references services(id_service),
+	CONSTRAINT uq_metrics_service_date
+        UNIQUE (id_service, date_houry)
 );
 
-CREATE TABLE Metrics (
-	id_metric INT GENERATED ALWAYS AS IDENTITY PRIMARY KEY,
-	id_service INT,
-	date_houry TIMESTAMP NOT NULL,
-	path_metric VARCHAR(50) NOT NULL,
-	colletion_interval_metric INT NOT NULL,
-	cpu_metric NUMERIC NOT NULL,
-	ram_metric NUMERIC NOT NULL,
-	hd_metric NUMERIC NOT NULL,
-	network_metric NUMERIC NOT NULL,
-	CONSTRAINT fk_metric_service
-		FOREIGN KEY (id_service)
-		REFERENCES Services(id_service)
+create table Carbons(
+	id_carbon int GENERATED ALWAYS AS IDENTITY PRIMARY KEY,
+	id_location int,
+	date_houry TIMESTAMPTZ not null,
+	intesity_co2e_kwh_carbon numeric not null check(intesity_co2e_kwh_carbon>=0),
+	renewable_percent_carbon numeric not null
+	CHECK (renewable_percent_carbon BETWEEN 0 AND 100),
+	constraint fk_service
+		foreign key(id_location)
+		references locations(id_location),
+	CONSTRAINT uq_metrics_Carbon_date
+        UNIQUE (id_location, date_houry)
 );
 
-CREATE TABLE Cabons (
-	id_carbon INT GENERATED ALWAYS AS IDENTITY PRIMARY KEY,
-	id_location INT,
-	date_houry TIMESTAMP NOT NULL,
-	intesity_co2e_kwh_carbon INT NOT NULL,
-	renewable_percent_carbon INT NOT NULL,
-	CONSTRAINT fk_carbon_location
-		FOREIGN KEY (id_location)
-		REFERENCES Locations(id_location)
+CREATE TABLE monitoring_collections (
+  collected_at timestamptz PRIMARY KEY,
+  catalog jsonb NOT NULL,
+  errors jsonb NOT NULL DEFAULT '{}',
+  carbon_available boolean NOT NULL
 );
+CREATE INDEX metrics_collected_at_idx ON metrics(date_houry,id_service);
+
+
+CREATE UNIQUE INDEX services_external_id_idx ON services(external_id);
+
 ```
 
 ---
@@ -120,20 +147,70 @@ LIMIT $2;
 Query SQL utilizada pelo backend para consolidar os rankings de consumo e emissão por período:
 
 ```sql
-SELECT 
-    s.id_service,
-    s.name_service,
-    l.name_location,
-    l.region_location,
-    AVG(m.cpu_metric) AS media_cpu,
-    AVG(m.ram_metric) AS media_ram,
-    COUNT(m.id_metric) AS total_coletas
-FROM Services s
-JOIN Locations l ON s.id_location = l.id_location
-JOIN Metrics m ON s.id_service = m.id_service
-WHERE m.date_houry BETWEEN $1 AND $2
-GROUP BY s.id_service, s.name_service, l.name_location, l.region_location
-ORDER BY media_cpu DESC;
+const sortColumn =
+    orderBy === "kwh"
+    ? '"consumoKwh"'
+    : '"emissaoCo2eG"';
+
+	WITH sample_energy AS (
+            SELECT
+                m.id_service AS service_id,
+                m.date_houry AS collected_at,
+                m.colletion_interval_metric AS collection_interval_seconds,
+
+                m.carbon_intensity AS carbon_intensity_gco2e_per_kwh,
+
+                (
+                    (m.cpu_metric / 100.0 * 120) +
+                    (m.ram_metric * 0.375) +
+                    (m.hd_metric * 0.01) +
+                    (m.network_metric * 0.02)
+                ) * m.colletion_interval_metric / 3600000.0
+                    AS consumption_kwh
+
+            FROM Metrics AS m
+
+            INNER JOIN Services AS s
+                ON s.id_service = m.id_service
+
+
+            WHERE s.active_service = TRUE
+        ),
+
+        sample_impact AS (
+            SELECT
+                service_id,
+                collected_at,
+                consumption_kwh,
+                consumption_kwh *
+                    carbon_intensity_gco2e_per_kwh AS emissions_co2e_g
+            FROM sample_energy
+        ),
+		SELECT
+            s.id_service AS id,
+            s.name_service AS nome,
+
+            COALESCE(
+                SUM(i.consumption_kwh), 0
+            )::float8 AS "consumoKwh",
+            SUM(i.emissions_co2e_g)::float8 AS "emissaoCo2eG"
+
+            FROM Services AS s
+
+            LEFT JOIN sample_impact AS i
+                ON i.service_id = s.id_service
+                AND i.collected_at >=
+                    NOW() - $1::interval
+
+            WHERE s.active_service = TRUE
+
+            GROUP BY
+                s.id_service,
+                s.name_service
+
+            ORDER BY
+                ${sortColumn} DESC,
+                nome ASC;
 ```
 
 ---
@@ -143,19 +220,58 @@ ORDER BY media_cpu DESC;
 A preservação dos registros após a reinicialização dos containers é garantida pelo volume nomeado `pgdata` configurado no arquivo `compose.yaml`:
 
 ```yaml
-services:
-  postgres:
-    image: postgres:15-alpine
-    container_name: greener_postgres
-    environment:
-      POSTGRES_USER: \${DB_USER}
-      POSTGRES_PASSWORD: \${DB_PASSWORD}
-      POSTGRES_DB: \${DB_NAME}
-    volumes:
-      - pgdata:/var/lib/postgresql/data
-    ports:
-      - "5432:5432"
+postgres:
+    build: ./database
+    
+    container_name: database_EcoByteMetrics
+    restart: unless-stopped
 
+    environment:
+      POSTGRES_DB: ${POSTGRES_DATABASE}
+      POSTGRES_USER: ${POSTGRES_USER}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD}
+
+    ports:
+      - "${POSTGRES_PORT_CONTEINER}:${POSTGRES_PORT}"
+
+    volumes:
+      - postgres_data:/var/lib/postgresql
+      - ./database:/docker-entrypoint-initdb.d
+
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U \"$$POSTGRES_USER\" -d \"$$POSTGRES_DATABASE\""]
+      interval: 5s
+      timeout: 5s
+      retries: 10
+      start_period: 10s
 volumes:
-  pgdata:
+  postgres_data:
 ```
+
+## Primeiro usuário administrador
+
+O `DML.sql` não define uma senha padrão e não cria um administrador automaticamente. A senha do ADMIN é escolhida pelo responsável pela implantação; não existe uma senha de administrador compartilhada pelo projeto.
+
+1. Gere um hash bcrypt usando a dependência `bcryptjs` já instalada no backend. No terminal, dentro de `backend`, solicite a senha sem gravá-la no repositório:
+
+   ```bash
+   read -rsp "Senha forte para o ADMIN: " ADMIN_PASSWORD; echo
+   ADMIN_HASH=$(ADMIN_PASSWORD="$ADMIN_PASSWORD" node -e 'const bcrypt = require("bcryptjs"); process.stdout.write(bcrypt.hashSync(process.env.ADMIN_PASSWORD, 12))')
+   unset ADMIN_PASSWORD
+   ```
+
+2. Insira a conta com uma consulta parametrizada. Substitua os parâmetros pelos valores escolhidos e passe o hash gerado em `$3` (não passe a senha em texto puro):
+
+   ```sql
+   INSERT INTO users (name_user, email_user, password_user, role_user)
+   VALUES ($1, $2, $3, 'ADMIN')
+   ON CONFLICT (email_user) DO NOTHING;
+   ```
+
+   Exemplo de parâmetros: `$1` = nome do administrador; `$2` = e-mail em letras minúsculas; `$3` = conteúdo de `ADMIN_HASH`.
+
+3. Faça login em `POST /auth/login` com o e-mail e a senha escolhidos no passo 1. A API compara a senha com o hash bcrypt e emite um JWT com `role: "ADMIN"`.
+
+**Não confunda credenciais:** `POSTGRES_PASSWORD` autentica a conexão com o PostgreSQL; a senha escolhida acima autentica o usuário ADMIN na aplicação. As senhas aleatórias usadas pelos testes são apenas fixtures e não são credenciais de implantação. Novos cadastros pela API recebem sempre o perfil `USER`.
+
+Não versione `.env`, senhas, hashes de produção ou tokens. Se a conta já existir, `ON CONFLICT DO NOTHING` não altera seu perfil nem sua senha; faça a recuperação por um procedimento administrativo autorizado.

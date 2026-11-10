@@ -4,53 +4,23 @@
 */
 import{Router} from "express";
 
-import{
-    createLocationController,
-    getLocationByIdController,
-    listLocationController
-}from "./location.controller";
+import{LocationController}from "./location.controller";
+import { methodNotAllowed } from "../../app";
+import { authMiddleware } from "../Auth/auth.middleware";
+import { adminMiddleware } from "../Auth/admin.middleware";
 /* Criação do roteador de localizações usando o Router do Express.
    Define as rotas para criar, buscar por ID e listar todas as localizações.
    Também lida com métodos HTTP não permitidos, enviando respostas apropriadas.
 */
 const locationRouter = Router();
+let locationController = new LocationController()
 // Rota para listar todas as localizações.
-locationRouter.get("/all", listLocationController);
-locationRouter.post("/", createLocationController);
-locationRouter.get("/:id", getLocationByIdController);
-/* Rota para lidar com métodos HTTP não permitidos para a rota "/all".
-   Envia uma resposta HTTP com o status 405 (Método não permitido) e uma mensagem de erro.
-*/
-locationRouter.post("/all", (req, res) => {
-    res.set("Allow", "GET, HEAD, PUT, DELETE, OPTIONS").status(204).end();
-});
+locationRouter.get("/all",  locationController.listLocationController);
+locationRouter.post("/", authMiddleware, adminMiddleware, locationController.createLocationController);
+locationRouter.get("/:id_location",  locationController.getLocationByIdController);
 
-locationRouter.get("/", (req, res) => {
-    res.set("Allow", "GET, HEAD, POST, OPTIONS").status(204).end();
-});
-
-locationRouter.post("/:id", (req, res) => {
-    res.set("Allow", "GET, HEAD, PUT, DELETE, OPTIONS").status(204).end();
-});
-
-/* Rota para lidar com métodos HTTP não permitidos para a rota "/".
-   Envia uma resposta HTTP com o status 405 (Método não permitido) e uma mensagem de erro.
-*/
-locationRouter.all("/all", (req, res) => {
-    res.set("Allow", "GET, HEAD, PUT, DELETE, OPTIONS")
-    .status(405).json({ error: "Método não permitido" });
-});
-
-locationRouter.all("/", (req, res) => {
-    res.set("Allow", "GET, HEAD, PUT, DELETE, OPTIONS")
-    .status(405).json({ error: "Método não permitido" });
-});
-
-locationRouter.all("/:id", (req, res) => {
-    res.set("Allow", "GET, HEAD, PUT, DELETE, OPTIONS")
-    .status(405).json({ error: "Método não permitido" });
-});
-
-
+locationRouter.all("/all", methodNotAllowed(["GET", "HEAD", "OPTIONS"]));
+locationRouter.all("/", methodNotAllowed(["POST", "OPTIONS"]))
+locationRouter.all("/:id_location", methodNotAllowed(["GET", "HEAD", "OPTIONS"]))
 
 export default locationRouter;
