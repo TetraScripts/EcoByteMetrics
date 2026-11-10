@@ -4,6 +4,7 @@ import app from "./app";
 import { migrateMonitoring } from "./db/migrate";
 
 import {
+  refreshAllData,
   start
 } from "./modules/Worker/worker.job";
 
