@@ -1,51 +1,52 @@
 import {NextFunction, Request, Response} from "express";
 
-import{
-    ServicesError,
-    createService,
-    listServiceByLocation,
-    listServices,
-    getServiceById
-}from"./services.service"
+import{ServicesError, ServiceS }from"./services.service"
 
 function handleError(error: unknown, res: Response, next: NextFunction): void {
     if (error instanceof ServicesError) {
         res.status(error.statusCode).json({ erro: error.message });
+        return;
     }
+    next(error);
 }
 
-export async function createServiceController(req: Request, res: Response, next: NextFunction): Promise<void> {
-    try {
-        const service = await createService(req.body);
-        res.location(`${req.baseUrl}/${service.id_service}`).status(201).json(service);
-    } catch (error) {
-        handleError(error, res, next);
+export class ServiceController{
+    private serviceS = new ServiceS();
+    
+    createServiceController= async (req: Request, res: Response, next: NextFunction): Promise<void> =>{
+        try {
+            const service = await this.serviceS.createService(req.body);
+            res.location(`${req.baseUrl}/${service.id_service}`).status(201).json(service);
+        } catch (error) {
+            handleError(error, res, next);
+        }
     }
-}
-
-export async function getServiceByIdController(req: Request, res: Response, next: NextFunction): Promise<void> {
-    try {
-        const service = await getServiceById(Number(req.params.id_service));
-        res.status(200).json(service);
-    } catch (error) {
-        handleError(error, res, next);
+    getServiceByIdController=async (req: Request, res: Response, next: NextFunction): Promise<void>=>{
+        try {
+            const id_service = Number(req.params.id_service)
+            const service = await this.serviceS.getServiceById(id_service);
+            res.status(200).json(service);
+        } catch (error) {
+            handleError(error, res, next);
+        }
     }
-}
 
-export async function listServiceByLocationIdController(req: Request, res: Response, next: NextFunction): Promise<void> {
-    try {
-        const service = await listServiceByLocation(Number(req.params.id_location));
-        res.status(200).json(service);
-    } catch (error) {
-        handleError(error, res, next);
+    listServiceByLocationIdController= async (req: Request, res: Response, next: NextFunction): Promise<void> => {
+        try {
+            const id_location=Number(req.params.id_location);
+            const service = await this.serviceS.listServiceByLocation(id_location);
+            res.status(200).json(service);
+        } catch (error) {
+            handleError(error, res, next);
+        }
     }
-}
 
-export async function listServiceController(req: Request, res: Response, next: NextFunction): Promise<void> {
-    try {
-        const service = await listServices();
-        res.status(200).json(service);
-    } catch (error) {
-        handleError(error, res, next);
+    listServiceController= async (req: Request, res: Response, next: NextFunction): Promise<void> => {
+        try {
+            const service = await this.serviceS.listServices();
+            res.status(200).json(service);
+        } catch (error) {
+            handleError(error, res, next);
+        }
     }
 }

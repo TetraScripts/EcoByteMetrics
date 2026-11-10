@@ -3,7 +3,7 @@ import { CarbonApiError } from "../../integrations/carbon-api";
 import { CreateCarbonInput } from "../Carbons/carbon.repository";
 import { CarbonError, CarbonService } from "../Carbons/carbon.service";
 import { createLocationInput } from "../Locations/location.repository";
-import { createLocation, getLocationByName } from "../Locations/location.service";
+import { LocationService } from "../Locations/location.service";
 
 export class WorkerCarbons{
     //metodo async que pegar uma lista de Carbons e cadastra a lista
@@ -52,25 +52,20 @@ export class WorkerCarbons{
     //metodo asyc que cadastrar cada item da lista
     private async cadastrarCarbonLocation(carbon:CreateCarbonInput, local:createLocationInput){
         const carbonService = new CarbonService();
+        const locationService  = new LocationService();
         try{
-        const Lugar= await getLocationByName(local.longitude_location, local.latitude_location)
-        if(!Lugar){
-          const l = await createLocation(local);
+        const lugar= await locationService.getLocationByName(local.longitude_location, local.latitude_location)
+        if(!lugar){
+          const l = await locationService.createLocation(local);
           carbon.id_location=l.id_location;
           console.log("Cadastrado Location");
           
         }else{
-          carbon.id_location=Lugar.id_location
+          carbon.id_location=lugar.id_location
         }
-        // Cada localização e instante têm sua própria amostra, mesmo com valores iguais.
-        const result = await carbonService.getCarbonByExits(carbon.id_location, carbon.renewable_percent_carbon, carbon.intesity_co2e_kwh_carbon);
-        if (!result) {
-          await carbonService.createCarbon(carbon);
-          console.log("Cadastrado Carbon");
-        }else{
-          await carbonService.updateCarbon(carbon);
-          console.log("Atualizado Carbon");
-        }
+        // Upsert pela chave (id_location, date_houry): preserva todo o histórico.
+        await carbonService.createCarbon(carbon);
+        console.log("Registro de carbono persistido");
       }catch(error){
         if(error instanceof Error)
           console.error(error);

@@ -102,11 +102,11 @@ export class MetricsRepository {
 ### ⚙️ Variáveis de Ambiente (`.env`)
 
 ```env
-#Variaveis de ambiente  do database
+# Credenciais de conexão do PostgreSQL (não são a conta ADMIN da aplicação)
 POSTGRES_HOST=postgres
 POSTGRES_PORT=5432
 POSTGRES_USER=greener_user
-POSTGRES_PASSWORD=greener_pass
+POSTGRES_PASSWORD=greener_pass # exemplo local; defina um segredo próprio fora do repositório
 POSTGRES_DATABASE=greener_db
 POSTGRES_PORT_CONTEINER=5433
 
@@ -141,7 +141,9 @@ Para o agregador de métricas, `METRICS_AGGREGATOR_URL` é o nome documentado; `
 
 Com o backend e o PostgreSQL locais em execução, `npm run test:auth:postgres` testa cadastro, hash armazenado, login, e-mail duplicado, alteração de senha e bloqueio de acesso a outra conta usando SQL real. Esse comando cria contas temporárias com e-mails aleatórios e remove somente essas contas ao terminar. O endereço é obtido de `PORT` no `backend/.env`, podendo ser substituído por `AUTH_TEST_BASE_URL` para outro backend local.
 
-O esquema atual de `Users` já comporta os hashes; esta restauração não exige alterar as tabelas de histórico. Contas eventualmente gravadas com senha em texto durante a regressão precisam de redefinição de senha por um processo autorizado; o login não aceita senha armazenada em texto. Não há distinção de papéis administrativos nesta etapa.
+O esquema atual de `Users` já comporta os hashes; esta restauração não exige alterar as tabelas de histórico. Contas eventualmente gravadas com senha em texto durante a regressão precisam de redefinição de senha por um processo autorizado; o login não aceita senha armazenada em texto. O JWT inclui o perfil `role_user` (`ADMIN` ou `USER`). Rotas de escrita administrativa exigem autenticação e perfil `ADMIN`; cadastros públicos recebem exclusivamente `USER`. O primeiro administrador deve ser provisionado pelo procedimento seguro descrito em `database/README.md`, sem credenciais fixas no DML.
+
+**Sobre as senhas:** `POSTGRES_PASSWORD` é somente a senha de conexão do banco. Ela não é usada no endpoint de login da aplicação. A senha do primeiro ADMIN é definida pelo operador no provisionamento, armazenada apenas como hash bcrypt e utilizada em `POST /auth/login`. Os testes unitários usam a fixture `Review-fixture-123`; o teste PostgreSQL gera senhas aleatórias a cada execução. Nenhuma dessas senhas de teste é uma senha padrão de ADMIN. Consulte `database/README.md` para o procedimento completo de provisionamento.
 
 No Compose, o backend usa `POSTGRES_HOST=postgres` e a porta interna `5432`. Ao executar o backend fora do Docker com o banco do Compose, use `127.0.0.1` e a porta publicada (`5433` no exemplo).
 

@@ -1,13 +1,13 @@
 import type { RequestHandler } from "express";
 import type { JwtPayload } from "jsonwebtoken";
 
-export const userAccessMiddleware: RequestHandler = (
-  req,
-  res,
-  next
-) => {
+export const userAccessMiddleware: RequestHandler = (req, res, next) => {
   const auth = res.locals.auth as JwtPayload | undefined;
 
+  if (auth?.role === "ADMIN") {
+    next();
+    return;
+  }
   const authenticatedUserId = Number(auth?.sub);
   const requestedUserId = Number(req.params.id_user);
 
@@ -21,6 +21,5 @@ export const userAccessMiddleware: RequestHandler = (
     });
     return;
   }
-
   next();
 };

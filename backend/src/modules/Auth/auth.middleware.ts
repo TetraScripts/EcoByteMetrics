@@ -2,11 +2,8 @@
 import type { RequestHandler } from "express";
 import jwt from "jsonwebtoken";
 
-export const authMiddleware: RequestHandler = (
-  req,
-  res,
-  next
-) => {
+export const authMiddleware: RequestHandler = (req, res, next) => {
+
   const secret = process.env.JWT_SECRET;
 
   if (!secret) {
@@ -28,6 +25,12 @@ export const authMiddleware: RequestHandler = (
 
   try {
     const payload = jwt.verify(token, secret);
+    if (typeof payload === "string" || typeof payload.sub !== "string" ||
+        !Number.isSafeInteger(Number(payload.sub)) || Number(payload.sub) <= 0 ||
+        (payload.role !== "ADMIN" && payload.role !== "USER")) {
+      res.status(401).json({ message: "Token inválido ou sem perfil de acesso." });
+      return;
+    }
 
     res.locals.auth = payload;
     next();

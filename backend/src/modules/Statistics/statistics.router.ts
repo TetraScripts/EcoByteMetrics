@@ -1,3 +1,4 @@
+import { methodNotAllowed } from "../../app";
 import {StatisticController} from "./statistics.controller";
 import {Router} from "express";
 
@@ -20,5 +21,10 @@ router.get("/energy", statistics.calculationEnergy);
 // http://localhost:3000/api/statistics/energy/billing-api
 router.get("/energy/:nome_service", statistics.calculationEnergyByUnit);
 
+
+router.all("/summary", methodNotAllowed(["GET", "HEAD", "OPTIONS"]));
+router.all("/ranking", methodNotAllowed(["GET", "HEAD", "OPTIONS"]));
+router.all("/energy", methodNotAllowed(["GET", "HEAD", "OPTIONS"]));
+router.all("/energy/:nome_service", methodNotAllowed(["GET", "HEAD", "OPTIONS"]));
 
 export default router;

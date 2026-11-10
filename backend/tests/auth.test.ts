@@ -7,9 +7,11 @@ import jwt from "jsonwebtoken";
 import pool from "../src/db/connection";
 import userRouter from "../src/modules/Users/user.router";
 import authRouter from "../src/modules/Auth/auth.router";
+import { authMiddleware } from "../src/modules/Auth/auth.middleware";
+import { adminMiddleware } from "../src/modules/Auth/admin.middleware";
 
 // SQL responses are controlled here; these tests never connect to PostgreSQL.
-type StoredUser = { id_user: number; name_user: string; email_user: string; password_user: string };
+type StoredUser = { id_user: number; name_user: string; email_user: string; password_user: string; role_user: "ADMIN" | "USER" };
 const secret = "auth-test-fixture-not-a-production-secret";
 const fixturePassword = "Review-fixture-123";
 const fixtureHash = bcrypt.hashSync(fixturePassword, 10);
@@ -45,6 +47,7 @@ before(async () => {
         id_user: id, email_user: email,
         name_user: String(values[updating ? 2 : 1]),
         password_user: String(values[updating ? 3 : 2]),
+        role_user: "USER",
       };
       users.set(id, user);
       return { rows: [publicProjection(sql, user)] };
@@ -63,6 +66,9 @@ before(async () => {
   app.use(express.json());
   app.use("/api/users", userRouter);
   app.use("/auth", authRouter);
+  app.get("/test/admin", authMiddleware, adminMiddleware, (_req, res) => {
+    res.status(200).json({ allowed: true });
+  });
   app.use((error: { status?: number }, _req: express.Request, res: express.Response, _next: express.NextFunction) => {
     res.status(error.status ?? 500).json({ message: "Falha na solicitação." });
   });
@@ -76,7 +82,7 @@ before(async () => {
 beforeEach(() => {
   users = new Map([1, 2].map(id => [id, {
     id_user: id, name_user: `User ${id}`,
-    email_user: `user${id}@example.invalid`, password_user: fixtureHash,
+    email_user: `user${id}@example.invalid`, password_user: fixtureHash, role_user: "USER",
   }]));
   queries = [];
   databaseUnavailable = false;
@@ -96,7 +102,7 @@ after(async () => {
 });
 
 function tokenFor(id: number, expiresIn = 3600) {
-  return jwt.sign({ email: `user${id}@example.invalid` }, secret, { subject: String(id), expiresIn });
+  return jwt.sign({ email: `user${id}@example.invalid`, role: "USER" }, secret, { subject: String(id), expiresIn });
 }
 
 function request(path: string, method = "GET", body?: unknown, token?: string) {
@@ -116,6 +122,30 @@ function assertPublicUser(body: Record<string, unknown>) {
   assert.deepEqual(Object.keys(body).sort(), ["email_user", "id_user", "name_user"]);
   assert(!JSON.stringify(body).includes(fixtureHash));
 }
+
+
+test("login inclui o perfil correto no JWT e somente ADMIN passa pelo middleware administrativo", async () => {
+  users.set(1, { ...users.get(1)!, role_user: "ADMIN" });
+
+  const adminLogin = await request("/auth/login", "POST", {
+    email: "user1@example.invalid", password: fixturePassword,
+  });
+  assert.equal(adminLogin.status, 200);
+  const adminSession = await adminLogin.json();
+  const adminPayload = jwt.verify(adminSession.token, secret) as jwt.JwtPayload;
+  assert.equal(adminPayload.role, "ADMIN");
+
+  const userLogin = await request("/auth/login", "POST", {
+    email: "user2@example.invalid", password: fixturePassword,
+  });
+  assert.equal(userLogin.status, 200);
+  const userSession = await userLogin.json();
+  const userPayload = jwt.verify(userSession.token, secret) as jwt.JwtPayload;
+  assert.equal(userPayload.role, "USER");
+
+  assert.equal((await request("/test/admin", "GET", undefined, adminSession.token)).status, 200);
+  assert.equal((await request("/test/admin", "GET", undefined, userSession.token)).status, 403);
+});
 
 test("cadastro protege a senha, normaliza e-mail e permite login com JWT válido", async () => {
   const password = "  Password with spaces  ";
@@ -141,6 +171,7 @@ test("cadastro protege a senha, normaliza e-mail e permite login com JWT válido
   const payload = jwt.verify(session.token, secret) as jwt.JwtPayload;
   assert.equal(payload.sub, "3");
   assert.equal(payload.email, "new@example.invalid");
+  assert.equal(payload.role, "USER");
   assert(payload.exp! > Math.floor(Date.now() / 1000));
   assert(!JSON.stringify(session).includes(password));
 });
@@ -206,6 +237,7 @@ test("cadastro e alteração validam tipos, campos e limites antes de gravar", a
     { ...input, email_user: "invalid" }, { ...input, email_user: "a".repeat(243) + "@example.com" },
     { ...input, password_user: 123 }, { ...input, password_user: "short" },
     { ...input, password_user: "a".repeat(73) }, { ...input, password_user: "á".repeat(37) },
+    { ...input, role_user: "ADMIN" }, { ...input, role: "ADMIN" },
   ];
   for (const body of invalid) {
     assert.equal((await request("/api/users", "POST", body)).status, 400);

@@ -1,55 +1,20 @@
 import {Router} from "express";
-import {
-    createMetricController,
-    getMetricByIdController,
-    listMetricsByServiceIdController,
-} from "./metric.controller";
+import {MetricController} from "./metric.controller";
+import { methodNotAllowed } from "../../app";
 import { authMiddleware } from "../Auth/auth.middleware";
+import { adminMiddleware } from "../Auth/admin.middleware";
 
 const router = Router();
+let metricController = new MetricController();
 
-router.get(
-    "/list/:id_service",
-    authMiddleware,
-    listMetricsByServiceIdController
-);
+router.get("/list/:id_service",  metricController.listMetricsByServiceIdController);
+router.post("/", authMiddleware, adminMiddleware, metricController.createMetricController);
+router.get("/:id_metric", metricController.getMetricByIdController);
 
-router.post(
-    "/",
-    authMiddleware,
-    createMetricController
-);
+router.all("/:id_metric",  methodNotAllowed(["GET", "HEAD", "OPTIONS"]));
+router.all("/", methodNotAllowed(["POST", "OPTIONS"]));
+router.all("/list/:id_service",  methodNotAllowed(["GET", "HEAD", "OPTIONS"]));
 
-router.get(
-    "/:id_metric",
-    authMiddleware,
-    getMetricByIdController
-);
-
-
-router.get("/", (req, res) => {
-    res.set("Allow", "GET, HEAD, POST, OPTIONS").status(204).end();
-});
-router.post("/:id_metric", (req, res) => {
-    res.set("Allow", "GET, HEAD, PUT, DELETE, OPTIONS").status(204).end();
-});
-router.get("/list/:id_service", (req, res) => {
-    res.set("Allow", "GET, HEAD, OPTIONS").status(204).end();
-});
-
-
-router.all("/:id_metric", (req, res) => {
-    res.set("Allow", "GET, HEAD, PUT, DELETE, OPTIONS")
-    .status(405).json({ error: "Método não permitido" });
-});
-router.all("/", (req, res) => {
-    res.set("Allow", "GET, HEAD, POST, OPTIONS")
-    .status(405).json({ error: "Método não permitido" });
-});
-router.all("/list/:id_service", (req, res) => {
-    res.set("Allow", "GET, HEAD, OPTIONS")
-    .status(405).json({ error: "Método não permitido" });
-});
 
 
 export default router;

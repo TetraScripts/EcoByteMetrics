@@ -3,11 +3,11 @@ import { ServiceMetrics } from "../../integrations/api.types.js";
 import { CarbonApiError } from "../../integrations/carbon-api.js";
 import {ServiceApiError,ServiceAPISevice} from "../../integrations/services-api.js";
 import { createLocationInput } from "../Locations/location.repository.js";
-import {createLocation, getLocationByName} from "../Locations/location.service.js";
+import {LocationError, LocationService} from "../Locations/location.service.js";
 import { CreateMetricInput } from "../Metrics/metric.repository.js";
-import { createMetricService } from "../Metrics/metric.service.js";
+import { MetricError, MetricService } from "../Metrics/metric.service.js";
 import { createServiceInput } from "../Services/service.repository.js";
-import { createService, getServiceByExist, recordCollectedServiceMetrics, updateServiceStatus} from "../Services/services.service.js";
+import {ServicesError, ServiceS, recordCollectedServiceMetrics} from "../Services/services.service.js";
 
 export class WorkerService {
 
@@ -84,35 +84,35 @@ export class WorkerService {
   }
 
   private async atualizarService(service_names: string[]){
-    await updateServiceStatus(service_names);
+    await new ServiceS().updateServiceStatus(service_names);
   }
 
   private async cadastrarServiceLocation(service: createServiceInput,local: createLocationInput, metric: CreateMetricInput, externalServiceId: string): Promise<void> {
-
-
-
-    let lugar = await getLocationByName(
+    const serviceS= new ServiceS();
+    const locationService = new LocationService();
+    const metricService = new MetricService();
+    let lugar = await locationService.getLocationByName(
       local.longitude_location,
       local.latitude_location
     );
 
     if (!lugar) {
-      lugar = await createLocation(local);
+      lugar = await locationService.createLocation(local);
       console.log("Location cadastrada");
     }
 
     service.id_location = lugar.id_location;
 
-    let servico = await getServiceByExist(service.name_service);
+    let servico = await serviceS.getServiceByExist(service.name_service);
 
     if (!servico) {
-      servico = await createService(service);
+      servico = await serviceS.createService(service);
       console.log("Service cadastrado");
     }
 
     metric.id_service = servico.id_service;
 
-    await createMetricService(metric);
+    await metricService.createMetricService(metric);
     recordCollectedServiceMetrics(externalServiceId, {
       collection_interval_seconds: metric.colletion_interval_metric,
       metrics: {

@@ -29,6 +29,8 @@ export class StatisticRepository {
 
             FROM Metrics AS m
 
+            -- INNER JOIN is only for referential integrity (a metric must belong to a service).
+            -- Carbon coverage is independent: m.carbon_intensity may be NULL and the sample remains.
             INNER JOIN Services AS s
                 ON s.id_service = m.id_service
 
@@ -159,6 +161,8 @@ export class StatisticRepository {
 
         FROM metrics m
 
+        -- INNER JOIN validates the metric owner only. The factor is the historical
+        -- snapshot stored on this metric and may legitimately be NULL.
         INNER JOIN services s
           ON s.id_service = m.id_service
 

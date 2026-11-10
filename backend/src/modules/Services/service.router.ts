@@ -1,53 +1,20 @@
 import {Router} from "express";
-import{
-    createServiceController,
-    getServiceByIdController,
-    listServiceByLocationIdController,
-    listServiceController
-}from "./service.controller"
+import{ServiceController}from "./service.controller"
 import { authMiddleware } from "../Auth/auth.middleware";
+import { adminMiddleware } from "../Auth/admin.middleware";
+import { methodNotAllowed } from "../../app";
 
 const serviceRouter = Router();
+let serviceController = new ServiceController()
 
-serviceRouter.get("/all", listServiceController);
-serviceRouter.get("/loc/:id", listServiceByLocationIdController);
-serviceRouter.post("/", authMiddleware, createServiceController);
-serviceRouter.get("/:id", getServiceByIdController);
+serviceRouter.get("/all", serviceController.listServiceController);
+serviceRouter.get("/loc/:id_location",   serviceController.listServiceByLocationIdController);
+serviceRouter.post("/", authMiddleware, adminMiddleware, serviceController.createServiceController);
+serviceRouter.get("/:id_service", serviceController.getServiceByIdController);
 
-serviceRouter.post("/loc/:id", (req, res) => {
-    res.set("Allow", "GET, HEAD, PUT, DELETE, OPTIONS").status(204).end();
-});
-
-serviceRouter.post("/all", (req, res) => {
-    res.set("Allow", "GET, HEAD, PUT, DELETE, OPTIONS").status(204).end();
-});
-serviceRouter.get("/", (req, res) => {
-    res.set("Allow", "GET, HEAD, POST, OPTIONS").status(204).end();
-});
-
-serviceRouter.post("/:id", (req, res) => {
-    res.set("Allow", "GET, HEAD, PUT, DELETE, OPTIONS").status(204).end();
-});
-
-serviceRouter.all("/loc/:id", (req, res) => {
-    res.set("Allow", "GET, HEAD, PUT, DELETE, OPTIONS")
-    .status(405).json({ error: "Método não permitido" });
-});
-
-serviceRouter.all("/all", (req, res) => {
-    res.set("Allow", "GET, HEAD, PUT, DELETE, OPTIONS")
-    .status(405).json({ error: "Método não permitido" });
-});
-serviceRouter.all("/", (req, res) => {
-    res.set("Allow", "GET, HEAD, PUT, DELETE, OPTIONS")
-    .status(405).json({ error: "Método não permitido" });
-});
-
-serviceRouter.all("/:id", (req, res) => {
-    res.set("Allow", "GET, HEAD, PUT, DELETE, OPTIONS")
-    .status(405).json({ error: "Método não permitido" });
-});
-
-
+serviceRouter.all("/all", methodNotAllowed(["GET", "HEAD", "OPTIONS"]));
+serviceRouter.all("/loc/:id_location", methodNotAllowed(["GET", "HEAD", "OPTIONS"]));
+serviceRouter.all("/", methodNotAllowed(["POST", "OPTIONS"]));
+serviceRouter.all("/:id_service", methodNotAllowed(["GET", "HEAD", "OPTIONS"]));
 
 export default serviceRouter;

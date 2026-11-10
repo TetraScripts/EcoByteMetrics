@@ -1,229 +1,134 @@
-import {
-    createUserRepository,
-    getUserByIdRepository,
-    getUserPasswordHashRepository,
-    upadateUserRepository,
-    deleteUserRepository,
-    type SafeUser,
-    type CreateUserInput,
-    type UpdateUserInput,
-    type UpdateUser
-} from "./user.repository";
-
 import bcrypt from "bcryptjs";
-import { Buffer } from "node:buffer";
+
+import {type User, type CreateUserInput, UserRepository} from "./user.repository";
 
 export class UserError extends Error {
-  constructor(
-    message: string,
-    public readonly statusCode: number
-  ) {
-    super(message);
-    this.name = "UserError";
+  constructor(message: string, public readonly statusCode: number) {
+        super(message);
+        this.statusCode = statusCode;
+        this.message = message;
+        this.name = "UserError";
   }
-}
 
-function validateUserId(id: number): void {
-  if (!Number.isSafeInteger(id) || id <= 0) {
-    throw new UserError("ID do usuário inválido", 400);
-  }
-}
-
-
-function validateUserInput(input: unknown): CreateUserInput {
-    if (
-        typeof input !== "object" ||
-        input === null ||
-        Array.isArray(input)
-    ) {
-        throw new UserError("Informe nome, e-mail e senha", 400);
+  static validateUserId(id: number): void {
+    if (!Number.isSafeInteger(id) || id <= 0) {
+      throw new UserError("ID do usuário inválido", 400);
     }
-
-    const user = input as Record<string, unknown>;
-
-    const name =
-        typeof user.name_user === "string"
-            ? user.name_user.trim()
-            : "";
-
-    const email =
-        typeof user.email_user === "string"
-            ? user.email_user.trim().toLowerCase()
-            : "";
-
-    const password = user.password_user;
-
-    if (!name || Array.from(name).length > 50) {
+  }
+  static validateUserInput(input:unknown):CreateUserInput{
+    if (typeof input !== "object" || input === null || Array.isArray(input)) {
+      throw new UserError("O corpo da requisição deve ser um objeto com nome, e-mail e senha", 400);
+    }
+    const candidate = input as Record<string, unknown>;
+    if (Object.prototype.hasOwnProperty.call(candidate, "role_user") ||
+        Object.prototype.hasOwnProperty.call(candidate, "role")) {
+      throw new UserError("O perfil do usuário é definido exclusivamente por um administrador.", 400);
+    }
+    const user = candidate as unknown as CreateUserInput;
+    
+    if (typeof user.name_user !== "string" ||!user.name_user.trim() || Array.from(user.name_user).length > 50) {
         throw new UserError("Nome inválido", 400);
     }
 
-    if (
-        !email ||
-        email.length > 254 ||
-        !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)
-    ) {
+    if (typeof user.email_user !== "string" ||!user.email_user.trim() || user.email_user.length > 254 ||
+      !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(user.email_user)) {
         throw new UserError("E-mail inválido", 400);
     }
 
-    if (
-        typeof password !== "string" ||
-        password.trim().length === 0 ||
-        Array.from(password).length < 8 ||
-        Buffer.byteLength(password, "utf8") > 72
-    ) {
-        throw new UserError(
-            "A senha deve ter pelo menos 8 caracteres e no máximo 72 bytes",
-            400
-        );
+    if (typeof user.password_user !== "string" ||user.password_user.length < 8 ||
+       new TextEncoder().encode(user.password_user).length > 72) {
+        throw new UserError("Senha inválida", 400);
     }
-
     return {
-        name_user: name,
-        email_user: email,
-        password_user: password
+      name_user: user.name_user.trim(),
+      email_user: user.email_user.trim().toLowerCase(),
+      password_user: user.password_user,
     };
-}
-
-function handleRepositoryError(error: unknown): never {
-    if (
-        typeof error === "object" &&
-        error !== null &&
-        "code" in error &&
-        error.code === "23505"
-    ) {
-        throw new UserError(
-            "Já existe um usuário com esse e-mail.",
-            409
-        );
+  }
+  static handleRepositoryError(error: unknown): never {
+    if (error instanceof UserError) {
+        throw error;
     }
+    if (typeof error === "object" && error !== null &&"code" in error &&typeof error.code === "string") {
+          switch (error.code) {
+              case "23505":
+                throw new UserError("E-mail já cadastrado.", 409);
 
-    throw error;
+              case "23503":
+                throw new UserError("Localização não encontrada.", 400);
+
+              case "23502":
+                throw new UserError("Campo obrigatório não informado.", 400);
+
+              case "23514":
+                throw new UserError("Valor fora das restrições permitidas.", 400);
+          }
+      }
+      throw error;
+  }
 }
 
-// Cadastrar usuário.
-export async function createUserService(
-    user: CreateUserInput
-): Promise<SafeUser> {
-    const data = validateUserInput(user);
+export class UserService{
+  private userRepository = new UserRepository();
+
+  async createUserService(user: unknown): Promise<User> {
+    const data = UserError.validateUserInput(user);
+    try {
+      const passwordHash = await bcrypt.hash(data.password_user, 10);
+
+      const result=  await this.userRepository.createUser({...data,password_user: passwordHash,});
+      if(!result){
+        throw new UserError("Não foi possível cadastrar usuario", 500);
+      }
+      return result;
+      
+    } catch (error) {
+      UserError.handleRepositoryError(error);
+    }
+  }
+  async getUserByIdService(id_user: number): Promise<User | null> {
+    UserError.validateUserId(id_user);
+    try{
+      const user = await this.userRepository.getUserByIdRepository(id_user);
+
+      if (!user) {
+        throw new UserError("Usuário não encontrado", 404);
+      }
+      return user;
+    }catch(error){
+      UserError.handleRepositoryError(error);
+    }
+  }
+  async updateUserService(id_user: number,input: unknown): Promise<User> {
+    UserError.validateUserId(id_user);
+
+    const data = UserError.validateUserInput(input);
 
     try {
-        const hashedPassword = await bcrypt.hash(
-            data.password_user,
-            10
-        );
+      const passwordHash = await bcrypt.hash(data.password_user, 10);
 
-        return await createUserRepository({
-            ...data,
-            password_user: hashedPassword
-        });
-    } catch (error) {
-        handleRepositoryError(error);
-    }
-}
+      const updatedUser = await this.userRepository.upadateUserRepository({id_user: id_user,...data,password_user: passwordHash,});
 
-// Buscar usuário por ID.
-export async function getUserByIdService(
-    id: number
-): Promise<SafeUser> {
-    validateUserId(id);
-
-    const user = await getUserByIdRepository(id);
-
-    if (!user) {
+      if (!updatedUser) {
         throw new UserError("Usuário não encontrado", 404);
-    }
+      }
 
-    return user;
-}
-
-// Atualizar usuário.
-export async function updateUserService(
-    user: UpdateUserInput
-): Promise<SafeUser> {
-    validateUserId(user.id_user);
-
-    const { id_user, ...input } = user;
-
-    if (
-        typeof input.name_user !== "string" ||
-        !input.name_user.trim() ||
-        Array.from(input.name_user.trim()).length > 50
-    ) {
-        throw new UserError("Nome inválido", 400);
-    }
-
-    if (
-        typeof input.email_user !== "string" ||
-        !input.email_user.trim() ||
-        input.email_user.trim().length > 254 ||
-        !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(
-            input.email_user.trim()
-        )
-    ) {
-        throw new UserError("E-mail inválido", 400);
-    }
-
-    if (
-        input.password_user !== undefined &&
-        (
-            typeof input.password_user !== "string" ||
-            !input.password_user.trim() ||
-            Array.from(input.password_user).length < 8 ||
-            Buffer.byteLength(input.password_user, "utf8") > 72
-        )
-    ) {
-        throw new UserError(
-            "A senha deve ter pelo menos 8 caracteres e no máximo 72 bytes",
-            400
-        );
-    }
-
-    try {
-        // Busca somente o hash da senha atual.
-        const currentUser =
-            await getUserPasswordHashRepository(id_user);
-
-        if (!currentUser) {
-            throw new UserError("Usuário não encontrado", 404);
-        }
-
-        // Criptografa a nova senha, se ela foi informada.
-        // Caso contrário, preserva o hash atual.
-        const passwordToSave = input.password_user !== undefined
-            ? await bcrypt.hash(input.password_user, 10)
-            : currentUser.password_user;
-
-        const updateData: UpdateUser = {
-            id_user,
-            name_user: input.name_user.trim(),
-            email_user: input.email_user.trim().toLowerCase(),
-            password_user: passwordToSave
-        };
-
-        const updatedUser =
-            await upadateUserRepository(updateData);
-
-        if (!updatedUser) {
-            throw new UserError("Usuário não encontrado", 404);
-        }
-
-        return updatedUser;
+      return updatedUser;
     } catch (error) {
-        handleRepositoryError(error);
+      UserError.handleRepositoryError(error);
     }
-}
+  }
+  async deleteUserService(id_user: number): Promise<User | null> {
+    UserError.validateUserId(id_user);
+    try{
+      const user = await this.userRepository.deleteUserRepository(id_user);
 
-// Excluir usuário.
-export async function deleteUserService(
-    id: number
-): Promise<SafeUser> {
-    validateUserId(id);
-
-    const user = await deleteUserRepository(id);
-
-    if (!user) {
+      if (!user) {
         throw new UserError("Usuário não encontrado", 404);
+      }
+      return user;
+    }catch(error){
+      UserError.handleRepositoryError(error);
     }
-
-    return user;
+  }
 }

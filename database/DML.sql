@@ -1,0 +1,7 @@
+-- Não mantenha credenciais padrão ou senhas em texto fixo no repositório.
+-- Crie o primeiro ADMIN por um processo operacional seguro, fornecendo um hash
+-- bcrypt gerado fora do SQL e armazenado em segredo de implantação.
+-- Exemplo (substitua os parâmetros via ferramenta segura, nunca com senha literal):
+-- INSERT INTO users (name_user, email_user, password_user, role_user)
+-- VALUES (:name, :email, :bcrypt_hash, 'ADMIN')
+-- ON CONFLICT (email_user) DO NOTHING;
