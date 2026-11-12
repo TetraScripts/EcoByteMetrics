@@ -353,3 +353,5 @@ Para detalhamento técnico completo e acompanhamento do projeto, consulte os arq
 * 🧮 **[Memória de Cálculo Ambiental](./docs/calculos.md):** Fórmulas e fatores de conversão em kWh e CO₂e.
 * 📄 **[Relatório da Sprint Review 1](./docs/sprints/sprint-1/sprint-1.md):** Resumo das entregas, autoavaliação e evidências da Sprint 1.
 * 📄 **[Relatório da Sprint Review 2](./docs/sprints/sprint-2/sprint-2.md):** Resumo das entregas, autoavaliação e evidências da Sprint 2.
+
+ ![EcoByteMetrics — Monitoramento energético e ambiental de software](download.gif)
