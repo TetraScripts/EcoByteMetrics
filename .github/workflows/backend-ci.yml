@@ -1,0 +1,156 @@
+name: Backend CI
+
+on:
+  pull_request:
+    branches:
+      - develop
+      - main
+  push:
+    branches:
+      - develop
+      - main
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: backend-${{ github.event.pull_request.number || github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  unit:
+    name: Backend - Build and Tests
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: backend
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v7
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v7
+        with:
+          node-version: 22
+          cache: npm
+          cache-dependency-path: backend/package-lock.json
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Build backend
+        run: npm run build
+
+      - name: Run backend unit tests
+        run: npm test
+
+  integration:
+    name: Backend - PostgreSQL Integration
+    runs-on: ubuntu-latest
+    needs: unit
+
+    services:
+      postgres:
+        image: postgres:18-alpine
+        env:
+          POSTGRES_DB: ecobytemetrics_test
+          POSTGRES_USER: ecobytemetrics
+          POSTGRES_PASSWORD: ecobytemetrics_ci
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd "pg_isready -U ecobytemetrics -d ecobytemetrics_test"
+          --health-interval 5s
+          --health-timeout 5s
+          --health-retries 10
+
+    env:
+      PORT: 3000
+      POSTGRES_HOST: 127.0.0.1
+      POSTGRES_PORT: 5432
+      POSTGRES_USER: ecobytemetrics
+      POSTGRES_PASSWORD: ecobytemetrics_ci
+      POSTGRES_DATABASE: ecobytemetrics_test
+      JWT_SECRET: ci-only-secret-not-used-outside-tests-2026
+      JWT_EXPIRES_IN: 1h
+      API_METRIC: http://127.0.0.1:9
+      API_CARBON: http://127.0.0.1:9
+      AUTH_TEST_BASE_URL: http://127.0.0.1:3000
+
+    defaults:
+      run:
+        working-directory: backend
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v7
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v7
+        with:
+          node-version: 22
+          cache: npm
+          cache-dependency-path: backend/package-lock.json
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Create database schema
+        run: |
+          node <<'NODE'
+          const { Client } = require("pg");
+          const { readFileSync } = require("node:fs");
+
+          async function main() {
+            const client = new Client({
+              host: process.env.POSTGRES_HOST,
+              port: Number(process.env.POSTGRES_PORT),
+              user: process.env.POSTGRES_USER,
+              password: process.env.POSTGRES_PASSWORD,
+              database: process.env.POSTGRES_DATABASE,
+            });
+
+            await client.connect();
+            try {
+              const ddl = readFileSync("../database/DDL.sql", "utf8");
+              await client.query(ddl);
+              console.log("Database DDL applied successfully.");
+            } finally {
+              await client.end();
+            }
+          }
+
+          main().catch((error) => {
+            console.error(error);
+            process.exit(1);
+          });
+          NODE
+
+      - name: Build backend for smoke and auth tests
+        run: npm run build
+
+      - name: Run PostgreSQL worker and history tests
+        run: |
+          npm run test:worker:postgres
+          npm run test:history:postgres
+
+      - name: Start backend and verify health endpoint
+        run: |
+          npm start > "$RUNNER_TEMP/backend.log" 2>&1 &
+          SERVER_PID=$!
+          trap 'kill "$SERVER_PID" 2>/dev/null || true' EXIT
+
+          for attempt in $(seq 1 30); do
+            if curl --fail --silent http://127.0.0.1:3000/health | grep -q '"status":"ok"'; then
+              echo "Backend health endpoint responded successfully."
+              npm run test:auth:postgres
+              exit 0
+            fi
+            sleep 2
+          done
+
+          echo "Backend did not become healthy. Server log:"
+          cat "$RUNNER_TEMP/backend.log"
+          exit 1
