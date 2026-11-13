@@ -44,10 +44,13 @@ before(async () => {
         throw Object.assign(new Error("duplicate fixture email"), { code: "23505" });
       }
       const user = {
-        id_user: id, email_user: email,
+        id_user: id,
+        email_user: email,
         name_user: String(values[updating ? 2 : 1]),
         password_user: String(values[updating ? 3 : 2]),
-        role_user: "USER",
+        role_user: updating
+          ? users.get(id)!.role_user
+          : "USER",
       };
       users.set(id, user);
       return { rows: [publicProjection(sql, user)] };
