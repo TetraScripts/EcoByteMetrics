@@ -65,6 +65,22 @@ test("worker grava datas ISO, regiões iguais e coletas posteriores com SQL real
 
     // Captura os erros para apresentar a causa real se o teste falhar.
     t.mock.method(console, "error", (...args: unknown[]) => {
+      const message = args
+        .map(arg =>
+          arg instanceof Error
+            ? `${arg.name}: ${arg.message}`
+            : String(arg)
+        )
+        .join(" ");
+
+      // Ignora avisos experimentais do Node.js.
+      if (
+        message.includes("ExperimentalWarning") ||
+        message.includes("MockTimers API is an experimental feature")
+      ) {
+        return;
+      }
+
       errors.push(args);
     });
 
