@@ -1,3 +1,4 @@
+
 import "dotenv/config";
 import assert from "node:assert/strict";
 import { randomUUID } from "node:crypto";
@@ -13,9 +14,7 @@ import type { CarbonRegion } from "../../src/integrations/api.types";
 
 test("worker grava datas ISO, regiões iguais e coletas posteriores com SQL real", async t => {
   assert(
-    ["127.0.0.1", "localhost", "::1"].includes(
-      process.env.POSTGRES_HOST ?? ""
-    ),
+    ["127.0.0.1", "localhost", "::1"].includes(process.env.POSTGRES_HOST ?? ""),
     "Use um PostgreSQL local de teste"
   );
 
@@ -37,9 +36,7 @@ test("worker grava datas ISO, regiões iguais e coletas posteriores com SQL real
   try {
     await client.query("BEGIN");
     await client.query(`CREATE SCHEMA "${schema}"`);
-    await client.query("SELECT set_config('search_path', $1, true)", [
-      schema,
-    ]);
+    await client.query("SELECT set_config('search_path', $1, true)", [schema]);
 
     await client.query(
       readFileSync(
@@ -48,11 +45,11 @@ test("worker grava datas ISO, regiões iguais e coletas posteriores com SQL real
       )
     );
 
-    // Encaminha as consultas do pool para a conexão da transação de teste.
+    // Direciona as consultas do pool para a transação real do teste.
     pool.query = client.query.bind(client) as typeof pool.query;
 
-    // Evita que repositories que usam pool.connect() abram outra conexão.
-    // BEGIN/COMMIT/ROLLBACK internos não podem encerrar a transação principal.
+    // Também direciona pool.connect() para a mesma conexão.
+    // Evita que transações internas encerrem a transação principal do teste.
     t.mock.method(pool, "connect", async () => {
       return {
         query: async (query: string, values?: unknown[]) => {
@@ -66,6 +63,7 @@ test("worker grava datas ISO, regiões iguais e coletas posteriores com SQL real
       } as unknown as PoolClient;
     });
 
+    // Captura os erros para apresentar a causa real se o teste falhar.
     t.mock.method(console, "error", (...args: unknown[]) => {
       errors.push(args);
     });
@@ -231,10 +229,32 @@ test("worker grava datas ISO, regiões iguais e coletas posteriores com SQL real
       },
     ]);
 
+    const errorDetails = errors
+      .map(args =>
+        args
+          .map(value => {
+            if (value instanceof Error) {
+              return `${value.name}: ${value.message}`;
+            }
+
+            if (typeof value === "string") {
+              return value;
+            }
+
+            try {
+              return JSON.stringify(value);
+            } catch {
+              return String(value);
+            }
+          })
+          .join(" ")
+      )
+      .join("\n");
+
     assert.equal(
       errors.length,
       0,
-      "Nenhuma falha de persistência pode ser ignorada pelo worker"
+      `Nenhuma falha de persistência pode ser ignorada pelo worker.\nErros capturados:\n${errorDetails}`
     );
   } finally {
     pool.query = originalQuery;
