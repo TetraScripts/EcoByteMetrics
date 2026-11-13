@@ -5,7 +5,7 @@
 import{Router} from "express";
 
 import{LocationController}from "./location.controller";
-import { methodNotAllowed } from "../../app";
+import { methodNotAllowed } from "../../middlewares/methodNotAllowed";
 import { authMiddleware } from "../Auth/auth.middleware";
 import { adminMiddleware } from "../Auth/admin.middleware";
 /* Criação do roteador de localizações usando o Router do Express.

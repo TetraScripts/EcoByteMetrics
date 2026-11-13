@@ -2,7 +2,7 @@ import {Router} from "express";
 import{ServiceController}from "./service.controller"
 import { authMiddleware } from "../Auth/auth.middleware";
 import { adminMiddleware } from "../Auth/admin.middleware";
-import { methodNotAllowed } from "../../app";
+import { methodNotAllowed } from "../../middlewares/methodNotAllowed";
 
 const serviceRouter = Router();
 let serviceController = new ServiceController()

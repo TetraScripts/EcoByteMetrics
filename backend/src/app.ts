@@ -43,24 +43,6 @@ const app = express();
 app.use(cors());
 app.use(express.json());
 
-// Tratamento de métodos HTTP não permitidos
-export function methodNotAllowed(allowedMethods: string[]) {
-    return (req: Request, res: Response): void => {
-
-        res.set("Allow", allowedMethods.join(", "));
-
-        if (req.method === "OPTIONS") {
-            res.status(204).end();
-            return;
-        }
-
-        res.status(405).json({
-            erro: "Método HTTP não permitido",
-            metodo: req.method,
-            metodosPermitidos: allowedMethods
-        });
-    };
-}
 // Rotas existentes da API.
 // Verifica se o backend está respondendo.
 app.use("/auth", authRouter);
@@ -68,19 +50,92 @@ app.get("/health", (_req: Request, res: Response) => {
   res.json({ status: "ok" });
 });
 
+
+// Retorna os serviços descobertos com suas coordenadas geográficas.
 app.get("/services", (_req: Request, res: Response) => {
+  const services = getDiscoveredServices().map((service) => ({
+    ...service,
+    latitude_location: service.location.latitude,
+    longitude_location: service.location.longitude,
+  }));
+
   res.json({
-    services: getDiscoveredServices(),
+    services,
     lastUpdatedAt: getServicesLastUpdatedAt(),
   });
 });
 
-// Retorna as métricas coletadas de todos os serviços.
+// Retorna as métricas coletadas com as coordenadas de cada serviço.
 app.get("/metrics", (_req: Request, res: Response) => {
+  const discoveredServices = getDiscoveredServices();
+
+  const metrics = getCollectedServiceMetrics().map((collected) => {
+    const service = discoveredServices.find(
+      (item) => item.id === collected.serviceId
+    );
+
+    return {
+      ...collected,
+      latitude_location: service?.location.latitude ?? null,
+      longitude_location: service?.location.longitude ?? null,
+    };
+  });
+
+  res.json({ metrics });
+});
+
+// Retorna as métricas individuais com as coordenadas do serviço.
+app.get("/metrics/:serviceId", (req: Request, res: Response) => {
+  const serviceId = req.params.serviceId;
+
+  if (typeof serviceId !== "string") {
+    res.status(400).json({
+      error: "Identificador de serviço inválido.",
+    });
+    return;
+  }
+
+  const serviceMetrics = getCollectedMetricsByServiceId(serviceId);
+  const failure = getCollectionFailure(serviceId);
+
+  if (failure?.reason === "missing") {
+    res.status(404).json({
+      error: "metrics_missing",
+      message: failure.message,
+      serviceId,
+    });
+    return;
+  }
+
+  if (failure?.reason === "unavailable") {
+    res.status(503).json({
+      error: "metrics_unavailable",
+      message: failure.message,
+      serviceId,
+    });
+    return;
+  }
+
+  if (!serviceMetrics) {
+    res.status(404).json({
+      error: "metrics_missing",
+      message: "O serviço ainda não forneceu métricas válidas.",
+      serviceId,
+    });
+    return;
+  }
+
+  const service = getDiscoveredServices().find(
+    (item) => item.id === serviceId
+  );
+
   res.json({
-    metrics: getCollectedServiceMetrics(),
+    ...serviceMetrics,
+    latitude_location: service?.location.latitude ?? null,
+    longitude_location: service?.location.longitude ?? null,
   });
 });
+
 
 app.use("/api/users", userRouter);
 //Rota do monitor
@@ -119,45 +174,6 @@ app.get("/api/dashboard/ranking", (req: Request, res: Response) => {
     return;
   }
   res.status(200).json(getDashboardRanking(rawPeriod, rawOrderBy));
-});
-
-app.get("/metrics", (_req: Request, res: Response) => {
-  res.json({ metrics: getCollectedServiceMetrics() });
-});
-
-app.get("/metrics/:serviceId", (req: Request, res: Response) => {
-  const serviceId = req.params.serviceId;
-  if (typeof serviceId !== "string") {
-    res.status(400).json({ error: "Identificador de serviço inválido." });
-    return;
-  }
-  const serviceMetrics = getCollectedMetricsByServiceId(serviceId);
-  const failure = getCollectionFailure(serviceId);
-  if (failure?.reason === "missing") {
-    res.status(404).json({
-      error: "metrics_missing",
-      message: failure.message,
-      serviceId,
-    });
-    return;
-  }
-  if (failure?.reason === "unavailable") {
-    res.status(503).json({
-      error: "metrics_unavailable",
-      message: failure.message,
-      serviceId,
-    });
-    return;
-  }
-  if (!serviceMetrics) {
-    res.status(404).json({
-      error: "metrics_missing",
-      message: "O serviço ainda não forneceu métricas válidas.",
-      serviceId,
-    });
-    return;
-  }
-  res.json(serviceMetrics);
 });
 
 app.use((req: Request, res: Response) => {

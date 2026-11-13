@@ -2,7 +2,7 @@ import {Router} from "express";
 import {UserController}from "./user.controller";
 import { authMiddleware } from "../Auth/auth.middleware";
 import { userAccessMiddleware } from "../Auth/userAccess.middleware";
-import { methodNotAllowed } from "../../app";
+import { methodNotAllowed } from "../../middlewares/methodNotAllowed";
 
 let userController = new UserController();
 const userRouter = Router();
