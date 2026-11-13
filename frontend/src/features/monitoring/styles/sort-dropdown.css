@@ -9,13 +9,13 @@
   align-items: center;
   gap: 8px;
   min-height: 40px;
-  padding: 6px 14px;
+  padding: 7px 18px;
   background: #ffffff;
-  border: 1px solid #d4e0d9;
+  border: 1.5px solid #00b96b;
   border-radius: 999px;
   color: var(--monitoring-ink, #103a40);
   font-family: inherit;
-  font-size: 13.5px;
+  font-size: 14px;
   cursor: pointer;
   box-shadow: 0 1px 4px rgba(16, 58, 48, 0.05);
   transition: all 0.2s cubic-bezier(0.16, 1, 0.3, 1);
@@ -23,19 +23,19 @@
 
 .monitoring-sort-trigger:hover,
 .monitoring-sort-trigger[aria-expanded="true"] {
-  background: #f7faf8;
-  border-color: #9cbca0;
-  box-shadow: 0 3px 10px rgba(16, 58, 48, 0.09);
+  background: #f7fdfa;
+  border-color: #00b96b;
+  box-shadow: 0 3px 10px rgba(0, 185, 107, 0.12);
 }
 
 .monitoring-sort-trigger:focus-visible {
-  outline: 2px solid var(--monitoring-green, #087e59);
+  outline: 2px solid #00b96b;
   outline-offset: 2px;
 }
 
 .monitoring-sort-label {
-  color: var(--monitoring-muted, #526b78);
-  font-weight: 400;
+  color: var(--monitoring-ink, #103a40);
+  font-weight: 500;
 }
 
 .monitoring-sort-current {
@@ -45,7 +45,7 @@
 }
 
 .monitoring-sort-chevron {
-  color: #557567;
+  color: var(--monitoring-ink, #103a40);
   transition: transform 0.25s cubic-bezier(0.16, 1, 0.3, 1), color 0.2s ease;
 }
 

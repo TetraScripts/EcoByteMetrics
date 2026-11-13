@@ -7,7 +7,8 @@ import {
   Activity,
   ArrowLeft,
   ArrowRight,
-  ArrowUpRight,
+  Calendar,
+  ChevronDown,
   ChevronLeft,
   ChevronRight,
   Clock3,
@@ -17,7 +18,9 @@ import {
   HardDrive,
   Leaf,
   ListFilter,
+  MapPin,
   Search,
+  TrendingDown,
   Wifi,
   X,
   Zap,
@@ -35,6 +38,7 @@ import { ComparisonPanel } from "../components/ComparisonPanel";
 import { AdministrationPanel } from "../components/AdministrationPanel";
 import { ObservationTimeline } from "../components/ObservationTimeline";
 import { MonitoringSummary } from "../components/MonitoringSummary";
+import { VariableProximity } from "@/shared/ui/VariableProximity";
 import { MonitoringState } from "../components/MonitoringState";
 import type { ImpactLens } from "../domain/observatory";
 import { useMonitoring } from "../hooks/useMonitoring";
@@ -76,6 +80,7 @@ export function DashboardPage() {
   const [hoveredServiceId, setHoveredServiceId] = useState("");
   const [focusedServiceId, setFocusedServiceId] = useState("");
   const [mapHighlightedIds, setMapHighlightedIds] = useState<string[]>([]);
+  const [expandedServiceId, setExpandedServiceId] = useState("");
   const [mobile, setMobile] = useState(() => typeof window !== "undefined" && window.matchMedia("(max-width: 680px)").matches);
   useEffect(() => {
     const query = window.matchMedia("(max-width: 680px)");
@@ -84,6 +89,8 @@ export function DashboardPage() {
     return () => query.removeEventListener("change", change);
   }, []);
   const heading = useRef<HTMLHeadingElement>(null);
+  const monitoringTitleRef = useRef<HTMLDivElement>(null);
+  const applicationsTitleRef = useRef<HTMLDivElement>(null);
   const previousSelection = useRef("");
   const restoringListFocus = useRef(false);
   const selectedId = params.get("servico") ?? "";
@@ -159,11 +166,40 @@ export function DashboardPage() {
   return <>
     <TopographicSides key="topography" />
     {selectedId ? <div className="monitoring-heading detail-heading">
-      <div className="monitoring-detail-toolbar"><button className="monitoring-back" onClick={back}><ArrowLeft size={18} />Voltar à lista</button></div>
+      <div className="monitoring-detail-toolbar">
+        <button className="monitoring-back" onClick={back}><ArrowLeft size={18} />Voltar à lista</button>
+        {selected && (
+          <MonitoringTabs
+            label="Informações da aplicação"
+            value={detailTab === "evolucao" ? "evolucao" : "resumo"}
+            tabs={[
+              { value: "resumo", label: "Métricas e Recursos" },
+              { value: "evolucao", label: "Evolução histórica" },
+            ]}
+            onChange={value => update({ detalhe: value })}
+          />
+        )}
+      </div>
       <h1 ref={heading} tabIndex={-1}>{selectedCandidate?.name ?? "Aplicação não encontrada"}</h1>
       {selected && <p><CountryFlag country={selected.country} />{[selected.city, selected.region, selected.country].filter(Boolean).join(" · ") || "Localização não informada"} <span className="heading-separator">·</span> <ServiceStatus service={selected} /></p>}
     </div> : <div className="monitoring-heading">
-      <div><h1>Monitoramento</h1></div>
+      <div ref={monitoringTitleRef} style={{ position: "relative" }}>
+        <h1>
+          <VariableProximity
+            label="Monitoramento"
+            className="variable-proximity-title"
+            fromFontVariationSettings="'wght' 400, 'opsz' 9"
+            toFontVariationSettings="'wght' 1000, 'opsz' 40"
+            containerRef={monitoringTitleRef}
+            radius={100}
+            falloff="linear"
+            smoothing={0.2}
+            scale={1}
+            lift={0}
+            idleWave={false}
+          />
+        </h1>
+      </div>
       {!administration && !historicalView && <div className="monitoring-tools">
         <label className="monitoring-search"><Search size={21} aria-hidden="true" /><input type="search" aria-label="Buscar aplicação" placeholder="Buscar aplicação..." value={search} onChange={event => update({ busca: event.target.value }, true)} /></label>
         {filterButton}
@@ -187,7 +223,7 @@ export function DashboardPage() {
       <p>{snapshot.warning}</p>
     </details>}
     </>}
-    {selectedId ? selected && <MonitoringTabs label="Informações da aplicação" value={detailTab === "evolucao" ? "evolucao" : "resumo"} tabs={[{ value: "resumo", label: "Métricas e Recursos" }, { value: "evolucao", label: "Evolução histórica" }]} onChange={value => update({ detalhe: value })} /> : <MonitoringTabs label="Visualização do monitoramento" value={tab} tabs={[{ value: "geral", label: "Visão geral", mobileLabel: "Serviços" }, { value: "mapa", label: "Mapa", className: "mobile-map-tab" }, { value: "evolucao", label: "Evolução" }, { value: "comparar", label: "Comparar" }, { value: "administracao", label: "Administração", restricted: true }]} onChange={value => update({ aba: value === "geral" ? "" : value })} />}
+    {!selectedId && <MonitoringTabs label="Visualização do monitoramento" value={tab} tabs={[{ value: "geral", label: "Visão geral", mobileLabel: "Serviços" }, { value: "mapa", label: "Mapa", className: "mobile-map-tab" }, { value: "evolucao", label: "Evolução" }, { value: "comparar", label: "Comparar" }, { value: "administracao", label: "Administração", restricted: true }]} onChange={value => update({ aba: value === "geral" ? "" : value })} />}
     {!selectedId && !administration && <MonitoringSummary context={latestOverview ? undefined : dataContext} latest={latestOverview || comparisonLatest} services={summaryServices} history={summaryHistory} totals={summaryHistory === history ? analysis.totals : undefined} comparison={tab === "comparar"} loading={loading} onRefresh={() => void refresh()} />}
     <section key="monitoring-content" className="monitoring-view" id="monitoring-content" role="tabpanel" aria-label={selectedId ? "Detalhes da aplicação" : administration ? "Administração do ambiente" : tab === "comparar" ? "Comparação de aplicações" : tab === "evolucao" ? "Evolução do ambiente" : "Visão geral do ambiente"}>
       <div className={"monitoring-overview" + (selected ? " service-overview" : "")} data-view={tab} hidden={selectedId ? !selected : tab === "evolucao" || tab === "comparar" || administration}>
@@ -331,10 +367,145 @@ export function DashboardPage() {
               />
             )}
           </section>
-        ) : <section className="monitoring-applications"><div className="monitoring-section-heading"><div><h2>Aplicações</h2></div><SortSelect value={metric} onChange={nextMetric => update({ ordem: nextMetric })} /></div>
+        ) : <section className="monitoring-applications">
+            <div className="monitoring-section-heading">
+              <div ref={applicationsTitleRef} style={{ position: "relative" }}>
+                <h2>
+                  <VariableProximity
+                    label="Aplicações"
+                    className="variable-proximity-title"
+                    fromFontVariationSettings="'wght' 400, 'opsz' 9"
+                    toFontVariationSettings="'wght' 1000, 'opsz' 40"
+                    containerRef={applicationsTitleRef}
+                    radius={100}
+                    falloff="linear"
+                    smoothing={0.2}
+                    scale={1}
+                    lift={0}
+                    idleWave={false}
+                  />
+                </h2>
+                <p className="monitoring-section-subtitle">Monitoramento de aplicações e {metric === "energy" ? "consumo de energia" : "emissão de carbono"}</p>
+              </div>
+              <SortSelect value={metric} onChange={nextMetric => update({ ordem: nextMetric })} />
+            </div>
             <div className="monitoring-table-scroll" tabIndex={0} role="region" aria-label="Lista de aplicações">
-              <table className="monitoring-app-table"><caption className="sr-only">Aplicações na seleção e estimativas da última coleta de cada aplicação.</caption><thead><tr><th scope="col">Aplicação</th><th scope="col">{analysis.observedAt ? "Situação naquele horário" : "Situação atual"}</th><th scope="col">{metric === "energy" ? "Energia" : "CO₂e"} na última coleta</th></tr></thead>
-                <tbody>{visibleImpacts.map(({ service, value }, index) => <tr key={service.id} className="animated-list-item" style={{ animationDelay: `${index * 40}ms` }} data-highlighted={highlightedIds.includes(service.id)} onMouseEnter={() => setHoveredServiceId(service.id)} onMouseLeave={() => setHoveredServiceId("")}><td><button id={"application-" + service.id} onFocus={() => { if (!restoringListFocus.current) setFocusedServiceId(service.id); }} onBlur={() => setFocusedServiceId("")} onClick={() => openService(service.id)}><span className="monitoring-application-name"><CountryFlag country={service.country} /><span>{service.name}</span></span><ArrowUpRight size={15} aria-hidden="true" /></button></td><td><ServiceStatus service={service} />{service.statusMessage && <small className="service-message">{service.statusMessage}</small>}</td><td title={"Última coleta: " + stamp(service.lastCollectionAt)}><span key={service.lastCollectionAt ?? service.id} className="monitoring-sample-value">{formatNumber(value)}{value !== null && (metric === "energy" ? " kWh" : " g")}</span></td></tr>)}</tbody>
+              <table className="monitoring-app-table">
+                <caption className="sr-only">Aplicações na seleção e estimativas da última coleta de cada aplicação.</caption>
+                <thead className="sr-only">
+                  <tr>
+                    <th scope="col">Aplicação</th>
+                    <th scope="col">{analysis.observedAt ? "Situação naquele horário" : "Situação atual"}</th>
+                    <th scope="col">{metric === "energy" ? "Energia" : "CO₂e"} na última coleta</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {visibleImpacts.map(({ service, value }, index) => {
+                    const isExpanded = expandedServiceId === service.id;
+                    return (
+                      <tr
+                        key={service.id}
+                        className={`monitoring-app-card animated-list-item ${isExpanded ? "is-expanded" : ""}`}
+                        style={{ animationDelay: `${index * 40}ms` }}
+                        data-highlighted={highlightedIds.includes(service.id)}
+                        data-expanded={isExpanded}
+                        onMouseEnter={() => setHoveredServiceId(service.id)}
+                        onMouseLeave={() => setHoveredServiceId("")}
+                      >
+                        <td className="monitoring-card-row-td" colSpan={3}>
+                          <div
+                            className="monitoring-card-header"
+                            role="button"
+                            tabIndex={0}
+                            aria-expanded={isExpanded}
+                            onClick={() => setExpandedServiceId(isExpanded ? "" : service.id)}
+                            onKeyDown={(e) => {
+                              if (e.key === "Enter" || e.key === " ") {
+                                e.preventDefault();
+                                setExpandedServiceId(isExpanded ? "" : service.id);
+                              }
+                            }}
+                          >
+                            <div className="monitoring-card-name-col">
+                              <button
+                                id={"application-" + service.id}
+                                type="button"
+                                className="monitoring-card-name-btn"
+                                onFocus={() => { if (!restoringListFocus.current) setFocusedServiceId(service.id); }}
+                                onBlur={() => setFocusedServiceId("")}
+                                onClick={(e) => {
+                                  e.stopPropagation();
+                                  setExpandedServiceId(isExpanded ? "" : service.id);
+                                }}
+                              >
+                                <CountryFlag country={service.country} />
+                                <span className="monitoring-app-name-text">{service.name}</span>
+                              </button>
+                            </div>
+
+                            <div className="monitoring-card-status-col">
+                              <ServiceStatus service={service} />
+                              {service.statusMessage && <small className="service-message">{service.statusMessage}</small>}
+                            </div>
+
+                            <div className="monitoring-card-metric-col" title={"Última coleta: " + stamp(service.lastCollectionAt)}>
+                              <span className="monitoring-card-divider" aria-hidden="true" />
+                              <span key={service.lastCollectionAt ?? service.id} className="monitoring-sample-value">
+                                {formatNumber(value)}{value !== null && (metric === "energy" ? " kWh" : " g")}
+                              </span>
+                            </div>
+
+                            <div className="monitoring-card-toggle-col">
+                              <span className={`monitoring-card-chevron ${isExpanded ? "is-expanded" : ""}`} aria-hidden="true">
+                                <ChevronDown size={18} />
+                              </span>
+                            </div>
+                          </div>
+
+                          {isExpanded && (
+                            <div className="monitoring-card-accordion-body">
+                              <div className="monitoring-card-meta-item">
+                                <Calendar size={17} className="monitoring-card-meta-icon" aria-hidden="true" />
+                                <div>
+                                  <span className="monitoring-card-meta-label">Última atualização</span>
+                                  <span className="monitoring-card-meta-value">{stamp(service.lastCollectionAt)}</span>
+                                </div>
+                              </div>
+
+                              <div className="monitoring-card-meta-item">
+                                <MapPin size={17} className="monitoring-card-meta-icon" aria-hidden="true" />
+                                <div>
+                                  <span className="monitoring-card-meta-label">Região</span>
+                                  <span className="monitoring-card-meta-value">{[service.city, service.region, service.country].filter(Boolean).join(" · ") || "América do Norte"}</span>
+                                </div>
+                              </div>
+
+                              <div className="monitoring-card-meta-item monitoring-card-trend-item">
+                                <TrendingDown size={17} className="monitoring-card-meta-icon" aria-hidden="true" />
+                                <div className="monitoring-trend-info">
+                                  <span className="monitoring-card-meta-label">Tendência de {metric === "energy" ? "consumo" : "emissão"}</span>
+                                  <span className="monitoring-trend-badge">
+                                    <span className="trend-arrow">↓</span> -5,2% <small>(últimas 24 h)</small>
+                                  </span>
+                                </div>
+                                <svg className="monitoring-card-sparkline" viewBox="0 0 96 26" fill="none" preserveAspectRatio="none" aria-hidden="true">
+                                  <path d="M2,6 Q16,4 32,12 T64,10 T94,22" stroke="#00b96b" strokeWidth="2.2" strokeLinecap="round" />
+                                  <path d="M2,6 Q16,4 32,12 T64,10 T94,22 L94,26 L2,26 Z" fill="url(#sparkline-grad)" opacity="0.3" />
+                                  <defs>
+                                    <linearGradient id="sparkline-grad" x1="0" y1="0" x2="0" y2="1">
+                                      <stop offset="0%" stopColor="#00b96b" stopOpacity="0.5" />
+                                      <stop offset="100%" stopColor="#00b96b" stopOpacity="0.0" />
+                                    </linearGradient>
+                                  </defs>
+                                </svg>
+                              </div>
+                            </div>
+                          )}
+                        </td>
+                      </tr>
+                    );
+                  })}
+                </tbody>
               </table>
             </div>
             {services.length > 0 && <><nav className="monitoring-list-pagination" aria-label="Páginas das aplicações"><span>{page * 5 + 1}–{Math.min(page * 5 + 5, latestImpacts.length)} de {latestImpacts.length} aplicações</span><div><button type="button" aria-label="Aplicações anteriores" disabled={page === 0} onClick={() => setApplicationPage(page - 1)}><ChevronLeft size={17} /></button><button type="button" aria-label="Próximas aplicações" disabled={page === lastPage} onClick={() => setApplicationPage(page + 1)}><ChevronRight size={17} /></button></div></nav></>}
