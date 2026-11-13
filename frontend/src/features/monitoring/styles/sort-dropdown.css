@@ -1,31 +1,38 @@
-/* Custom Modern Sort Dropdown */
+/* Custom Minimalist Indicator Dropdown */
 .monitoring-sort-wrapper {
   position: relative;
-  display: inline-block;
+  display: inline-flex;
+  align-items: center;
 }
 
 .monitoring-sort-trigger {
   display: inline-flex;
   align-items: center;
-  gap: 8px;
-  min-height: 40px;
-  padding: 7px 18px;
+  justify-content: center;
+  width: 36px;
+  height: 36px;
+  padding: 0;
   background: #ffffff;
   border: 1.5px solid #00b96b;
-  border-radius: 999px;
-  color: var(--monitoring-ink, #103a40);
-  font-family: inherit;
-  font-size: 14px;
+  border-radius: 9999px;
+  color: #00875a;
   cursor: pointer;
   box-shadow: 0 1px 4px rgba(16, 58, 48, 0.05);
   transition: all 0.2s cubic-bezier(0.16, 1, 0.3, 1);
+  outline: none;
 }
 
 .monitoring-sort-trigger:hover,
 .monitoring-sort-trigger[aria-expanded="true"] {
-  background: #f7fdfa;
+  background: #f0fbf5;
   border-color: #00b96b;
-  box-shadow: 0 3px 10px rgba(0, 185, 107, 0.12);
+  color: #00b96b;
+  box-shadow: 0 0 10px rgba(0, 185, 107, 0.22), 0 2px 6px rgba(0, 0, 0, 0.04);
+  transform: translateY(-1px);
+}
+
+.monitoring-sort-trigger:active {
+  transform: translateY(0);
 }
 
 .monitoring-sort-trigger:focus-visible {
@@ -33,49 +40,27 @@
   outline-offset: 2px;
 }
 
-.monitoring-sort-label {
-  color: var(--monitoring-ink, #103a40);
-  font-weight: 500;
-}
-
-.monitoring-sort-current {
-  color: var(--monitoring-ink, #103a40);
-  font-weight: 700;
-  letter-spacing: -0.01em;
-}
-
-.monitoring-sort-chevron {
-  color: var(--monitoring-ink, #103a40);
-  transition: transform 0.25s cubic-bezier(0.16, 1, 0.3, 1), color 0.2s ease;
-}
-
-.monitoring-sort-chevron.is-open {
-  transform: rotate(180deg);
-  color: var(--monitoring-green, #087e59);
-}
-
 /* Dropdown Popup */
 .monitoring-sort-popup {
   position: absolute;
-  top: calc(100% + 8px);
+  top: calc(100% + 6px);
   right: 0;
   z-index: 100;
-  min-width: 200px;
+  min-width: 124px;
   margin: 0;
-  padding: 6px;
-  list-style: none;
+  padding: 4px;
   background: #ffffff;
-  border: 1px solid #dbe7df;
-  border-radius: 14px;
-  box-shadow: 0 14px 36px -4px rgba(16, 58, 48, 0.16), 0 4px 14px -2px rgba(16, 58, 48, 0.06);
-  animation: sortPopupIn 0.18s cubic-bezier(0.16, 1, 0.3, 1);
+  border: 1px solid #d4ede0;
+  border-radius: 12px;
+  box-shadow: 0 10px 26px -4px rgba(3, 43, 30, 0.12), 0 2px 6px rgba(0, 0, 0, 0.04);
+  animation: sortPopupIn 0.16s cubic-bezier(0.16, 1, 0.3, 1);
   transform-origin: top right;
 }
 
 @keyframes sortPopupIn {
   from {
     opacity: 0;
-    transform: translateY(-6px) scale(0.97);
+    transform: translateY(-4px) scale(0.96);
   }
   to {
     opacity: 1;
@@ -86,88 +71,54 @@
 .monitoring-sort-option {
   display: flex;
   align-items: center;
-  gap: 11px;
-  padding: 9px 12px;
-  border-radius: 10px;
+  gap: 8px;
+  width: 100%;
+  padding: 7px 10px;
+  border: none;
+  background: transparent;
+  border-radius: 8px;
   cursor: pointer;
-  color: var(--monitoring-ink, #103a40);
-  font-size: 13.5px;
-  transition: all 0.15s ease;
+  color: #032b1e;
+  font-family: inherit;
+  font-size: 13px;
+  font-weight: 550;
+  text-align: left;
   user-select: none;
   outline: none;
+  transition: background 0.15s ease, color 0.15s ease;
 }
 
 .monitoring-sort-option:hover,
 .monitoring-sort-option:focus-visible {
-  background: #edf6f0;
-  color: var(--monitoring-green, #087e59);
-}
-
-.monitoring-sort-option.is-selected {
-  background: #e4f3ea;
-  color: #0b4532;
-  font-weight: 600;
+  background: #e8f8ef;
+  color: #00875a;
 }
 
 .monitoring-sort-option-icon {
-  display: grid;
-  place-items: center;
-  width: 30px;
-  height: 30px;
-  border-radius: 8px;
-  background: #f0f5f2;
-  color: #2b604e;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  color: #00b96b;
   flex-shrink: 0;
-  transition: background 0.15s, color 0.15s, box-shadow 0.15s;
+  transition: color 0.15s ease;
 }
 
 .monitoring-sort-option:hover .monitoring-sort-option-icon,
-.monitoring-sort-option.is-selected .monitoring-sort-option-icon {
-  background: #ffffff;
-  color: var(--monitoring-green, #087e59);
-  box-shadow: 0 1px 4px rgba(16, 58, 48, 0.08);
-}
-
-.monitoring-sort-option-text {
-  display: flex;
-  flex-direction: column;
-  flex: 1;
-  min-width: 0;
+.monitoring-sort-option:focus-visible .monitoring-sort-option-icon {
+  color: #00875a;
 }
 
 .monitoring-sort-option-title {
-  font-size: 13.5px;
-  line-height: 1.25;
-}
-
-.monitoring-sort-option-unit {
-  font-size: 11px;
-  color: #6d8a7c;
-  font-weight: 400;
-}
-
-.monitoring-sort-option.is-selected .monitoring-sort-option-unit {
-  color: #17684b;
-}
-
-.monitoring-sort-option-check {
-  color: var(--monitoring-green, #087e59);
-  flex-shrink: 0;
-  margin-left: 4px;
-}
-
-@media (max-width: 680px) {
-  .monitoring-sort-trigger {
-    min-height: 44px;
-    padding: 5px 11px;
-    font-size: 12px;
-  }
-  .monitoring-sort-popup {
-    min-width: 180px;
-  }
+  color: inherit;
+  letter-spacing: -0.01em;
 }
 
 @media (prefers-reduced-motion: reduce) {
-  .monitoring-sort-popup { animation: none; }
-  .monitoring-sort-trigger, .monitoring-sort-chevron, .monitoring-sort-option, .monitoring-sort-option-icon { transition: none; }
+  .monitoring-sort-popup {
+    animation: none;
+  }
+  .monitoring-sort-trigger,
+  .monitoring-sort-option {
+    transition: none;
+  }
 }
