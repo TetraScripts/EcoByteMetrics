@@ -9,14 +9,9 @@ function requireHistoryAuth(
   res: Response,
   next: NextFunction
 ): void {
-  // A última coleta é pública.
-  if (req.query.view === "latest") {
-    next();
-    return;
-  }
-
-  // As consultas utilizadas pela Evolução e Comparação são públicas.
-  if (req.query.view === "analysis") {
+  // A última coleta e as consultas de análise (ou consultas padrão sem view) são públicas.
+  // Somente a visualização explícita de histórico detalhado exige autenticação.
+  if (req.query.view !== "history") {
     next();
     return;
   }

@@ -261,8 +261,12 @@ function WorldGlobe({
     if (!ready || !globe.current) return;
     const controls = globe.current.controls();
     controls.enablePan = false;
-    controls.minDistance = 115;
-    controls.maxDistance = 500;
+    controls.minDistance = 125;
+    controls.maxDistance = 450;
+    controls.zoomSpeed = 0.75;
+    controls.rotateSpeed = 0.8;
+    controls.enableDamping = true;
+    controls.dampingFactor = 0.08;
     const layoutChanged = cameraCompact.current !== viewport.compact;
     cameraCompact.current = viewport.compact;
     const duration =

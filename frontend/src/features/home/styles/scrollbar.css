@@ -1,0 +1,111 @@
+/* Barra de rolagem suave e interativa na página inicial */
+
+html:has(.ecobyte-home),
+html.has-custom-scrollbar {
+  scrollbar-width: none; /* Firefox */
+  -ms-overflow-style: none; /* IE e Edge */
+}
+
+html:has(.ecobyte-home)::-webkit-scrollbar,
+html.has-custom-scrollbar::-webkit-scrollbar {
+  display: none;
+  width: 0;
+  height: 0;
+}
+
+/* Área de gatilho e container da barra de rolagem flutuante */
+.home-scrollbar-container {
+  position: fixed;
+  top: 0;
+  right: 0;
+  bottom: 0;
+  width: 28px;
+  z-index: 9999;
+  display: flex;
+  justify-content: flex-end;
+  padding-right: 4px;
+  pointer-events: auto;
+  user-select: none;
+  -webkit-user-select: none;
+}
+
+/* Trilho da barra */
+.home-scrollbar-track {
+  position: relative;
+  width: 8px;
+  height: 100%;
+  border-radius: 9999px;
+  background: transparent;
+  transition: background-color 0.25s ease;
+}
+
+.home-scrollbar-container:hover .home-scrollbar-track,
+.home-scrollbar-container.is-dragging .home-scrollbar-track {
+  background: rgba(8, 125, 98, 0.06);
+}
+
+/* Cursor / Polegar (Thumb) com animação suave de entrada e saída */
+.home-scrollbar-thumb {
+  position: absolute;
+  top: 0;
+  left: 0;
+  width: 8px;
+  border-radius: 9999px;
+  background: var(--eb-green, #087d62);
+  opacity: 0;
+  transform: translateX(8px) scaleX(0.7);
+  transition:
+    opacity 0.32s cubic-bezier(0.16, 1, 0.3, 1),
+    transform 0.32s cubic-bezier(0.16, 1, 0.3, 1),
+    background-color 0.2s ease,
+    width 0.2s ease;
+  cursor: grab;
+  will-change: transform, opacity;
+  box-shadow: 0 1px 4px rgba(8, 47, 53, 0.2);
+}
+
+.home-scrollbar-thumb:hover {
+  background: #066952;
+}
+
+.home-scrollbar-thumb:active,
+.home-scrollbar-container.is-dragging .home-scrollbar-thumb {
+  cursor: grabbing;
+  background: #055542;
+  box-shadow: 0 2px 8px rgba(8, 47, 53, 0.35);
+  transform: translateX(0) scaleX(1.1);
+}
+
+/* Estado visível ao encostar o mouse no canto direito ou durante rolagem */
+.home-scrollbar-container.is-visible .home-scrollbar-thumb {
+  opacity: 0.85;
+  transform: translateX(0) scaleX(1);
+}
+
+.home-scrollbar-container.is-visible:hover .home-scrollbar-thumb,
+.home-scrollbar-container.is-dragging .home-scrollbar-thumb {
+  opacity: 1;
+}
+
+/* Acessibilidade: Desabilita transições para preferências de movimento reduzido */
+@media (prefers-reduced-motion: reduce) {
+  .home-scrollbar-thumb {
+    transition: none !important;
+  }
+}
+
+/* Dispositivos móveis sem ponteiro fino (touch): restaura rolagem nativa */
+@media (hover: none) and (pointer: coarse) {
+  .home-scrollbar-container {
+    display: none;
+  }
+  html:has(.ecobyte-home),
+  html.has-custom-scrollbar {
+    scrollbar-width: auto;
+  }
+  html:has(.ecobyte-home)::-webkit-scrollbar,
+  html.has-custom-scrollbar::-webkit-scrollbar {
+    display: block;
+    width: 6px;
+  }
+}

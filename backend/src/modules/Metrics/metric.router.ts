@@ -1,6 +1,6 @@
 import {Router} from "express";
 import {MetricController} from "./metric.controller";
-import { methodNotAllowed } from "../../app";
+import { methodNotAllowed } from "../../middlewares/methodNotAllowed.js";
 import { authMiddleware } from "../Auth/auth.middleware";
 import { adminMiddleware } from "../Auth/admin.middleware";
 

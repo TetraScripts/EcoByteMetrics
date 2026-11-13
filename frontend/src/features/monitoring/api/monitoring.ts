@@ -87,7 +87,7 @@ export async function getMonitoringSnapshot(
     params.set("view", "latest");
   } else if (options.protectedHistory === true) {
     params.set("view", "history");
-  } else {
+  } else if (options.includeHistory === undefined) {
     params.set("view", "analysis");
   }
 

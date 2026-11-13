@@ -26,22 +26,23 @@ export class UserError extends Error {
     }
     const user = candidate as unknown as CreateUserInput;
     
-    if (typeof user.name_user !== "string" ||!user.name_user.trim() || Array.from(user.name_user).length > 50) {
+    const trimmedName = typeof user.name_user === "string" ? user.name_user.trim() : "";
+    if (!trimmedName || Array.from(trimmedName).length > 50) {
         throw new UserError("Nome inválido", 400);
     }
 
-    if (typeof user.email_user !== "string" ||!user.email_user.trim() || user.email_user.length > 254 ||
-      !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(user.email_user)) {
+    const trimmedEmail = typeof user.email_user === "string" ? user.email_user.trim().toLowerCase() : "";
+    if (!trimmedEmail || trimmedEmail.length > 254 || !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(trimmedEmail)) {
         throw new UserError("E-mail inválido", 400);
     }
 
-    if (typeof user.password_user !== "string" ||user.password_user.length < 8 ||
+    if (typeof user.password_user !== "string" || user.password_user.length < 8 ||
        new TextEncoder().encode(user.password_user).length > 72) {
         throw new UserError("Senha inválida", 400);
     }
     return {
-      name_user: user.name_user.trim(),
-      email_user: user.email_user.trim().toLowerCase(),
+      name_user: trimmedName,
+      email_user: trimmedEmail,
       password_user: user.password_user,
     };
   }
@@ -52,7 +53,7 @@ export class UserError extends Error {
     if (typeof error === "object" && error !== null &&"code" in error &&typeof error.code === "string") {
           switch (error.code) {
               case "23505":
-                throw new UserError("E-mail já cadastrado.", 409);
+                throw new UserError("e-mail já cadastrado.", 409);
 
               case "23503":
                 throw new UserError("Localização não encontrada.", 400);

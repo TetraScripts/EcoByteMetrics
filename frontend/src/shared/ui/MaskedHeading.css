@@ -1,0 +1,46 @@
+.masked-heading {
+  margin: var(--eb-space-6, 24px) 0 0;
+  font-size: var(--eb-text-display, clamp(2.5rem, 6vw, 4.5rem));
+  font-weight: 500;
+  line-height: 1.1;
+  letter-spacing: -0.045em;
+  position: relative;
+  cursor: default;
+
+  background: radial-gradient(
+      600px circle at var(--mouse-x, 50%) var(--mouse-y, 50%),
+      rgba(255, 255, 255, 1) 0%,
+      rgba(220, 252, 231, 0.96) 28%,
+      rgba(134, 239, 172, 0.88) 55%,
+      rgba(240, 253, 244, 0.92) 100%
+    ),
+    linear-gradient(135deg, #ffffff 0%, #86efac 50%, #ffffff 100%);
+  background-size: 180% 180%, 100% 100%;
+  -webkit-background-clip: text;
+  background-clip: text;
+  -webkit-text-fill-color: transparent;
+  color: transparent;
+}
+
+.masked-heading__line {
+  display: block;
+  overflow: hidden;
+  padding-bottom: 0.09em;
+  margin-bottom: -0.04em;
+}
+
+.masked-heading__line > span {
+  display: block;
+  animation: homeTitle 1000ms cubic-bezier(0.16, 1, 0.3, 1) backwards;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .masked-heading {
+    background: none !important;
+    -webkit-text-fill-color: initial !important;
+    color: var(--eb-ink, #ffffff) !important;
+  }
+  .masked-heading__line > span {
+    animation: none !important;
+  }
+}

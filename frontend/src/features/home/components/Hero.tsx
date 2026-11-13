@@ -14,6 +14,8 @@ import fourthMobile from "@/shared/assets/videos/landscape-12097119-mobile.mp4";
 import fourthPoster from "@/shared/assets/videos/landscape-12097119.jpg";
 import { HeroVideo } from "./HeroVideo";
 import { useCarousel } from "@/features/home/hooks/useCarousel";
+import { BlurText } from "@/shared/ui/BlurText";
+import { MaskedHeading } from "@/shared/ui/MaskedHeading";
 
 interface HeroProps {
   copy: {
@@ -44,12 +46,8 @@ export function Hero({ copy }: HeroProps) {
       <div className="hero__light" aria-hidden="true" />
       <div className="hero__content">
         <div className="hero-copy">
-          <h1 aria-label={[copy.line1, copy.line2, copy.line3].join(" ")}>
-            {[copy.line1, copy.line2, copy.line3].map((line, i) => (
-              <span className="hero-line" key={line} aria-hidden="true"><span style={{ animationDelay: `${160 + i * 120}ms` }}>{line}</span></span>
-            ))}
-          </h1>
-          <p className="hero-description">{copy.description}</p>
+          <MaskedHeading lines={[copy.line1, copy.line2, copy.line3]} />
+          <p className="hero-description"><BlurText text={copy.description} delay={35} /></p>
           <div className="hero-copy__actions">
             <DashboardLink className="hero-border-button">
               <svg viewBox="0 0 290 60" preserveAspectRatio="none" aria-hidden="true" focusable="false">

@@ -4,12 +4,14 @@ import { Hero } from "@/features/home/components/Hero";
 import { ImpactJourney } from "./components/ImpactJourney";
 import { MonitoringOverview } from "./components/MonitoringOverview";
 import { HomeSound } from "./components/HomeSound";
+import { HomeScrollbar } from "./components/HomeScrollbar";
 import { useHomeReveal } from "./hooks/useHomeReveal";
 import { content } from "@/features/home/data/content";
 import "@/features/home/styles/hero.css";
 import "@/features/home/styles/first-fold.css";
 import "./styles/impact-story.css";
 import "./styles/closing.css";
+import "./styles/scrollbar.css";
 
 export function HomePage() {
   const copy = content.pt;
@@ -28,6 +30,7 @@ export function HomePage() {
         <HomeClosing />
       </main>
       <HomeSound />
+      <HomeScrollbar />
     </div>
   );
 }

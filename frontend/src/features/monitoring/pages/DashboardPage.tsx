@@ -1,8 +1,27 @@
 import "../styles/map.css";
 import "../styles/dashboard.css";
 import "../styles/dashboard-clarity.css";
+import "@/shared/ui/AnimatedList.css";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
-import { ArrowLeft, ArrowUpRight, ChevronLeft, ChevronRight, Clock3, ListFilter, Search, X } from "lucide-react";
+import {
+  Activity,
+  ArrowLeft,
+  ArrowRight,
+  ArrowUpRight,
+  ChevronLeft,
+  ChevronRight,
+  Clock3,
+  Cpu,
+  Gauge,
+  Globe2,
+  HardDrive,
+  Leaf,
+  ListFilter,
+  Search,
+  Wifi,
+  X,
+  Zap,
+} from "lucide-react";
 import { FiltersDialog } from "../components/FiltersDialog";
 import { InfoTooltip } from "@/shared/ui/InfoTooltip";
 import { localDateTimeMax } from "@/shared/lib/localDate";
@@ -33,7 +52,19 @@ import { AdministrationAccess } from "@/features/auth/AdministrationAccess";
 const stamp = (value?: string | null) => value ? new Date(value).toLocaleString("pt-BR") : "Ainda não realizada";
 
 function ServiceStatus({ service }: { service: MonitoredService }) {
-  return <span className="monitoring-status" title={service.statusMessage}><i style={{ background: statusColors[service.status] }} />{serviceStatusLabels[service.status]}</span>;
+  return (
+    <span
+      className={`monitoring-status monitoring-status--${service.status}`}
+      data-status={service.status}
+      title={service.statusMessage}
+    >
+      <i
+        className={`monitoring-status-dot monitoring-status-dot--${service.status}`}
+        style={{ background: statusColors[service.status] }}
+      />
+      {serviceStatusLabels[service.status]}
+    </span>
+  );
 }
 
 export function DashboardPage() {
@@ -128,7 +159,7 @@ export function DashboardPage() {
   return <>
     <TopographicSides key="topography" />
     {selectedId ? <div className="monitoring-heading detail-heading">
-      <div className="monitoring-detail-toolbar"><button className="monitoring-back" onClick={back}><ArrowLeft size={18} />Voltar à lista</button>{!historicalView && filterButton}</div>
+      <div className="monitoring-detail-toolbar"><button className="monitoring-back" onClick={back}><ArrowLeft size={18} />Voltar à lista</button></div>
       <h1 ref={heading} tabIndex={-1}>{selectedCandidate?.name ?? "Aplicação não encontrada"}</h1>
       {selected && <p><CountryFlag country={selected.country} />{[selected.city, selected.region, selected.country].filter(Boolean).join(" · ") || "Localização não informada"} <span className="heading-separator">·</span> <ServiceStatus service={selected} /></p>}
     </div> : <div className="monitoring-heading">
@@ -156,30 +187,154 @@ export function DashboardPage() {
       <p>{snapshot.warning}</p>
     </details>}
     </>}
-    {selectedId ? selected && <MonitoringTabs label="Informações da aplicação" value={detailTab} tabs={[{ value: "resumo", label: "Resumo" }, { value: "recursos", label: "Recursos" }, { value: "evolucao", label: "Evolução" }]} onChange={value => update({ detalhe: value })} /> : <MonitoringTabs label="Visualização do monitoramento" value={tab} tabs={[{ value: "geral", label: "Visão geral", mobileLabel: "Serviços" }, { value: "mapa", label: "Mapa", className: "mobile-map-tab" }, { value: "evolucao", label: "Evolução" }, { value: "comparar", label: "Comparar" }, { value: "administracao", label: "Administração", restricted: true }]} onChange={value => update({ aba: value === "geral" ? "" : value })} />}
+    {selectedId ? selected && <MonitoringTabs label="Informações da aplicação" value={detailTab === "evolucao" ? "evolucao" : "resumo"} tabs={[{ value: "resumo", label: "Métricas e Recursos" }, { value: "evolucao", label: "Evolução histórica" }]} onChange={value => update({ detalhe: value })} /> : <MonitoringTabs label="Visualização do monitoramento" value={tab} tabs={[{ value: "geral", label: "Visão geral", mobileLabel: "Serviços" }, { value: "mapa", label: "Mapa", className: "mobile-map-tab" }, { value: "evolucao", label: "Evolução" }, { value: "comparar", label: "Comparar" }, { value: "administracao", label: "Administração", restricted: true }]} onChange={value => update({ aba: value === "geral" ? "" : value })} />}
     {!selectedId && !administration && <MonitoringSummary context={latestOverview ? undefined : dataContext} latest={latestOverview || comparisonLatest} services={summaryServices} history={summaryHistory} totals={summaryHistory === history ? analysis.totals : undefined} comparison={tab === "comparar"} loading={loading} onRefresh={() => void refresh()} />}
     <section key="monitoring-content" className="monitoring-view" id="monitoring-content" role="tabpanel" aria-label={selectedId ? "Detalhes da aplicação" : administration ? "Administração do ambiente" : tab === "comparar" ? "Comparação de aplicações" : tab === "evolucao" ? "Evolução do ambiente" : "Visão geral do ambiente"}>
       <div className={"monitoring-overview" + (selected ? " service-overview" : "")} data-view={tab} hidden={selectedId ? !selected : tab === "evolucao" || tab === "comparar" || administration}>
         <section className="monitoring-location" aria-label="Localização dos serviços">
-          {selected && <h2>Localização do serviço</h2>}
+          {selected && (
+            <div className="monitoring-location-header">
+              <h2>Localização do serviço</h2>
+              <span className="monitoring-location-badge">
+                <Globe2 size={14} aria-hidden="true" />
+                <span>Nó geográfico</span>
+              </span>
+            </div>
+          )}
           {selected && (selected.latitude === undefined || selected.longitude === undefined) && <p className="monitoring-explanation">Sem coordenadas para marcar esta aplicação no globo. Os recursos e as estimativas continuam disponíveis ao lado.</p>}
           <RegionMap key="world" services={mapServices} selectedServiceId={selected?.id} onSelectService={openService} history={selected ? analysis.history : history} lens={lens} highlightedServiceIds={highlightedIds} focusServiceId={selected ? undefined : focusServiceId} onHighlightServices={setMapHighlightedIds} />
         </section>
-        {selected ? <section className="monitoring-service-summary">
-          {detailTab === "resumo" ? <><h2>Impacto estimado na última coleta</h2><dl className="monitoring-facts">
-            <div><dt>Energia na última coleta</dt><dd>{formatNumber(selected.energyKwh)} <small>kWh</small></dd></div>
-            <div><dt>CO₂e na última coleta</dt><dd>{formatNumber(selected.emissionsG)} <small>g CO₂e</small></dd></div>
-            <div><dt>Última coleta válida</dt><dd className="fact-text">{stamp(selected.lastCollectionAt)}</dd></div>
-            <div><dt>Intensidade de carbono da última coleta</dt><dd className="fact-text">{formatNumber(selected.carbonIntensity ?? null)} g CO₂e/kWh</dd></div>
-          </dl><button className="monitoring-text-button" onClick={() => update({ detalhe: "evolucao" })}>Ver totais e histórico</button>{selected.statusMessage && <p className="service-message">{selected.statusMessage}</p>}</> : detailTab === "recursos" ? <section className="monitoring-resources"><div className="monitoring-section-heading"><h2>Recursos da última coleta</h2><span>{stamp(selected.lastCollectionAt)}</span></div>
-          <dl className="monitoring-resource-list">{[
-            ["CPU", selected.cpuPercent, "%"], ["Memória", selected.memoryGb, "GB"], ["Disco", selected.diskGb, "GB"], ["Rede", selected.networkGb, "GB"], ["Tempo representado pela leitura", selected.collectionIntervalSeconds ?? null, "s"],
-          ].map(([label, value, unit]) => <div key={String(label)}><dt>{label}</dt><dd>{formatNumber(value as number | null)} <span>{unit}</span></dd></div>)}</dl>{selected.statusMessage && <p className="service-message">{selected.statusMessage}</p>}<p className="monitoring-explanation">Valores ausentes são exibidos como “—”. Métricas antigas preservam o estado de desatualização da aplicação.</p>
-        </section> : detailTab === "evolucao" ? <EvolutionPanel collectionEvents={analysis.collectionEvents} history={selectedHistory} services={[selected]} metric={metric} onMetric={value => update({ ordem: value })} period={period} onPeriod={value => update({ periodo: value })} mode={evolutionMode} onMode={value => update({ serie: value === "intervals" ? "intervalos" : "" })} compact loading={loading || (!error && snapshot.historyIncluded === false)} observedAt={analysis.observedAt} onOpenService={openService} /> : null}
-        </section> : <section className="monitoring-applications"><div className="monitoring-section-heading"><div><h2>Aplicações</h2></div><SortSelect value={metric} onChange={nextMetric => update({ ordem: nextMetric })} /></div>
+        {selected ? (
+          <section className="monitoring-service-summary">
+            {detailTab !== "evolucao" ? (
+              <div className="monitoring-service-unified">
+                <div className="monitoring-detail-section">
+                  <div className="monitoring-section-heading">
+                    <div>
+                      <h2>Impacto estimado na última coleta</h2>
+                      <p className="monitoring-section-subtitle">Estimativa instantânea de pegada de carbono e energia</p>
+                    </div>
+                  </div>
+                  <dl className="monitoring-facts">
+                    <div className="monitoring-fact-card monitoring-fact-card--energy">
+                      <div className="monitoring-fact-card__header">
+                        <span className="monitoring-fact-card__icon monitoring-fact-card__icon--energy" aria-hidden="true">
+                          <Zap size={18} />
+                        </span>
+                        <dt>Energia na última coleta</dt>
+                      </div>
+                      <dd>{formatNumber(selected.energyKwh)} <small>kWh</small></dd>
+                    </div>
+                    <div className="monitoring-fact-card monitoring-fact-card--carbon">
+                      <div className="monitoring-fact-card__header">
+                        <span className="monitoring-fact-card__icon monitoring-fact-card__icon--carbon" aria-hidden="true">
+                          <Leaf size={18} />
+                        </span>
+                        <dt>CO₂e na última coleta</dt>
+                      </div>
+                      <dd>{formatNumber(selected.emissionsG)} <small>g CO₂e</small></dd>
+                    </div>
+                    <div className="monitoring-fact-card monitoring-fact-card--intensity">
+                      <div className="monitoring-fact-card__header">
+                        <span className="monitoring-fact-card__icon monitoring-fact-card__icon--intensity" aria-hidden="true">
+                          <Gauge size={18} />
+                        </span>
+                        <dt>Intensidade de carbono da última coleta</dt>
+                      </div>
+                      <dd className="fact-text">{formatNumber(selected.carbonIntensity ?? null)} g CO₂e/kWh</dd>
+                    </div>
+                    <div className="monitoring-fact-card monitoring-fact-card--clock">
+                      <div className="monitoring-fact-card__header">
+                        <span className="monitoring-fact-card__icon monitoring-fact-card__icon--clock" aria-hidden="true">
+                          <Clock3 size={18} />
+                        </span>
+                        <dt>Última coleta válida</dt>
+                      </div>
+                      <dd className="fact-text">{stamp(selected.lastCollectionAt)}</dd>
+                    </div>
+                  </dl>
+                </div>
+
+                <section className="monitoring-resources monitoring-detail-section">
+                  <div className="monitoring-section-heading">
+                    <div>
+                      <h2>Recursos da última coleta</h2>
+                      <p className="monitoring-section-subtitle">Uso instantâneo de processamento, memória e rede</p>
+                    </div>
+                    <span className="monitoring-resource-timestamp">{stamp(selected.lastCollectionAt)}</span>
+                  </div>
+                  <dl className="monitoring-resource-list">
+                    {[
+                      ["CPU", selected.cpuPercent, "%", Cpu],
+                      ["Memória", selected.memoryGb, "GB", Activity],
+                      ["Disco", selected.diskGb, "GB", HardDrive],
+                      ["Rede", selected.networkGb, "GB", Wifi],
+                      ["Tempo representado pela leitura", selected.collectionIntervalSeconds ?? null, "s", Clock3],
+                    ].map(([label, value, unit, Icon]) => {
+                      const IconComp = Icon as typeof Cpu;
+                      const numVal = typeof value === "number" ? value : null;
+                      return (
+                        <div key={String(label)} className="monitoring-resource-item">
+                          <div className="monitoring-resource-item__title">
+                            <span className="monitoring-resource-item__icon" aria-hidden="true">
+                              <IconComp size={17} />
+                            </span>
+                            <dt>{label as string}</dt>
+                          </div>
+                          <dd>
+                            {formatNumber(numVal)} <span>{unit as string}</span>
+                          </dd>
+                          {label === "CPU" && numVal !== null && (
+                            <div className="monitoring-resource-meter" aria-hidden="true">
+                              <div
+                                className="monitoring-resource-meter__fill"
+                                style={{ width: `${Math.min(Math.max(numVal, 0), 100)}%` }}
+                              />
+                            </div>
+                          )}
+                        </div>
+                      );
+                    })}
+                  </dl>
+                </section>
+
+                <div className="monitoring-detail-actions">
+                  <button
+                    type="button"
+                    className="monitoring-text-button monitoring-detail-action-btn"
+                    onClick={() => update({ detalhe: "evolucao" })}
+                  >
+                    <span>Ver totais e histórico</span>
+                    <ArrowRight size={16} aria-hidden="true" />
+                  </button>
+                </div>
+                {selected.statusMessage && <p className="service-message">{selected.statusMessage}</p>}
+                <p className="monitoring-explanation">
+                  Valores ausentes são exibidos como “—”. Métricas antigas preservam o estado de desatualização da aplicação.
+                </p>
+              </div>
+            ) : (
+              <EvolutionPanel
+                collectionEvents={analysis.collectionEvents}
+                history={selectedHistory}
+                services={[selected]}
+                metric={metric}
+                onMetric={value => update({ ordem: value })}
+                period={period}
+                onPeriod={value => update({ periodo: value })}
+                mode={evolutionMode}
+                onMode={value => update({ serie: value === "intervals" ? "intervalos" : "" })}
+                compact
+                loading={loading || (!error && snapshot.historyIncluded === false)}
+                observedAt={analysis.observedAt}
+                onOpenService={openService}
+              />
+            )}
+          </section>
+        ) : <section className="monitoring-applications"><div className="monitoring-section-heading"><div><h2>Aplicações</h2></div><SortSelect value={metric} onChange={nextMetric => update({ ordem: nextMetric })} /></div>
             <div className="monitoring-table-scroll" tabIndex={0} role="region" aria-label="Lista de aplicações">
               <table className="monitoring-app-table"><caption className="sr-only">Aplicações na seleção e estimativas da última coleta de cada aplicação.</caption><thead><tr><th scope="col">Aplicação</th><th scope="col">{analysis.observedAt ? "Situação naquele horário" : "Situação atual"}</th><th scope="col">{metric === "energy" ? "Energia" : "CO₂e"} na última coleta</th></tr></thead>
-                <tbody>{visibleImpacts.map(({ service, value }) => <tr key={service.id} data-highlighted={highlightedIds.includes(service.id)} onMouseEnter={() => setHoveredServiceId(service.id)} onMouseLeave={() => setHoveredServiceId("")}><td><button id={"application-" + service.id} onFocus={() => { if (!restoringListFocus.current) setFocusedServiceId(service.id); }} onBlur={() => setFocusedServiceId("")} onClick={() => openService(service.id)}><span className="monitoring-application-name"><CountryFlag country={service.country} /><span>{service.name}</span></span><ArrowUpRight size={15} aria-hidden="true" /></button></td><td><ServiceStatus service={service} />{service.statusMessage && <small className="service-message">{service.statusMessage}</small>}</td><td title={"Última coleta: " + stamp(service.lastCollectionAt)}><span key={service.lastCollectionAt ?? service.id} className="monitoring-sample-value">{formatNumber(value)}{value !== null && (metric === "energy" ? " kWh" : " g")}</span></td></tr>)}</tbody>
+                <tbody>{visibleImpacts.map(({ service, value }, index) => <tr key={service.id} className="animated-list-item" style={{ animationDelay: `${index * 40}ms` }} data-highlighted={highlightedIds.includes(service.id)} onMouseEnter={() => setHoveredServiceId(service.id)} onMouseLeave={() => setHoveredServiceId("")}><td><button id={"application-" + service.id} onFocus={() => { if (!restoringListFocus.current) setFocusedServiceId(service.id); }} onBlur={() => setFocusedServiceId("")} onClick={() => openService(service.id)}><span className="monitoring-application-name"><CountryFlag country={service.country} /><span>{service.name}</span></span><ArrowUpRight size={15} aria-hidden="true" /></button></td><td><ServiceStatus service={service} />{service.statusMessage && <small className="service-message">{service.statusMessage}</small>}</td><td title={"Última coleta: " + stamp(service.lastCollectionAt)}><span key={service.lastCollectionAt ?? service.id} className="monitoring-sample-value">{formatNumber(value)}{value !== null && (metric === "energy" ? " kWh" : " g")}</span></td></tr>)}</tbody>
               </table>
             </div>
             {services.length > 0 && <><nav className="monitoring-list-pagination" aria-label="Páginas das aplicações"><span>{page * 5 + 1}–{Math.min(page * 5 + 5, latestImpacts.length)} de {latestImpacts.length} aplicações</span><div><button type="button" aria-label="Aplicações anteriores" disabled={page === 0} onClick={() => setApplicationPage(page - 1)}><ChevronLeft size={17} /></button><button type="button" aria-label="Próximas aplicações" disabled={page === lastPage} onClick={() => setApplicationPage(page + 1)}><ChevronRight size={17} /></button></div></nav></>}

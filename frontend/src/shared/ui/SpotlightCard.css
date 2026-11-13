@@ -1,0 +1,13 @@
+.spotlight-card {
+  position: relative;
+  overflow: hidden;
+  isolation: isolate;
+}
+
+.spotlight-card__overlay {
+  pointer-events: none;
+  position: absolute;
+  inset: 0;
+  transition: opacity 0.3s ease;
+  z-index: 1;
+}

@@ -1,11 +1,11 @@
 import { Component, lazy, Suspense, useCallback, useMemo, useState } from "react";
 import type { ReactNode } from "react";
 import type { CollectionPoint, MonitoredService } from "../../types";
-import { statusColors } from "../../domain/dashboard";
 import { impactLocations } from "../../domain/observatory";
 import type { ImpactLens } from "../../domain/observatory";
 import { findCountry } from "@/shared/geography/geography";
-import { serviceStatusLabels } from "../../types";
+import { formatNumber } from "@/shared/lib/format";
+import { StatusBadge } from "../StatusBadge";
 
 const WorldGlobe = lazy(() => import("./WorldGlobe"));
 const emptyHistory: CollectionPoint[] = [];
@@ -40,8 +40,8 @@ export function RegionMap({ services, selectedServiceId, onSelectService, histor
   const selectPoint = useCallback((id: string) => {
     const group = groups.find(entry => entry.id === id);
     if (!group) return;
+    setGroupId(id);
     if (group.services.length === 1) onSelectService(group.services[0]!.id);
-    else setGroupId(id);
   }, [groups, onSelectService]);
   const highlightPoint = useCallback((id: string, active: boolean) => {
     const group = groups.find(entry => entry.id === id);
@@ -52,9 +52,36 @@ export function RegionMap({ services, selectedServiceId, onSelectService, histor
       <WorldGlobe supportedCountries={supportedCountries} cities={groups} city={selected} selectedServiceId={selectedServiceId}
         onPointSelect={selectPoint} onPointHover={highlightPoint} highlightedCityId={highlightedCityId} focusCity={focusCity} rotationPaused={rotationPaused} />
     </Suspense></GlobeBoundary>
-    {choosing && <div className="map-choices" aria-label={"Aplicações em " + choosing.name}>
-      <div><strong>{choosing.name} · {choosing.count} aplicações</strong><button onClick={() => setGroupId("")} aria-label="Fechar seleção de aplicações">Fechar</button></div>
-      {choosing.services.map(service => <button key={service.id} onClick={() => onSelectService(service.id)}><span>{service.name}</span><span className="monitoring-status"><i style={{ background: statusColors[service.status] }} />{serviceStatusLabels[service.status]}</span></button>)}
-    </div>}
+    {choosing && (
+      <div className="map-popup-card" role="dialog" aria-label={"Aplicações em " + choosing.name}>
+        <div className="map-popup-header">
+          <strong className="map-popup-title">{choosing.name} · {choosing.count} {choosing.count === 1 ? "aplicação" : "aplicações"}</strong>
+          <button type="button" className="map-popup-close" onClick={() => setGroupId("")} aria-label="Fechar popup de aplicações">✕</button>
+        </div>
+        <div className="map-popup-content">
+          {choosing.services.map(service => (
+            <div key={service.id} className="map-popup-item">
+              <div className="map-popup-item-header">
+                <span className="map-popup-service-name">{service.name}</span>
+                <StatusBadge status={service.status} />
+              </div>
+              <div className="map-popup-metrics">
+                <div className="map-popup-metric">
+                  <span className="map-popup-metric-label">Energia</span>
+                  <span className="map-popup-metric-value">{service.energyKwh != null ? `${formatNumber(service.energyKwh)} kWh` : "—"}</span>
+                </div>
+                <div className="map-popup-metric">
+                  <span className="map-popup-metric-label">Carbono</span>
+                  <span className="map-popup-metric-value">{service.emissionsG != null ? `${formatNumber(service.emissionsG)} g CO₂e` : "—"}</span>
+                </div>
+              </div>
+              <button type="button" className="map-popup-action" onClick={() => onSelectService(service.id)}>
+                Ver detalhes
+              </button>
+            </div>
+          ))}
+        </div>
+      </div>
+    )}
   </div>;
 }

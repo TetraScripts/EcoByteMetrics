@@ -7,6 +7,8 @@ import { emissionScale, formatEmissions, formatNumber } from "@/shared/lib/forma
 import { createRefreshAnimation } from "../domain/refreshAnimation";
 import { InfoTooltip } from "@/shared/ui/InfoTooltip";
 import { serviceStatusLabels } from "../types";
+import { CountUp } from "@/shared/ui/CountUp";
+import { SpotlightCard } from "@/shared/ui/SpotlightCard";
 
 export function MonitoringSummary({ services, history, loading, onRefresh, comparison = false, latest = false, context, totals: providedTotals }: {
   services: MonitoredService[]; history: CollectionPoint[];
@@ -33,12 +35,12 @@ export function MonitoringSummary({ services, history, loading, onRefresh, compa
   const refreshHelp = "A página consulta os dados salvos a cada 30 segundos enquanto está visível. Esta seta antecipa a consulta; não inicia uma nova coleta no servidor.";
   return <section className="monitoring-summary" aria-label="Totais da seleção">
     <div className="monitoring-visible-totals">
-      <div><span>{latest ? "CO₂e das últimas coletas" : "CO₂e calculado na seleção"}<InfoTooltip label="total de carbono">{latest ? "Soma das estimativas da última leitura disponível de cada aplicação filtrada. As leituras podem ter horários e durações diferentes. Leituras sem fator de carbono não entram na soma." : "Soma das estimativas de carbono disponíveis no período e nas aplicações selecionadas. Leituras sem fator de carbono não são consideradas emissão zero."}</InfoTooltip></span><strong>{formatEmissions(totals.emissionsG)} <small>{emissionScale(totals.emissionsG).unit}</small></strong></div>
-      <div><span>{latest ? "Energia das últimas coletas" : "Energia estimada na seleção"}<InfoTooltip label="total de energia">{latest ? "Soma da energia estimada nas últimas leituras disponíveis. Não representa uma medição simultânea do ambiente; aplicações sem novas leituras podem conservar dados antigos." : "Soma da energia estimada nas leituras registradas no período e nas aplicações selecionadas. Intervalos sem leituras não são preenchidos."}</InfoTooltip></span><strong>{formatNumber(totals.energyKwh)} <small>kWh</small></strong></div>
+      <SpotlightCard className="monitoring-total-card"><span>{latest ? "CO₂e das últimas coletas" : "CO₂e calculado na seleção"}<InfoTooltip label="total de carbono">{latest ? "Soma das estimativas da última leitura disponível de cada aplicação filtrada. As leituras podem ter horários e durações diferentes. Leituras sem fator de carbono não entram na soma." : "Soma das estimativas de carbono disponíveis no período e nas aplicações selecionadas. Leituras sem fator de carbono não são consideradas emissão zero."}</InfoTooltip></span><strong><CountUp to={totals.emissionsG} formatter={val => formatEmissions(val)} /> <small>{emissionScale(totals.emissionsG).unit}</small></strong></SpotlightCard>
+      <SpotlightCard className="monitoring-total-card"><span>{latest ? "Energia das últimas coletas" : "Energia estimada na seleção"}<InfoTooltip label="total de energia">{latest ? "Soma da energia estimada nas últimas leituras disponíveis. Não representa uma medição simultânea do ambiente; aplicações sem novas leituras podem conservar dados antigos." : "Soma da energia estimada nas leituras registradas no período e nas aplicações selecionadas. Intervalos sem leituras não são preenchidos."}</InfoTooltip></span><strong><CountUp to={totals.energyKwh} formatter={val => formatNumber(val)} /> <small>kWh</small></strong></SpotlightCard>
       <span className="monitoring-total-scope">Totais das {services.length} aplicações {comparison ? "marcadas para comparação." : "filtradas, incluindo todas as páginas da lista."}</span>
       <ul className="monitoring-operational-counts" aria-label="Situação das aplicações na seleção">{Object.entries(serviceStatusLabels).map(([status,label]) => {
         const count = services.filter(service => service.status === status).length;
-        return count || status === "available" || status === "unavailable" ? <li key={status}>{label}: <strong>{count}</strong></li> : null;
+        return count || status === "available" || status === "unavailable" ? <li key={status}>{label}: <strong><CountUp to={count} /></strong></li> : null;
       })}</ul>
     </div>
     {context}
