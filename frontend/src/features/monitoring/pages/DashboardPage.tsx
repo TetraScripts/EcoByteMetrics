@@ -38,7 +38,6 @@ import { ComparisonPanel } from "../components/ComparisonPanel";
 import { AdministrationPanel } from "../components/AdministrationPanel";
 import { ObservationTimeline } from "../components/ObservationTimeline";
 import { MonitoringSummary } from "../components/MonitoringSummary";
-import { VariableProximity } from "@/shared/ui/VariableProximity";
 import { MonitoringState } from "../components/MonitoringState";
 import type { ImpactLens } from "../domain/observatory";
 import { useMonitoring } from "../hooks/useMonitoring";
@@ -80,7 +79,7 @@ export function DashboardPage() {
   const [hoveredServiceId, setHoveredServiceId] = useState("");
   const [focusedServiceId, setFocusedServiceId] = useState("");
   const [mapHighlightedIds, setMapHighlightedIds] = useState<string[]>([]);
-  const [expandedServiceId, setExpandedServiceId] = useState("");
+  const [expandedServiceId, setExpandedServiceId] = useState<string>("");
   const [mobile, setMobile] = useState(() => typeof window !== "undefined" && window.matchMedia("(max-width: 680px)").matches);
   useEffect(() => {
     const query = window.matchMedia("(max-width: 680px)");
@@ -89,8 +88,6 @@ export function DashboardPage() {
     return () => query.removeEventListener("change", change);
   }, []);
   const heading = useRef<HTMLHeadingElement>(null);
-  const monitoringTitleRef = useRef<HTMLDivElement>(null);
-  const applicationsTitleRef = useRef<HTMLDivElement>(null);
   const previousSelection = useRef("");
   const restoringListFocus = useRef(false);
   const selectedId = params.get("servico") ?? "";
@@ -183,23 +180,7 @@ export function DashboardPage() {
       <h1 ref={heading} tabIndex={-1}>{selectedCandidate?.name ?? "Aplicação não encontrada"}</h1>
       {selected && <p><CountryFlag country={selected.country} />{[selected.city, selected.region, selected.country].filter(Boolean).join(" · ") || "Localização não informada"} <span className="heading-separator">·</span> <ServiceStatus service={selected} /></p>}
     </div> : <div className="monitoring-heading">
-      <div ref={monitoringTitleRef} style={{ position: "relative" }}>
-        <h1>
-          <VariableProximity
-            label="Monitoramento"
-            className="variable-proximity-title"
-            fromFontVariationSettings="'wght' 400, 'opsz' 9"
-            toFontVariationSettings="'wght' 1000, 'opsz' 40"
-            containerRef={monitoringTitleRef}
-            radius={100}
-            falloff="linear"
-            smoothing={0.2}
-            scale={1}
-            lift={0}
-            idleWave={false}
-          />
-        </h1>
-      </div>
+      <div><h1>Monitoramento</h1></div>
       {!administration && !historicalView && <div className="monitoring-tools">
         <label className="monitoring-search"><Search size={21} aria-hidden="true" /><input type="search" aria-label="Buscar aplicação" placeholder="Buscar aplicação..." value={search} onChange={event => update({ busca: event.target.value }, true)} /></label>
         {filterButton}
@@ -369,23 +350,8 @@ export function DashboardPage() {
           </section>
         ) : <section className="monitoring-applications">
             <div className="monitoring-section-heading">
-              <div ref={applicationsTitleRef} style={{ position: "relative" }}>
-                <h2>
-                  <VariableProximity
-                    label="Aplicações"
-                    className="variable-proximity-title"
-                    fromFontVariationSettings="'wght' 400, 'opsz' 9"
-                    toFontVariationSettings="'wght' 1000, 'opsz' 40"
-                    containerRef={applicationsTitleRef}
-                    radius={100}
-                    falloff="linear"
-                    smoothing={0.2}
-                    scale={1}
-                    lift={0}
-                    idleWave={false}
-                  />
-                </h2>
-                <p className="monitoring-section-subtitle">Monitoramento de aplicações e {metric === "energy" ? "consumo de energia" : "emissão de carbono"}</p>
+              <div>
+                <h2>Aplicações</h2>
               </div>
               <SortSelect value={metric} onChange={nextMetric => update({ ordem: nextMetric })} />
             </div>
