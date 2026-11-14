@@ -4,7 +4,7 @@ interface GlobeCamera {
   pointOfView(target: Partial<Position>, duration: number): unknown;
 }
 
-export const INITIAL_GLOBE_POSITION = { lat: 12, lng: -35, altitude: 1.5 };
+export const INITIAL_GLOBE_POSITION = { lat: 12, lng: -35, altitude: 1.2 };
 
 export function createGlobeSelection() {
   let selectedId: string | undefined;

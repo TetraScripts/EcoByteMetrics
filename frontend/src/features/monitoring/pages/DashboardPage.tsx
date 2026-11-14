@@ -19,12 +19,14 @@ import {
   Leaf,
   ListFilter,
   MapPin,
+  RotateCw,
   Search,
   TrendingDown,
   Wifi,
   X,
   Zap,
 } from "lucide-react";
+import { createRefreshAnimation } from "../domain/refreshAnimation";
 import { FiltersDialog } from "../components/FiltersDialog";
 import { InfoTooltip } from "@/shared/ui/InfoTooltip";
 import { localDateTimeMax } from "@/shared/lib/localDate";
@@ -87,6 +89,8 @@ export function DashboardPage() {
     query.addEventListener("change", change);
     return () => query.removeEventListener("change", change);
   }, []);
+  const refreshIcon = useRef<SVGSVGElement>(null);
+  const animation = useRef<ReturnType<typeof createRefreshAnimation> | null>(null);
   const heading = useRef<HTMLHeadingElement>(null);
   const previousSelection = useRef("");
   const restoringListFocus = useRef(false);
@@ -133,7 +137,29 @@ export function DashboardPage() {
   const comparedIds = params.getAll("app");
   const summaryServices = tab === "comparar" ? services.filter(service => comparedIds.includes(service.id)) : services;
   const summaryHistory = tab === "comparar" ? (comparisonLatest ? latestHistory : history).filter(point => comparedIds.includes(point.serviceId)) : latestOverview ? latestHistory : history;
-  const shownRange = selected ? selectedRange : tab === "comparar" || latestOverview ? collectionRange(summaryHistory) : { first: analysis.availableSince, last: analysis.availableUntil };
+  const summaryRange = useMemo(() => collectionRange(summaryHistory), [summaryHistory]);
+  const lastCollectionDate = summaryRange.last;
+  const formatDate = (value: string | number) => new Date(value).toLocaleString("pt-BR");
+  const refreshHelp = "A página consulta os dados salvos a cada 30 segundos enquanto está visível. Esta seta antecipa a consulta; não inicia uma nova coleta no servidor.";
+  const shownRange = selected ? selectedRange : tab === "comparar" || latestOverview ? summaryRange : { first: analysis.availableSince, last: analysis.availableUntil };
+
+  useEffect(() => {
+    if (!refreshIcon.current) return;
+    const controller = createRefreshAnimation(refreshIcon.current);
+    const preference = window.matchMedia("(prefers-reduced-motion: reduce)");
+    const updateMotion = () => controller.setReducedMotion(preference.matches);
+    animation.current = controller;
+    updateMotion();
+    preference.addEventListener("change", updateMotion);
+    return () => {
+      preference.removeEventListener("change", updateMotion);
+      controller.dispose();
+      animation.current = null;
+    };
+  }, [tab, selectedId]);
+  useEffect(() => {
+    animation.current?.setLoading(loading);
+  }, [loading, tab, selectedId]);
   const countries = [...new Set(analysis.environmentServices.map(service => service.country).filter((value): value is string => Boolean(value)))].sort((a, b) => a.localeCompare(b, "pt-BR"));
   const regionOptions = [...new Map(analysis.environmentServices.filter(service => service.regionCode && (!analysis.country || service.country === analysis.country)).map(service => [service.regionCode!, service])).values()];
   useEffect(() => {
@@ -205,9 +231,12 @@ export function DashboardPage() {
     </details>}
     </>}
     {!selectedId && <MonitoringTabs label="Visualização do monitoramento" value={tab} tabs={[{ value: "geral", label: "Visão geral", mobileLabel: "Serviços" }, { value: "mapa", label: "Mapa", className: "mobile-map-tab" }, { value: "evolucao", label: "Evolução" }, { value: "comparar", label: "Comparar" }, { value: "administracao", label: "Administração", restricted: true }]} onChange={value => update({ aba: value === "geral" ? "" : value })} />}
-    {!selectedId && !administration && <MonitoringSummary context={latestOverview ? undefined : dataContext} latest={latestOverview || comparisonLatest} services={summaryServices} history={summaryHistory} totals={summaryHistory === history ? analysis.totals : undefined} comparison={tab === "comparar"} loading={loading} onRefresh={() => void refresh()} />}
+    {!selectedId && !administration && (tab === "evolucao" || tab === "comparar") && <MonitoringSummary context={dataContext} latest={comparisonLatest} services={summaryServices} history={summaryHistory} totals={summaryHistory === history ? analysis.totals : undefined} comparison={tab === "comparar"} loading={loading} onRefresh={() => void refresh()} />}
     <section key="monitoring-content" className="monitoring-view" id="monitoring-content" role="tabpanel" aria-label={selectedId ? "Detalhes da aplicação" : administration ? "Administração do ambiente" : tab === "comparar" ? "Comparação de aplicações" : tab === "evolucao" ? "Evolução do ambiente" : "Visão geral do ambiente"}>
       <div className={"monitoring-overview" + (selected ? " service-overview" : "")} data-view={tab} hidden={selectedId ? !selected : tab === "evolucao" || tab === "comparar" || administration}>
+        {!selectedId && latestOverview && (
+          <MonitoringSummary latest services={summaryServices} history={summaryHistory} totals={summaryHistory === history ? analysis.totals : undefined} comparison={false} />
+        )}
         <section className="monitoring-location" aria-label="Localização dos serviços">
           {selected && (
             <div className="monitoring-location-header">
@@ -225,7 +254,7 @@ export function DashboardPage() {
           <section className="monitoring-service-summary">
             {detailTab !== "evolucao" ? (
               <div className="monitoring-service-unified">
-                <div className="monitoring-detail-section">
+                <div className="monitoring-detail-card monitoring-card-impact">
                   <div className="monitoring-section-heading">
                     <div>
                       <h2>Impacto estimado na última coleta</h2>
@@ -272,7 +301,7 @@ export function DashboardPage() {
                   </dl>
                 </div>
 
-                <section className="monitoring-resources monitoring-detail-section">
+                <section className="monitoring-resources monitoring-detail-card monitoring-card-resources">
                   <div className="monitoring-section-heading">
                     <div>
                       <h2>Recursos da última coleta</h2>
@@ -313,22 +342,21 @@ export function DashboardPage() {
                       );
                     })}
                   </dl>
+                  <div className="monitoring-detail-actions">
+                    <button
+                      type="button"
+                      className="monitoring-text-button monitoring-detail-action-btn"
+                      onClick={() => update({ detalhe: "evolucao" })}
+                    >
+                      <span>Ver totais e histórico</span>
+                      <ArrowRight size={16} aria-hidden="true" />
+                    </button>
+                  </div>
+                  {selected.statusMessage && <p className="service-message">{selected.statusMessage}</p>}
+                  <p className="monitoring-explanation">
+                    Valores ausentes são exibidos como “—”. Métricas antigas preservam o estado de desatualização da aplicação.
+                  </p>
                 </section>
-
-                <div className="monitoring-detail-actions">
-                  <button
-                    type="button"
-                    className="monitoring-text-button monitoring-detail-action-btn"
-                    onClick={() => update({ detalhe: "evolucao" })}
-                  >
-                    <span>Ver totais e histórico</span>
-                    <ArrowRight size={16} aria-hidden="true" />
-                  </button>
-                </div>
-                {selected.statusMessage && <p className="service-message">{selected.statusMessage}</p>}
-                <p className="monitoring-explanation">
-                  Valores ausentes são exibidos como “—”. Métricas antigas preservam o estado de desatualização da aplicação.
-                </p>
               </div>
             ) : (
               <EvolutionPanel
@@ -353,7 +381,37 @@ export function DashboardPage() {
               <div>
                 <h2>Aplicações</h2>
               </div>
-              <SortSelect value={metric} onChange={nextMetric => update({ ordem: nextMetric })} />
+              <div className="monitoring-heading-controls">
+                {tab !== "comparar" && (
+                  <div className="monitoring-update">
+                    <span role="status">
+                      {lastCollectionDate !== null
+                        ? "Dados coletados até " + formatDate(lastCollectionDate)
+                        : loading
+                        ? "Consultando registros…"
+                        : "Ainda sem leituras nesta seleção"}
+                    </span>
+                    <button
+                      type="button"
+                      className="monitoring-refresh"
+                      aria-label={loading ? "Consultando dados salvos" : "Consultar dados salvos"}
+                      title={refreshHelp}
+                      aria-description={refreshHelp}
+                      aria-busy={loading}
+                      disabled={loading}
+                      onClick={() => void refresh()}
+                    >
+                      <RotateCw
+                        ref={refreshIcon}
+                        size={20}
+                        aria-hidden="true"
+                        className="monitoring-refresh-icon"
+                      />
+                    </button>
+                  </div>
+                )}
+                <SortSelect value={metric} onChange={nextMetric => update({ ordem: nextMetric })} />
+              </div>
             </div>
             <div className="monitoring-table-scroll" tabIndex={0} role="region" aria-label="Lista de aplicações">
               <table className="monitoring-app-table">

@@ -284,12 +284,12 @@ function WorldGlobe({
         ? { lat: cityLat!, lng: cityLng!, altitude: 0.65 }
         : returning ? returning
         : hasFocus
-          ? { lat: focusLat, lng: focusLng, altitude: cameraInitialized.current ? globe.current.pointOfView().altitude : 1.5 }
+          ? { lat: focusLat, lng: focusLng, altitude: cameraInitialized.current ? globe.current.pointOfView().altitude : INITIAL_GLOBE_POSITION.altitude }
         : country
           ? {
               lat: country.properties.latitude,
               lng: country.properties.longitude,
-              altitude: 1.5,
+              altitude: INITIAL_GLOBE_POSITION.altitude,
             }
           : { ...INITIAL_GLOBE_POSITION };
     rotation.current?.pause();

@@ -1,5 +1,5 @@
 .monitoring-map { position: relative; }
-.monitoring-map .globe-stage { position: relative; width: 100%; height: auto; aspect-ratio: 1; max-height: 500px; background: transparent; pointer-events: none; }
+.monitoring-map .globe-stage { position: relative; width: 100%; height: auto; aspect-ratio: 1; max-height: 560px; background: transparent; pointer-events: none; }
 .globe-background { position: fixed; inset: 0; z-index: 0; }
 .globe-background[data-intro="true"] { animation: globeReveal 650ms ease-out backwards; }
 @keyframes globeReveal { from { opacity: 0; } to { opacity: 1; } }
@@ -210,9 +210,9 @@
 .map-choices > div button { color: #087e59; text-decoration: underline; min-height: 44px; }
 .map-choices > button { border-bottom: 1px solid #dfe7eb; }
 .map-choices > button:hover { color: #087e59; }
-@media (max-width: 1200px) { .monitoring-map .globe-stage { max-height: 425px; } }
-@media (max-width: 900px) { .monitoring-map .globe-stage { max-height: 370px; } }
-@media (max-width: 680px) { .monitoring-map .globe-stage { max-height: 440px; } }
+@media (max-width: 1200px) { .monitoring-map .globe-stage { max-height: 480px; } }
+@media (max-width: 900px) { .monitoring-map .globe-stage { max-height: 420px; } }
+@media (max-width: 680px) { .monitoring-map .globe-stage { max-height: 480px; } }
 @media (max-width: 680px) {
   .globe-background[data-mask="legacy"] canvas { mask-image: linear-gradient(to bottom, transparent 0, transparent 210px, rgb(0 0 0 / 35%) 280px, #000 400px); }
   .globe-fade { background: linear-gradient(to bottom, #fff 0, #fff 210px, rgb(255 255 255 / 65%) 280px, transparent 400px); }

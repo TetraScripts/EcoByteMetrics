@@ -83,16 +83,16 @@ test("desselecionar sempre retorna à posição inicial, mesmo após trocar de a
   assert.equal(selection.update(undefined), null);
   assert.equal(selection.update("billing"), null);
   selection.update("audit");
-  assert.deepEqual(selection.update(undefined), { lat: 12, lng: -35, altitude: 1.5 });
+  assert.deepEqual(selection.update(undefined), { lat: 12, lng: -35, altitude: 1.2 });
   assert.equal(selection.update(undefined), null);
   selection.update("billing");
-  assert.deepEqual(selection.update(undefined), { lat: 12, lng: -35, altitude: 1.5 });
+  assert.deepEqual(selection.update(undefined), { lat: 12, lng: -35, altitude: 1.2 });
 });
 
 test("acessar um detalhe diretamente retorna ao enquadramento geral ao fechar", () => {
   const selection = createGlobeSelection();
   selection.update("billing");
-  assert.deepEqual(selection.update(undefined), { lat: 12, lng: -35, altitude: 1.5 });
+  assert.deepEqual(selection.update(undefined), { lat: 12, lng: -35, altitude: 1.2 });
 });
 
 test("abrir e fechar durante a aproximação retorna suavemente sem recriar a câmera", () => {
@@ -111,5 +111,5 @@ test("abrir e fechar durante a aproximação retorna suavemente sem recriar a c�
   }, target, 650, 0, () => 0, () => {});
   advance(1000);
   assert.deepEqual(position, { lat: 0, lng: -40, altitude: 1.1 });
-  assert.deepEqual(calls.at(-1), { target: { lat: 12, lng: -35, altitude: 1.5 }, duration: 650 });
+  assert.deepEqual(calls.at(-1), { target: { lat: 12, lng: -35, altitude: 1.2 }, duration: 650 });
 });
