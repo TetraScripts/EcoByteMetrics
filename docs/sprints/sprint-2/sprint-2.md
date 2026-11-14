@@ -16,7 +16,7 @@
     </td>
     <td width="60%" valign="top">
       <h4>🎬 Demonstração Prática — Sprint Review 2</h4>
-      <p>Neste vídeo, a equipe apresenta o incremento funcional desenvolvido durante a primeira Sprint do <b>EcoByteMetrics (GreenER)</b>:</p>
+      <p>Neste vídeo, a equipe apresenta o incremento funcional desenvolvido durante a segunda Sprint do <b>EcoByteMetrics (GreenER)</b>:</p>
       <ul>
         <li><b>Orquestração Docker:</b> Subida unificada do ambiente containerizado (Frontend, Backend e PostgreSQL).</li>
         <li><b>Persistência Nativa:</b> Execução dos scripts <code>database/ddl.sql</code> diretamente no PostgreSQL sem o uso de ORM.</li>
@@ -67,6 +67,5 @@ Desenvolver e consolidar a inteligência de negócios, a persistência históric
 
 ## 📝 4. Avaliação Geral da Sprint 2 & Pontos de Atenção para a Sprint 3
 
-* **O que funcionou bem:** A comunicação fluida da equipe, a evolução consistente na camada de resiliência e no backend Node.js, e o cumprimento das restrições de persistência nativa em PostgreSQL via SQL parametrizado sem ORM (RP03).
-* **O que precisa melhorar / Pontos de atenção para a Sprint 3:** 
-  * **Ainda será discutido:** 
+* **O que funcionou bem:** A Sprint 2 foi conduzida com boa organização da equipe, separação clara das tarefas e planejamento antecipado das entregas. A execução das histórias de US03 a US06 demonstrou avanço consistente em dashboard, persistência histórica, cálculo ambiental e autenticação, com alinhamento adequado entre backend, banco de dados e frontend.
+* **O que precisa melhorar / Pontos de atenção para a Sprint 3:** O principal ponto de atenção continua sendo o refinamento da gestão de tarefas e do processo de revisão de pull requests, com vistas a reduzir ambiguidades de escopo, acelerar a integração das entregas e aumentar a rastreabilidade entre requisitos, implementação e validação. Também será relevante reforçar a documentação operacional e a validação contínua de comportamento em cenários de falhas e recuperação.
