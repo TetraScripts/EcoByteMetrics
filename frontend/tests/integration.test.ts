@@ -69,18 +69,36 @@ test("integração do frontend: contratos HTTP, análise, telas e navegação", 
 
     await t.test("visão geral solicita últimas leituras; histórico só é solicitado quando necessário", async child => {
       child.mock.method(globalThis, "fetch", async (url: string) => {
-        assert.equal(new URL(url, "https://local.invalid").searchParams.get("view"), "latest");
-        return Response.json(persisted({historyIncluded: false, history: [], observations: []}));
+        const view = new URL(url, "https://local.invalid").searchParams.get("view");
+
+        if (view === "latest") {
+          return Response.json(persisted({
+            historyIncluded: false,
+            history: [],
+            observations: []
+          }));
+        }
+
+        assert.equal(view, "analysis");
+
+        return Response.json(persisted({
+          historyIncluded: true
+        }));
       });
-      const latest = await getMonitoringSnapshot(undefined, {includeHistory: false});
+
+      const latest = await getMonitoringSnapshot(undefined, {
+        includeHistory: false
+      });
+
       assert.equal(latest.historyIncluded, false);
       assert.deepEqual(latest.history, []);
       assert.equal(latest.services[0].emissionsG, 0.085);
-      child.mock.method(globalThis, "fetch", async (url: string) => {
-        assert.equal(new URL(url, "https://local.invalid").searchParams.has("view"), false);
-        return Response.json(persisted({historyIncluded: true}));
+
+      const analysis = await getMonitoringSnapshot(undefined, {
+        includeHistory: true
       });
-      assert.equal((await getMonitoringSnapshot(undefined, {includeHistory: true})).history.length, 1);
+
+      assert.equal(analysis.history.length, 1);
     });
 
     await t.test("recursos históricos aceitam zero e ausência, mas rejeitam valores inválidos", async child => {
