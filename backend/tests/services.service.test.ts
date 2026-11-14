@@ -4,6 +4,7 @@ import { WorkerCarbons } from "../src/modules/Worker/worker.carbon.service";
 import pool from "../src/db/connection";
 import { afterEach, beforeEach, describe, it } from "node:test";
 import assert from "node:assert/strict";
+import type { PoolClient } from "pg";
 
 import type {
     AggregatorService,
@@ -148,6 +149,35 @@ describe("Serviço de coleta de métricas em memória", () => {
 describe("Persistência e publicação das métricas", () => {
     it("o worker grava a amostra e o fator de carbono vinculados à mesma localização", async t => {
         const inserts: { sql: string; values: unknown[] }[] = [];
+        const mockClient = {
+            query: async (sql: string) => {
+                if (/^(BEGIN|COMMIT|ROLLBACK)$/i.test(sql.trim())) {
+                    return {
+                        rows: [],
+                        rowCount: 0,
+                    };
+                }
+
+                if (/UPDATE services/i.test(sql)) {
+                    return {
+                        rows: [],
+                        rowCount: 0,
+                    };
+                }
+
+                throw new Error(
+                    `Consulta inesperada no cliente simulado: ${sql}`
+                );
+            },
+
+            release: () => {},
+        };
+
+        t.mock.method(
+            pool,
+            "connect",
+            async () => mockClient as unknown as PoolClient
+        );
         t.mock.method(pool, "query", async (sql: string, values: unknown[]) => {
             if (/SELECT \* FROM locations/i.test(sql)) return { rows: [{ id_location: 10 }] };
             if (/SELECT \* FROM services/i.test(sql)) return { rows: [{ id_service: 20, id_location: 10 }] };

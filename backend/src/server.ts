@@ -1,5 +1,4 @@
-
-
+import "dotenv/config";
 import app from "./app";
 import { migrateMonitoring } from "./db/migrate";
 

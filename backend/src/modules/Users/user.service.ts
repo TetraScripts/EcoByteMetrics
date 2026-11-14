@@ -25,14 +25,22 @@ export class UserError extends Error {
       throw new UserError("O perfil do usuário é definido exclusivamente por um administrador.", 400);
     }
     const user = candidate as unknown as CreateUserInput;
-    
     if (typeof user.name_user !== "string" ||!user.name_user.trim() || Array.from(user.name_user).length > 50) {
         throw new UserError("Nome inválido", 400);
     }
 
-    if (typeof user.email_user !== "string" ||!user.email_user.trim() || user.email_user.length > 254 ||
-      !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(user.email_user)) {
+    if (typeof user.email_user !== "string") {
         throw new UserError("E-mail inválido", 400);
+    }
+
+    const normalizedEmail = user.email_user.trim().toLowerCase();
+
+    if (
+      !normalizedEmail ||
+      normalizedEmail.length > 254 ||
+      !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(normalizedEmail)
+    ) {
+      throw new UserError("E-mail inválido", 400);
     }
 
     if (typeof user.password_user !== "string" ||user.password_user.length < 8 ||
@@ -41,7 +49,7 @@ export class UserError extends Error {
     }
     return {
       name_user: user.name_user.trim(),
-      email_user: user.email_user.trim().toLowerCase(),
+      email_user: normalizedEmail,
       password_user: user.password_user,
     };
   }
@@ -81,7 +89,6 @@ export class UserService{
         throw new UserError("Não foi possível cadastrar usuario", 500);
       }
       return result;
-      
     } catch (error) {
       UserError.handleRepositoryError(error);
     }

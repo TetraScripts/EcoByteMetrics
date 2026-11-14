@@ -18,7 +18,7 @@ test("configuração real exige autenticação e retorna o intervalo usado pelo 
   assert(address && typeof address !== "string");
   const url = `http://127.0.0.1:${address.port}/api/monitoring-settings`;
   assert.equal((await fetch(url)).status, 401);
-  const token = jwt.sign({email: "settings@example.invalid"}, process.env.JWT_SECRET, {subject: "1", expiresIn: "1h"});
+  const token = jwt.sign({email: "settings@example.invalid", role: "USER"}, process.env.JWT_SECRET, {subject: "1", expiresIn: "1h"});
   const response = await fetch(url, {headers: {Authorization: "Bearer " + token}});
   assert.equal(response.status, 200);
   assert.equal(response.headers.get("cache-control"), "no-store");
