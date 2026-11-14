@@ -1,6 +1,6 @@
 import { Router, Request, Response } from "express";
 import { CarbonController } from "./carbon.controller";
-import { methodNotAllowed } from "../../app";
+import { methodNotAllowed } from "../../middlewares/methodNotAllowed";
 import { authMiddleware } from "../Auth/auth.middleware";
 import { adminMiddleware } from "../Auth/admin.middleware";
 

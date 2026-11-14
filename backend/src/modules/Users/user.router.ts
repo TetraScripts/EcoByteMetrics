@@ -1,29 +1,11 @@
-
-import { Router, type Request, type Response } from "express";
+import { Router } from "express";
 import { UserController } from "./user.controller";
 import { authMiddleware } from "../Auth/auth.middleware";
 import { userAccessMiddleware } from "../Auth/userAccess.middleware";
+import { methodNotAllowed } from "../../middlewares/methodNotAllowed";
 
 const userRouter = Router();
 const userController = new UserController();
-
-// Tratamento de métodos HTTP não permitidos.
-function methodNotAllowed(allowedMethods: string[]) {
-  return (req: Request, res: Response): void => {
-    res.set("Allow", allowedMethods.join(", "));
-
-    if (req.method === "OPTIONS") {
-      res.status(204).end();
-      return;
-    }
-
-    res.status(405).json({
-      erro: "Método HTTP não permitido",
-      metodo: req.method,
-      metodosPermitidos: allowedMethods,
-    });
-  };
-}
 
 // Cadastrar usuário.
 userRouter.post("/", userController.createUserController);

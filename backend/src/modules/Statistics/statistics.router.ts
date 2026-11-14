@@ -1,4 +1,4 @@
-import { methodNotAllowed } from "../../app";
+import { methodNotAllowed } from "../../middlewares/methodNotAllowed";
 import {StatisticController} from "./statistics.controller";
 import {Router} from "express";
 

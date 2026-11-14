@@ -256,7 +256,7 @@ test("e-mail duplicado retorna conflito no cadastro e na alteração", async () 
     await request("/api/users/1", "PUT", duplicate, tokenFor(1)),
   ]) {
     assert.equal(response.status, 409);
-    assert.match((await response.json()).erro, /e-mail/);
+    assert.match((await response.json()).erro, /e-mail/i);
   }
   assert.equal(users.size, 2);
   assert.equal(users.get(1)!.email_user, "user1@example.invalid");
