@@ -5,8 +5,9 @@ import Globe from "react-globe.gl";
 import type { GlobeMethods } from "react-globe.gl";
 import { MeshPhongMaterial, PerspectiveCamera } from "three";
 import { geoContains, geoDistance } from "d3-geo";
-import { countries } from "@/shared/geography/geography";
+import { countries, findCountry } from "@/shared/geography/geography";
 import type { CountryFeature, GlobeCity } from "@/shared/geography/geography";
+import type { MonitoredService } from "../../types";
 import { useSettings } from "@/shared/preferences/useSettings";
 import { animateGlobeViewport, getGlobePixelRatio, getGlobeViewport, isGlobeInteractionPoint, restoreGlobeViewport } from "./globeViewport";
 import { createGlobeRotation } from "./globeRotation";
@@ -14,7 +15,16 @@ import { createGlobeSelection, INITIAL_GLOBE_POSITION, scheduleGlobeFocus } from
 import { countryObject, createCountryLayer, keepCountryObject } from "./countryLayer";
 import { createGlobeResolution, globeExperiments } from "./globePerformance";
 
+export const NEON_STATUS_COLORS: Record<string, string> = {
+  default: "#ffffff",
+  available: "#00ff88",
+  unavailable: "#ff1744",
+  stale: "#ffe600",
+  "no-metrics": "#00e5ff",
+};
+
 interface WorldGlobeProps {
+  services?: MonitoredService[];
   supportedCountries: Set<string>;
   country?: CountryFeature;
   cities: GlobeCity[];
@@ -33,6 +43,7 @@ interface WorldGlobeProps {
 const noCountries: CountryFeature[] = [];
 
 function WorldGlobe({
+  services = [],
   supportedCountries,
   country,
   cities,
@@ -95,6 +106,32 @@ function WorldGlobe({
     cityLng = city?.longitude;
   const focusLat = focusCity?.latitude, focusLng = focusCity?.longitude;
   const handleReady = useCallback(() => setReady(true), []);
+
+  const countryStatusMap = useMemo(() => {
+    const map = new Map<string, string>();
+    const priority = ["no-metrics", "available", "stale", "unavailable"];
+    for (const service of services) {
+      if (service.status === "removed") continue;
+      const countryCode = findCountry(service.country ?? "")?.properties.code ||
+        (service.country?.length === 2 ? service.country.toUpperCase() : undefined);
+      if (!countryCode) continue;
+      const current = map.get(countryCode);
+      if (!current || priority.indexOf(service.status) > priority.indexOf(current)) {
+        map.set(countryCode, service.status);
+      }
+    }
+    return map;
+  }, [services]);
+
+  const countryBorderColor = useCallback((feature: object): string => {
+    const code = (feature as CountryFeature).properties?.code;
+    const status = code ? countryStatusMap.get(code) : undefined;
+    if (status && status in NEON_STATUS_COLORS) {
+      return NEON_STATUS_COLORS[status]!;
+    }
+    return NEON_STATUS_COLORS.default!;
+  }, [countryStatusMap]);
+
   const countryColor = useCallback((feature: object) => {
     const { code, name } = (feature as CountryFeature).properties;
     return code === country?.properties.code ? "#087d62" : name === hover ? "#4baf8f"
@@ -108,7 +145,9 @@ function WorldGlobe({
       onCountrySelect?.((feature as CountryFeature).properties.name);
   }, [readOnly, onCountrySelect]);
 
-  useEffect(() => { for (const layer of countryLayers) layer.updateColors(countryColor); }, [countryLayers, countryColor]);
+  useEffect(() => {
+    for (const layer of countryLayers) layer.updateColors(countryColor, countryBorderColor);
+  }, [countryLayers, countryColor, countryBorderColor]);
   useEffect(() => () => { for (const layer of countryLayers) layer.dispose(); }, [countryLayers]);
 
   const createMarker = useCallback((point: object) => {
@@ -448,7 +487,7 @@ function WorldGlobe({
             polygonCapColor={countryColor}
             polygonCapCurvatureResolution={6}
             polygonSideColor=""
-            polygonStrokeColor="#e5f5eb"
+            polygonStrokeColor={countryBorderColor}
             polygonAltitude={0.009}
             polygonsTransitionDuration={0}
             onPolygonHover={hoverCountry}

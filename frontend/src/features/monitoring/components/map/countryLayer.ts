@@ -7,7 +7,9 @@ import type { CountryFeature } from "@/shared/geography/geography";
 export function createCountryLayer(countries: CountryFeature[], radius = 100) {
   const caps: BufferGeometry[] = [], outlines: BufferGeometry[] = [];
   const ranges: { feature: CountryFeature; start: number; count: number }[] = [];
+  const outlineRanges: { feature: CountryFeature; start: number; count: number }[] = [];
   let vertices = 0;
+  let outlineVertices = 0;
   for (const feature of countries) {
     const start = vertices;
     const parts = feature.geometry.type === "Polygon" ? [feature.geometry.coordinates] : feature.geometry.coordinates;
@@ -18,7 +20,11 @@ export function createCountryLayer(countries: CountryFeature[], radius = 100) {
     }
     ranges.push({ feature, start, count: vertices - start });
     // Keep even the middle of each contour segment above the country surface.
-    outlines.push(new GeoJsonGeometry(feature.geometry, radius * 1.011, 6));
+    const outline = new GeoJsonGeometry(feature.geometry, radius * 1.011, 6);
+    const outlineCount = outline.getAttribute("position").count;
+    outlineRanges.push({ feature, start: outlineVertices, count: outlineCount });
+    outlineVertices += outlineCount;
+    outlines.push(outline);
   }
   const geometry = caps.length ? mergeGeometries(caps)! : new BufferGeometry();
   const borders = outlines.length ? mergeGeometries(outlines)! : new BufferGeometry();
@@ -27,9 +33,15 @@ export function createCountryLayer(countries: CountryFeature[], radius = 100) {
   const initialColor = new Color("#b3cbc2");
   for (let index = 0; index < vertices; index++) colors.setXYZ(index, initialColor.r, initialColor.g, initialColor.b);
   geometry.setAttribute("color", colors);
+
+  const borderColors = new Float32BufferAttribute(new Float32Array(outlineVertices * 3), 3);
+  const initialBorderColor = new Color("#ffffff");
+  for (let index = 0; index < outlineVertices; index++) borderColors.setXYZ(index, initialBorderColor.r, initialBorderColor.g, initialBorderColor.b);
+  borders.setAttribute("color", borderColors);
+
   const material = new MeshBasicMaterial({ vertexColors: true, side: DoubleSide,
     polygonOffset: true, polygonOffsetFactor: 1, polygonOffsetUnits: 1 });
-  const borderMaterial = new LineBasicMaterial({ color: "#e5f5eb", depthWrite: false });
+  const borderMaterial = new LineBasicMaterial({ vertexColors: true, depthWrite: false });
   const object = new Group();
   const surface = new Mesh(geometry, material), contour = new LineSegments(borders, borderMaterial);
   surface.renderOrder = 1;
@@ -38,13 +50,24 @@ export function createCountryLayer(countries: CountryFeature[], radius = 100) {
   let disposed = false;
   return {
     object,
-    updateColors(colorFor: (feature: CountryFeature) => string) {
+    updateColors(
+      colorFor: (feature: CountryFeature) => string,
+      borderColorFor?: (feature: CountryFeature) => string,
+    ) {
       const color = new Color();
       for (const { feature, start, count } of ranges) {
         color.set(colorFor(feature));
         for (let index = start; index < start + count; index++) colors.setXYZ(index, color.r, color.g, color.b);
       }
       colors.needsUpdate = true;
+
+      if (borderColorFor) {
+        for (const { feature, start, count } of outlineRanges) {
+          color.set(borderColorFor(feature));
+          for (let index = start; index < start + count; index++) borderColors.setXYZ(index, color.r, color.g, color.b);
+        }
+        borderColors.needsUpdate = true;
+      }
     },
     dispose() {
       if (disposed) return;

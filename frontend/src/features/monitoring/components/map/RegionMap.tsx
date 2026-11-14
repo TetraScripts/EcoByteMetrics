@@ -18,8 +18,9 @@ class GlobeBoundary extends Component<{ children: ReactNode }, { failed: boolean
   }
 }
 
-export function RegionMap({ services, selectedServiceId, onSelectService, history = emptyHistory, lens = "status", highlightedServiceIds = [], focusServiceId, onHighlightServices, rotationPaused = false }: {
+export function RegionMap({ services, allServices, selectedServiceId, onSelectService, history = emptyHistory, lens = "status", highlightedServiceIds = [], focusServiceId, onHighlightServices, rotationPaused = false }: {
   services: MonitoredService[];
+  allServices?: MonitoredService[];
   selectedServiceId?: string;
   onSelectService: (id: string) => void;
   history?: CollectionPoint[];
@@ -31,7 +32,7 @@ export function RegionMap({ services, selectedServiceId, onSelectService, histor
 }) {
   const [groupId, setGroupId] = useState("");
   const groups = useMemo(() => impactLocations(services, history, lens), [services, history, lens]);
-  const countryCodes = useMemo(() => [...new Set(services.map(service => findCountry(service.country ?? "")?.properties.code).filter(Boolean))].sort().join(","), [services]);
+  const countryCodes = useMemo(() => [...new Set((allServices ?? services).map(service => findCountry(service.country ?? "")?.properties.code).filter(Boolean))].sort().join(","), [allServices, services]);
   const supportedCountries = useMemo(() => new Set(countryCodes.split(",").filter(Boolean)), [countryCodes]);
   const selected = groups.find(group => group.services.some(service => service.id === selectedServiceId));
   const choosing = groups.find(group => group.id === groupId);
@@ -49,7 +50,7 @@ export function RegionMap({ services, selectedServiceId, onSelectService, histor
   }, [groups, onHighlightServices]);
   return <div className="monitoring-map">
     <GlobeBoundary><Suspense fallback={<p className="globe-fallback" role="status">Carregando o globo 3D…</p>}>
-      <WorldGlobe supportedCountries={supportedCountries} cities={groups} city={selected} selectedServiceId={selectedServiceId}
+      <WorldGlobe services={allServices ?? services} supportedCountries={supportedCountries} cities={groups} city={selected} selectedServiceId={selectedServiceId}
         onPointSelect={selectPoint} onPointHover={highlightPoint} highlightedCityId={highlightedCityId} focusCity={focusCity} rotationPaused={rotationPaused} />
     </Suspense></GlobeBoundary>
     {choosing && (

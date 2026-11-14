@@ -82,3 +82,21 @@ test("contornos permanecem acima das superfícies inclusive entre os vértices",
   assert.equal(material.depthTest, true);
   layer.dispose();
 });
+
+test("contornos iniciam em neon branco e atualizam com cores de status dos países", () => {
+  const sample = countries.filter(country => ["BR", "US"].includes(country.properties.code));
+  const layer = createCountryLayer(sample);
+  const lines = layer.object.children[1] as LineSegments;
+  const borderColors = lines.geometry.getAttribute("color");
+  assert.ok(borderColors);
+  const white = new Color("#ffffff");
+  assert.ok(Math.abs(borderColors.getX(0) - white.r) < 0.000001);
+
+  const neonGreen = new Color("#00ff88");
+  layer.updateColors(
+    () => "#83bfa4",
+    country => country.properties.code === sample[0]!.properties.code ? "#00ff88" : "#ffffff",
+  );
+  assert.ok(Math.abs(borderColors.getX(0) - neonGreen.r) < 0.000001);
+  layer.dispose();
+});

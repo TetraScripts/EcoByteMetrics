@@ -21,11 +21,11 @@ import {
   MapPin,
   RotateCw,
   Search,
-  TrendingDown,
   Wifi,
   X,
   Zap,
 } from "lucide-react";
+import { ServiceTrendItem } from "../components/ServiceTrendItem";
 import { createRefreshAnimation } from "../domain/refreshAnimation";
 import { FiltersDialog } from "../components/FiltersDialog";
 import { InfoTooltip } from "@/shared/ui/InfoTooltip";
@@ -248,7 +248,7 @@ export function DashboardPage() {
             </div>
           )}
           {selected && (selected.latitude === undefined || selected.longitude === undefined) && <p className="monitoring-explanation">Sem coordenadas para marcar esta aplicação no globo. Os recursos e as estimativas continuam disponíveis ao lado.</p>}
-          <RegionMap key="world" services={mapServices} selectedServiceId={selected?.id} onSelectService={openService} history={selected ? analysis.history : history} lens={lens} highlightedServiceIds={highlightedIds} focusServiceId={selected ? undefined : focusServiceId} onHighlightServices={setMapHighlightedIds} />
+          <RegionMap key="world" services={mapServices} allServices={analysis.environmentServices} selectedServiceId={selected?.id} onSelectService={openService} history={selected ? analysis.history : history} lens={lens} highlightedServiceIds={highlightedIds} focusServiceId={selected ? undefined : focusServiceId} onHighlightServices={setMapHighlightedIds} />
         </section>
         {selected ? (
           <section className="monitoring-service-summary">
@@ -504,25 +504,13 @@ export function DashboardPage() {
                                 </div>
                               </div>
 
-                              <div className="monitoring-card-meta-item monitoring-card-trend-item">
-                                <TrendingDown size={17} className="monitoring-card-meta-icon" aria-hidden="true" />
-                                <div className="monitoring-trend-info">
-                                  <span className="monitoring-card-meta-label">Tendência de {metric === "energy" ? "consumo" : "emissão"}</span>
-                                  <span className="monitoring-trend-badge">
-                                    <span className="trend-arrow">↓</span> -5,2% <small>(últimas 24 h)</small>
-                                  </span>
-                                </div>
-                                <svg className="monitoring-card-sparkline" viewBox="0 0 96 26" fill="none" preserveAspectRatio="none" aria-hidden="true">
-                                  <path d="M2,6 Q16,4 32,12 T64,10 T94,22" stroke="#00b96b" strokeWidth="2.2" strokeLinecap="round" />
-                                  <path d="M2,6 Q16,4 32,12 T64,10 T94,22 L94,26 L2,26 Z" fill="url(#sparkline-grad)" opacity="0.3" />
-                                  <defs>
-                                    <linearGradient id="sparkline-grad" x1="0" y1="0" x2="0" y2="1">
-                                      <stop offset="0%" stopColor="#00b96b" stopOpacity="0.5" />
-                                      <stop offset="100%" stopColor="#00b96b" stopOpacity="0.0" />
-                                    </linearGradient>
-                                  </defs>
-                                </svg>
-                              </div>
+                              <ServiceTrendItem
+                                service={service}
+                                metric={metric}
+                                period={period}
+                                preloadedHistory={history}
+                                isExpanded={isExpanded}
+                              />
                             </div>
                           )}
                         </td>

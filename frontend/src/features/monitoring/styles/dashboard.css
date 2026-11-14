@@ -262,6 +262,24 @@
   align-items: center;
   gap: 4px;
 }
+.monitoring-trend-badge--up {
+  color: #d9383a;
+}
+.monitoring-trend-badge--down {
+  color: #009955;
+}
+.monitoring-trend-badge--neutral {
+  color: var(--monitoring-muted, #526b78);
+}
+.monitoring-card-trend-item[data-direction="up"] .monitoring-card-meta-icon {
+  color: #d9383a;
+}
+.monitoring-card-trend-item[data-direction="down"] .monitoring-card-meta-icon {
+  color: #009955;
+}
+.monitoring-card-trend-item[data-direction="neutral"] .monitoring-card-meta-icon {
+  color: var(--monitoring-muted, #526b78);
+}
 .monitoring-trend-badge small {
   font-size: 11px;
   font-weight: 400;
