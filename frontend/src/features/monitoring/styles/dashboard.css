@@ -139,11 +139,38 @@
 }
 .monitoring-card-header {
   display: grid;
-  grid-template-columns: minmax(180px, 2fr) minmax(140px, 1.3fr) minmax(160px, 1.4fr) 28px;
+  grid-template-columns: 28px minmax(180px, 2fr) minmax(140px, 1.3fr) minmax(160px, 1.4fr);
   align-items: center;
-  gap: 16px;
+  gap: 14px;
   cursor: pointer;
   user-select: none;
+}
+.monitoring-card-toggle-col {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+.monitoring-card-toggle-btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 28px;
+  height: 28px;
+  background: transparent;
+  border: none;
+  padding: 0;
+  cursor: pointer;
+  border-radius: 6px;
+  color: #4b665c;
+  transition: background-color 0.15s ease, color 0.15s ease;
+}
+.monitoring-card-toggle-btn:hover {
+  background: rgba(0, 185, 107, 0.12);
+  color: #00b96b;
+}
+.monitoring-card-toggle-btn:focus-visible {
+  outline: 2px solid #00b96b;
+  outline-offset: 2px;
 }
 .monitoring-card-name-btn {
   display: inline-flex;
@@ -298,7 +325,7 @@
 
 @media (max-width: 900px) {
   .monitoring-card-header {
-    grid-template-columns: 1fr auto;
+    grid-template-columns: 28px 1fr;
     gap: 10px;
   }
   .monitoring-card-status-col,

@@ -100,3 +100,32 @@ test("contornos iniciam em neon branco e atualizam com cores de status dos país
   assert.ok(Math.abs(borderColors.getX(0) - neonGreen.r) < 0.000001);
   layer.dispose();
 });
+
+test("fronteiras compartilhadas priorizam contornos neon sobre bordas brancas", () => {
+  const layer = createCountryLayer(countries);
+  const neonGreen = new Color("#00ff88");
+  layer.updateColors(
+    () => "#b3cbc2",
+    country => country.properties.code === "BR" ? "#00ff88" : "#ffffff",
+  );
+  const lines = layer.object.children[1] as LineSegments;
+  const borderColors = lines.geometry.getAttribute("color");
+  const indices = lines.geometry.index!;
+
+  let totalGreen = 0;
+  let totalWhite = 0;
+  for (let s = 0; s < indices.count; s += 2) {
+    const i = indices.getX(s);
+    const r = borderColors.getX(i);
+    const g = borderColors.getY(i);
+    const b = borderColors.getZ(i);
+    const isGreen = Math.abs(r - neonGreen.r) < 0.001 && Math.abs(g - neonGreen.g) < 0.001 && Math.abs(b - neonGreen.b) < 0.001;
+    const isWhite = Math.abs(r - 1) < 0.001 && Math.abs(g - 1) < 0.001 && Math.abs(b - 1) < 0.001;
+    if (isGreen) totalGreen++;
+    if (isWhite) totalWhite++;
+  }
+  // All 202 border segments of Brazil (including all shared inland borders with neighbor countries) must be neon green
+  assert.equal(totalGreen, 202);
+  assert.equal(totalWhite, indices.count / 2 - 202);
+  layer.dispose();
+});

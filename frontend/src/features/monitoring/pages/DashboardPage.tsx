@@ -441,15 +441,38 @@ export function DashboardPage() {
                             className="monitoring-card-header"
                             role="button"
                             tabIndex={0}
-                            aria-expanded={isExpanded}
-                            onClick={() => setExpandedServiceId(isExpanded ? "" : service.id)}
+                            title={`Ver detalhes de ${service.name}`}
+                            onClick={() => openService(service.id)}
                             onKeyDown={(e) => {
                               if (e.key === "Enter" || e.key === " ") {
                                 e.preventDefault();
-                                setExpandedServiceId(isExpanded ? "" : service.id);
+                                openService(service.id);
                               }
                             }}
                           >
+                            <div className="monitoring-card-toggle-col">
+                              <button
+                                type="button"
+                                className="monitoring-card-toggle-btn"
+                                aria-label={isExpanded ? `Recolher informações de ${service.name}` : `Mostrar informações adicionais de ${service.name}`}
+                                aria-expanded={isExpanded}
+                                title={isExpanded ? "Recolher informações" : "Mostrar informações adicionais"}
+                                onClick={(e) => {
+                                  e.stopPropagation();
+                                  setExpandedServiceId(isExpanded ? "" : service.id);
+                                }}
+                                onKeyDown={(e) => {
+                                  if (e.key === "Enter" || e.key === " ") {
+                                    e.stopPropagation();
+                                  }
+                                }}
+                              >
+                                <span className={`monitoring-card-chevron ${isExpanded ? "is-expanded" : ""}`} aria-hidden="true">
+                                  <ChevronDown size={18} />
+                                </span>
+                              </button>
+                            </div>
+
                             <div className="monitoring-card-name-col">
                               <button
                                 id={"application-" + service.id}
@@ -459,7 +482,7 @@ export function DashboardPage() {
                                 onBlur={() => setFocusedServiceId("")}
                                 onClick={(e) => {
                                   e.stopPropagation();
-                                  setExpandedServiceId(isExpanded ? "" : service.id);
+                                  openService(service.id);
                                 }}
                               >
                                 <CountryFlag country={service.country} />
@@ -476,12 +499,6 @@ export function DashboardPage() {
                               <span className="monitoring-card-divider" aria-hidden="true" />
                               <span key={service.lastCollectionAt ?? service.id} className="monitoring-sample-value">
                                 {formatNumber(value)}{value !== null && (metric === "energy" ? " kWh" : " g")}
-                              </span>
-                            </div>
-
-                            <div className="monitoring-card-toggle-col">
-                              <span className={`monitoring-card-chevron ${isExpanded ? "is-expanded" : ""}`} aria-hidden="true">
-                                <ChevronDown size={18} />
                               </span>
                             </div>
                           </div>
