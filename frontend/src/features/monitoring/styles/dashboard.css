@@ -10,8 +10,8 @@
   position: relative;
   isolation: isolate;
 }
-.monitoring-header { position: relative; z-index: 1; }
-.monitoring-main { position: relative; z-index: 1; }
+.monitoring-header { position: relative; z-index: 2; }
+.monitoring-main { position: relative; z-index: 2; }
 .monitoring-main:has(.monitoring-map) { pointer-events: none; }
 .monitoring-header,
 .monitoring-heading,

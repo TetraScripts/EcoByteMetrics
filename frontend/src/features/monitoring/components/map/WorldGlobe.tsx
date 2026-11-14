@@ -81,7 +81,7 @@ function WorldGlobe({
   const [motionAllowed, setMotionAllowed] = useState(() => typeof window !== "undefined" && !window.matchMedia("(prefers-reduced-motion: reduce)").matches);
   const { settings } = useSettings();
   const [experiments] = useState(() => globeExperiments(window.location.search, import.meta.env.DEV));
-  const rendererConfig = useMemo(() => ({ antialias: true, alpha: experiments.alpha, powerPreference: "high-performance" as const }), [experiments.alpha]);
+  const rendererConfig = useMemo(() => ({ antialias: true, alpha: true, powerPreference: "high-performance" as const }), []);
   const batched = experiments.batched && !onCountrySelect;
   const countryLayers = useMemo(() => batched ? [createCountryLayer(countries)] : [], [batched]);
   const surface = useMemo(
@@ -262,7 +262,7 @@ function WorldGlobe({
 
   useEffect(() => {
     if (!ready || !globe.current) return;
-    if (!experiments.alpha) globe.current.renderer().setClearColor("#fff", 1);
+    globe.current.renderer().setClearColor(0x000000, 0);
     const scene = globe.current.scene();
     const afterRender = scene.onAfterRender;
     const reveal: typeof afterRender = (...args) => {
@@ -469,7 +469,7 @@ function WorldGlobe({
             ref={globe}
             width={viewport.width}
             height={viewport.height}
-            backgroundColor={experiments.alpha ? "rgba(0,0,0,0)" : "#fff"}
+            backgroundColor="rgba(0,0,0,0)"
             globeMaterial={surface}
             rendererConfig={rendererConfig}
             globeCurvatureResolution={4}

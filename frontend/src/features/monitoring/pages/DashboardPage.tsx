@@ -1,8 +1,10 @@
 import "../styles/map.css";
 import "../styles/dashboard.css";
 import "../styles/dashboard-clarity.css";
+import "../styles/topography.css";
 import "@/shared/ui/AnimatedList.css";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { createPortal } from "react-dom";
 import {
   Activity,
   ArrowLeft,
@@ -51,7 +53,7 @@ import { serviceStatusLabels } from "../types";
 import type { MonitoredService } from "../types";
 import { formatDataPeriod, formatNumber, formatRecordedPeriod } from "@/shared/lib/format";
 import { CountryFlag } from "@/shared/ui/CountryFlag";
-import { TopographicSides } from "../components/TopographicSides";
+import Topography from "./Topography";
 import { AdministrationAccess } from "@/features/auth/AdministrationAccess";
 
 const stamp = (value?: string | null) => value ? new Date(value).toLocaleString("pt-BR") : "Ainda não realizada";
@@ -89,6 +91,14 @@ export function DashboardPage() {
     query.addEventListener("change", change);
     return () => query.removeEventListener("change", change);
   }, []);
+  const [portalRoot, setPortalRoot] = useState<Element | null>(() =>
+    typeof document !== "undefined" ? document.querySelector(".monitoring-shell") ?? document.body : null
+  );
+  useEffect(() => {
+    if (!portalRoot && typeof document !== "undefined") {
+      setPortalRoot(document.querySelector(".monitoring-shell") ?? document.body);
+    }
+  }, [portalRoot]);
   const refreshIcon = useRef<SVGSVGElement>(null);
   const animation = useRef<ReturnType<typeof createRefreshAnimation> | null>(null);
   const heading = useRef<HTMLHeadingElement>(null);
@@ -186,8 +196,33 @@ export function DashboardPage() {
       <div><strong title={formatRecordedPeriod(shownRange.first, shownRange.last)}>{((loading || (!error && snapshot.historyIncluded === false && !comparisonLatest)) && !summaryHistory.length) || discovering ? "Consultando os registros da seleção…" : tab === "comparar" && !summaryServices.length ? "Selecione aplicações para comparar" : formatDataPeriod(shownRange.first, shownRange.last)}</strong><p>Estimativas de energia e carbono dos registros disponíveis.<InfoTooltip label="estimativas ambientais">Os valores são estimativas calculadas a partir do uso das aplicações, e não medições diretas de eletricidade ou CO₂ na atmosfera. CO₂e significa dióxido de carbono equivalente.</InfoTooltip></p></div>
       <span>{comparisonLatest ? "Uma leitura por aplicação" : <>Filtro: {period === "7d" ? "até 7 dias" : "até 24 horas"}{analysis.observedAt && " anteriores ao horário escolhido"}</>}</span>
     </section>);
+  const topographyBackground = (
+    <div className="dashboard-topography-background" aria-hidden="true">
+      <Topography
+        color="#00ff80"
+        lineCount={60}
+        lineWidth={0.5}
+        elevation={0.5}
+        foreground={0}
+        tilt={88}
+        speed={0.2}
+        direction="forward"
+        glow={1.5}
+        depthOfField={1}
+        fog={0}
+        hoverEffect="light"
+        clickEffect="pulse"
+        morph={0}
+        brightness={2}
+        mouseInteraction={false}
+        mouseRadius={0.3}
+        mouseStrength={1.5}
+        parallax={1}
+      />
+    </div>
+  );
   return <>
-    <TopographicSides key="topography" />
+    {portalRoot ? createPortal(topographyBackground, portalRoot) : topographyBackground}
     {selectedId ? <div className="monitoring-heading detail-heading">
       <div className="monitoring-detail-toolbar">
         <button className="monitoring-back" onClick={back}><ArrowLeft size={18} />Voltar à lista</button>

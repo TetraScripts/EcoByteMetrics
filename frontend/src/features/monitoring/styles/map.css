@@ -1,6 +1,6 @@
 .monitoring-map { position: relative; }
 .monitoring-map .globe-stage { position: relative; width: 100%; height: auto; aspect-ratio: 1; max-height: 560px; background: transparent; pointer-events: none; }
-.globe-background { position: fixed; inset: 0; z-index: 0; }
+.globe-background { position: fixed; inset: 0; z-index: 1; }
 .globe-background[data-intro="true"] { animation: globeReveal 650ms ease-out backwards; }
 @keyframes globeReveal { from { opacity: 0; } to { opacity: 1; } }
 @media (prefers-reduced-motion: reduce) {
@@ -19,7 +19,7 @@
   position: absolute; inset: 0; z-index: 1; pointer-events: none;
   background: linear-gradient(to right, transparent 0%, transparent 30%, rgb(255 255 255 / 20%) 35%, rgb(255 255 255 / 65%) 41%, rgb(255 255 255 / 95%) 48%, #fff 60%), linear-gradient(to bottom, #fff 0, #fff 210px, rgb(255 255 255 / 65%) 280px, transparent 400px);
 }
-.globe-background:not([data-mask="overlay"]) .globe-fade { display: none; }
+.globe-fade { display: none !important; }
 .globe-background .scene-container > canvas + div { z-index: 2; }
 .globe-background canvas:active { cursor: grabbing; }
 .globe-background .globe-marker {
